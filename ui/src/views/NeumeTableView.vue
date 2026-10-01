@@ -26,7 +26,7 @@ const route = useRoute();
 const router = useRouter();
 const tableStore = usePersonalTablesStore();
 const settings = useSettingsStore();
-const { glyphs, catalog, hasCorpus, loading } = useTranscriptionData();
+const { glyphs, catalog, loading } = useTranscriptionData();
 const { freq, allCodes } = usePatternCatalog();
 
 const source = computed(() => String(route.params.source || ''));
@@ -128,6 +128,16 @@ function togglePseudo(code) {
     else tableStore.addRow(source.value, code, { tier: 'standard' });
 }
 
+const published = computed(() => {
+    const t = tableStore.tables.find(x => x.source === source.value);
+    return !!(t && t.isPublished);
+});
+
+function setPublished(value) {
+    const id = tableStore.getOrCreateTableForSource(source.value);
+    tableStore.updateTable(id, { isPublished: value });
+}
+
 function annotate() {
     const id = tableStore.getOrCreateTableForSource(source.value);
     router.push({ name: 'annotations', params: { id } });
@@ -161,6 +171,10 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
                 </p>
             </div>
             <div class="actions">
+                <label class="publish" title="Show this manuscript in the comparison table (Public)">
+                    <input type="checkbox" :checked="published" @change="setPublished($event.target.checked)" />
+                    Published
+                </label>
                 <button @click="annotate" title="Mark the snippets on the manuscript images">Annotate snippets &rarr;</button>
                 <button @click="router.push({ path: '/public/table' })" title="Compare with the other manuscripts">Compare &rarr;</button>
             </div>
@@ -168,11 +182,11 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
 
         <div class="mode-row">
             <div class="mode-switch" role="group" aria-label="Table mode">
-                <button :class="{ on: mode === 'standard' }" :aria-pressed="mode === 'standard'" @click="mode = 'standard'">
-                    Standard table
+                <button :class="{ on: mode === 'standard' }" :aria-pressed="mode === 'standard'" title="Show Standard Table" @click="mode = 'standard'">
+                    Standard Table
                 </button>
-                <button :class="{ on: mode === 'expanded' }" :aria-pressed="mode === 'expanded'" @click="mode = 'expanded'">
-                    Expanded documentation
+                <button :class="{ on: mode === 'expanded' }" :aria-pressed="mode === 'expanded'" title="Show Expanded Documentation" @click="mode = 'expanded'">
+                    Expanded Documentation
                 </button>
             </div>
             <p class="mode-note">
@@ -273,7 +287,8 @@ h1 { margin: var(--space-1) 0 0; font-size: 1.7rem; }
 .tag { font-size: 0.8rem; font-weight: 600; vertical-align: middle; color: var(--color-primary-dark); background: var(--color-primary-light); padding: 0.15em 0.6em; border-radius: 999px; margin-left: 0.4em; }
 .meta { margin: var(--space-1) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
 .meta.warn { color: var(--color-warning-dark); }
-.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+.publish { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 0.9rem; color: var(--color-text-muted); margin-right: var(--space-2); }
 
 .mode-row { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-top: var(--space-4); }
 .mode-switch { display: inline-flex; border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); overflow: hidden; }

@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { usePersonalTablesStore } from '../stores/personalTables'
 import { useAnnotationsStore } from '../stores/annotations'
 import { useIiifStore } from '../stores/iiif'
-import { useRouter } from 'vue-router'
+import { useRouter, RouterLink } from 'vue-router'
 import { useTranscriptionData } from '../composables/useTranscriptionData'
 import { useImageManifest } from '../composables/useImageManifest'
 import { getManuscriptStats } from '../utils/workspaceSharing'
@@ -14,7 +14,7 @@ const annotStore = useAnnotationsStore()
 const iiifStore = useIiifStore()
 const { hasImage } = useImageManifest()
 const router = useRouter()
-const { rawData, loading, sourceFolios } = useTranscriptionData()
+const { rawData, loading, sourceFolios, hasCorpus } = useTranscriptionData()
 
 const searchQuery = ref("");
 const showCleanupModal = ref(false);
@@ -161,7 +161,10 @@ function openManuscript(sourceName) {
         </table>
         
         <div v-if="manuscripts.length === 0" class="empty-state">
-            No manuscripts found matching your search.
+            <template v-if="!hasCorpus">
+                No data is loaded yet. <RouterLink to="/corpus">Load a corpus</RouterLink> to see its manuscripts here.
+            </template>
+            <template v-else>No manuscripts found matching your search.</template>
         </div>
     </div>
 

@@ -41,6 +41,12 @@ npm run build    # production build into ./dist
 
 From the repository root, `npm run dev | build | test` do the same.
 
+An end-to-end smoke test (Playwright) walks the whole user story — empty start, loading a corpus, filling the standard table, the expanded documentation, the comparison table. With `npm run dev` running:
+
+```bash
+npm run e2e -- --data /path/to/a/project/folder
+```
+
 ## How patterns are read
 
 A syllable's notes are read into a **pattern code**: `*` is the first note, then `u`, `d` or `e` for a next note higher, lower or equal. `[ … ]` marks notes written as one connected group (a ligature); the letters `L O Q S` on a note mark liquescent, oriscus, quilisma and strophicus.

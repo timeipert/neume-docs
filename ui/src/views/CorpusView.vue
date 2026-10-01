@@ -328,6 +328,5 @@ button.icon:hover { opacity: 1; }
 @media (max-width: 720px) {
     .corpus-view { padding: var(--space-4); }
     .head { flex-direction: column; }
-    .sources .col-hide { display: none; }
 }
 </style>

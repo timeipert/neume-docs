@@ -24,6 +24,8 @@ const props = defineProps({
 const emit = defineEmits(['pick', 'remove', 'id', 'toggle-pseudo']);
 
 const isPseudo = computed(() => props.column.group === 'clef' || props.column.group === 'custos');
+/** Only a direction column or a special-sign column has a library to choose from. */
+const canPick = computed(() => props.column.slot || props.column.group === 'direction');
 const pseudoCode = computed(() => (props.column.group === 'clef' ? CLEF_CODE : CUSTOS_CODE));
 const signatures = computed(() => new Set(props.rows.map(r => signatureOf(r.pattern))).size);
 
@@ -69,7 +71,7 @@ const fmt = (n) => n.toLocaleString('en-US');
         <button v-if="isPseudo" class="pick" @click="emit('toggle-pseudo', pseudoCode)">
             {{ rows.length ? 'Not in this manuscript' : `Document ${column.label.toLowerCase()}` }}
         </button>
-        <button v-else-if="!added" class="pick" @click="emit('pick', column)">
+        <button v-else-if="canPick && !added" class="pick" @click="emit('pick', column)">
             {{ rows.length ? 'Change…' : 'Choose from the library…' }}
         </button>
     </footer>

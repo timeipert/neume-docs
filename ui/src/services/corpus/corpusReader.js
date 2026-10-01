@@ -195,8 +195,16 @@ export function compareDocuments(a, b) {
     return compareFoliosSimple(String(a.dokumenten_id || a.id || ''), String(b.dokumenten_id || b.id || ''));
 }
 
+/** One JSON file, with a message a user can act on when it is too big to hold. */
 async function readJson(file) {
-    return JSON.parse(await file.text());
+    try {
+        return JSON.parse(await file.text());
+    } catch (e) {
+        if (e instanceof RangeError || /string length|out of memory/i.test(String(e && e.message))) {
+            throw new Error('too large to read in one piece — export the workspace per manuscript, or as a project folder');
+        }
+        throw e;
+    }
 }
 
 /**

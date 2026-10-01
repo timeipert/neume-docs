@@ -481,9 +481,9 @@ const visibleFilterSources = computed(() => {
                     <span class="control-label">Table</span>
                     <div class="mode-switch" role="group" aria-label="Table view">
                         <button :class="{ on: viewMode === 'standard' }" :aria-pressed="viewMode === 'standard'" @click="viewMode = 'standard'"
-                                title="Only the standard selection: the fixed columns of the standard table">Standard table</button>
+                                title="Show Standard Table: only the standard selection, in the fixed columns">Standard Table</button>
                         <button :class="{ on: viewMode === 'expanded' }" :aria-pressed="viewMode === 'expanded'" @click="viewMode = 'expanded'"
-                                title="The standard table plus everything documented for each manuscript">Expanded documentation</button>
+                                title="Show Expanded Documentation: the standard table plus everything documented for each manuscript">Expanded Documentation</button>
                         <button :class="{ on: viewMode === 'codes' }" :aria-pressed="viewMode === 'codes'" @click="viewMode = 'codes'"
                                 title="Every transcription code as a column of its own">All codes</button>
                     </div>

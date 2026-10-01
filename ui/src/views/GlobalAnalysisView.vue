@@ -454,7 +454,7 @@ function isHighlighted(row) {
 <div class="app-container">
     <div class="controls">
         <div class="control-group">
-            <label>Sort Groups: 
+            <label>Order of the columns
             <select v-model="colSort">
                 <option value="tones">Tones, then frequency in the CM</option>
                 <option value="freq">Frequency</option>
@@ -658,14 +658,27 @@ function isHighlighted(row) {
 
 /* CSS Port from HTML */
 .controls {
-    padding: 12px;
-    background: var(--color-bg);
+    padding: 10px var(--space-5);
+    background: var(--color-surface);
     border-bottom: 1px solid var(--color-border);
     display: flex;
-    gap: 20px;
+    gap: var(--space-2) var(--space-5);
     flex-wrap: wrap;
     align-items: center;
+    font-size: 0.88rem;
+    color: var(--color-text-muted);
 }
+.controls select {
+    margin-left: var(--space-2);
+    padding: 0.35em 0.6em;
+    border: 1px solid var(--color-border-hover);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    color: var(--color-text);
+    font: inherit;
+}
+.controls input[type="checkbox"] { margin-right: var(--space-1); accent-color: var(--color-primary); }
+.controls label { display: inline-flex; align-items: center; cursor: pointer; }
 .control-group {
     display: flex;
     gap: 8px;

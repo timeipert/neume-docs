@@ -160,6 +160,49 @@ describe('a Corpus Monodicum project (folder layout)', () => {
     });
 });
 
+describe('layouts and keys as Monodi-Zero reads them', () => {
+    it('decides by structure which meta.json is the source\'s', async () => {
+        const files = [
+            file('P/uuid-1/meta.json', { id: 'uuid-1', herkunftsort: 'Köln' }), // no quellensigle at all
+            file('P/uuid-1/d/meta.json', { dokumenten_id: 'x-1r-1', foliostart: '1r' }),
+            file('P/uuid-1/d/data.json', doc())
+        ];
+        const { sources } = await read(files);
+        expect(sources.map(s => s.name)).toEqual(['uuid-1']);
+        expect(sources[0].meta.herkunftsort).toBe('Köln');
+    });
+
+    it('accepts the English-ish keys of older exports', async () => {
+        const files = [
+            file('P/Old 1/meta.json', { quellensigle: 'Old 1' }),
+            file('P/Old 1/d/meta.json', { id: 'd', genre: 'Antiphon', festum: 'Nativitas', dies: 'Dom', rowstart: '7', foliostart: '4v' }),
+            file('P/Old 1/d/data.json', doc())
+        ];
+        const { sources } = await read(files);
+        expect(sources[0].documents[0]).toMatchObject({ gattung1: 'Antiphon', festtag: 'Nativitas', feier: 'Dom', zeilenstart: '7' });
+        expect(sources[0].patterns['*'][0].slice(1, 3)).toEqual(['4v', '7']); // the row start is honoured
+    });
+
+    it('falls back to the folder name for a document without metadata', async () => {
+        const { sources } = await read([file('P/S 1/meta.json', { quellensigle: 'S 1' }), file('P/S 1/chant-42/data.json', doc())]);
+        expect(sources[0].documents[0].dokumenten_id).toBe('chant-42');
+        expect(sources[0].patterns['*'][0][0]).toBe('chant-42');
+    });
+
+    it('reads the manifest address under either name', async () => {
+        const a = await read([file('P/A/meta.json', { quellensigle: 'A', manifest: 'https://a/m' }), file('P/A/d/data.json', doc())]);
+        const b = await read([file('P/B/meta.json', { quellensigle: 'B', iiifManifestUrl: 'https://b/m' }), file('P/B/d/data.json', doc())]);
+        expect(a.sources[0].meta.manifest).toBe('https://a/m');
+        expect(b.sources[0].meta.manifest).toBe('https://b/m');
+    });
+
+    it('takes the source of a workspace document from source_id too', async () => {
+        const ws = { sources: [{ id: 's1', quellensigle: 'WS 1' }, { id: 's2', quellensigle: 'WS 2' }], documents: [{ id: 'd', source_id: 's2', dokumenten_id: 'WS 2-1r-1', foliostart: '1r' }], notes: { d: doc() } };
+        const { sources } = await read([file('w.monodijson', ws)]);
+        expect(sources.map(s => s.name)).toEqual(['WS 2']);
+    });
+});
+
 describe('a Monodi-Zero workspace (.monodijson)', () => {
     const workspace = () => ({
         schemaVersion: 1,

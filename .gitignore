@@ -13,8 +13,9 @@ user-manual/.vitepress/dist/
 ui/public/manual/
 
 # Local data. The editor starts without any; never commit a corpus.
-export/
-data/
+# (Anchored to the repository root: ui/src/data/ holds app code and is tracked.)
+/export/
+/data/
 *.monodijson
 
 # Local editor / agent config

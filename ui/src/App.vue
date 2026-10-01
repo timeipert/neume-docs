@@ -88,7 +88,7 @@ onBeforeUnmount(() => {
       </button>
       <div id="nav-links" class="nav-links" :class="{ 'menu-open': isMenuOpen }">
         <RouterLink to="/corpus" active-class="active" @click="isMenuOpen = false">Corpus</RouterLink>
-        <RouterLink to="/table" active-class="active" @click="isMenuOpen = false">Neumentabellen</RouterLink>
+        <RouterLink to="/table" :class="{ active: route.path.startsWith('/table') }" @click="isMenuOpen = false">Neumentabellen</RouterLink>
         <RouterLink to="/" exact-active-class="active" @click="isMenuOpen = false">Overview</RouterLink>
         <RouterLink to="/patterns" active-class="active" @click="isMenuOpen = false">Patterns</RouterLink>
 

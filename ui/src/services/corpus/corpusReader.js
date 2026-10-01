@@ -107,6 +107,27 @@ const DOCUMENT_FIELDS = [
     'bibliographischerverweis', 'druckausgabe', 'foliostart', 'zeilenstart', 'editionsstatus'
 ];
 
+/**
+ * Document metadata as Monodi-Zero reads it: the German monodi+ keys, with the
+ * English-ish keys of older OMMR4all-style exports accepted for the same fields.
+ */
+function normaliseDocMeta(meta, fallbackId = '') {
+    const m = { ...(meta || {}) };
+    m.gattung1 = m.gattung1 || m.genre;
+    m.festtag = m.festtag || m.festum;
+    m.feier = m.feier || m.dies;
+    m.zeilenstart = m.zeilenstart || m.rowstart;
+    m.dokumenten_id = m.dokumenten_id || m.id || fallbackId || '';
+    return m;
+}
+
+/** Source metadata, with the manifest under one name whichever export wrote it. */
+function normaliseSourceMeta(meta) {
+    const m = { ...(meta || {}) };
+    m.manifest = m.manifest || m.iiifManifestUrl;
+    return m;
+}
+
 function pick(obj, fields) {
     const out = {};
     for (const f of fields) {
@@ -130,7 +151,7 @@ function skipped(documentId, suffixes) {
 class SourceAccumulator {
     constructor(name, meta = {}) {
         this.name = name;
-        this.meta = pick(meta, SOURCE_FIELDS);
+        this.meta = pick(normaliseSourceMeta(meta), SOURCE_FIELDS);
         this.documents = [];
         this.patterns = Object.create(null);
         this.folios = new Set();
@@ -256,14 +277,24 @@ export async function readCorpus(inputs, options = {}) {
     };
 
     // ---- Folder / ZIP layout: <source>/<document>/data.json ----------------
-    const sourceGroups = new Map(); // srcDir -> { metaFile, docs: [{ dataFile, metaFile }] }
+    // A meta.json is a document's if its folder has a data.json beside it, and a
+    // source's otherwise — structure decides, not any field in the file.
+    const dataDirs = new Set(treeData.map(f => dirname(f.path)));
+    const sourceGroups = new Map(); // srcDir -> { metaFile, docs: [{ dataFile, metaFile, folder }] }
     for (const dataFile of treeData) {
         const docDir = dirname(dataFile.path);
         const srcDir = dirname(docDir);
         if (!sourceGroups.has(srcDir)) {
-            sourceGroups.set(srcDir, { metaFile: treeMeta.get(join(srcDir, 'meta.json')) || null, docs: [] });
+            sourceGroups.set(srcDir, {
+                metaFile: dataDirs.has(srcDir) ? null : (treeMeta.get(join(srcDir, 'meta.json')) || null),
+                docs: []
+            });
         }
-        sourceGroups.get(srcDir).docs.push({ dataFile, metaFile: treeMeta.get(join(docDir, 'meta.json')) || null });
+        sourceGroups.get(srcDir).docs.push({
+            dataFile,
+            metaFile: treeMeta.get(join(docDir, 'meta.json')) || null,
+            folder: basename(docDir)
+        });
     }
 
     const totalDocs = treeData.length;
@@ -278,7 +309,7 @@ export async function readCorpus(inputs, options = {}) {
         if (group.metaFile) {
             try {
                 const parsed = await readJson(group.metaFile);
-                if (parsed && parsed.quellensigle) sourceMeta = parsed;
+                if (parsed && typeof parsed === 'object') sourceMeta = parsed;
             } catch (e) {
                 summary.warnings.push(`${group.metaFile.path}: ${e.message}`);
             }
@@ -301,7 +332,7 @@ export async function readCorpus(inputs, options = {}) {
         // analysed in reading order.
         const entries = await Promise.all(docs.map(async (doc) => ({
             doc,
-            meta: doc.metaFile ? await readJson(doc.metaFile).catch(() => ({})) : {}
+            meta: normaliseDocMeta(doc.metaFile ? await readJson(doc.metaFile).catch(() => ({})) : {}, doc.folder)
         })));
         entries.sort((a, b) => compareDocuments(a.meta, b.meta)
             || compareFoliosSimple(a.doc.dataFile.path, b.doc.dataFile.path));
@@ -390,10 +421,10 @@ function accumulatorsFromJson(json, file, skipSuffixes, summary) {
         if (s.quellensigle) byId.set(s.quellensigle, name);
     }
 
-    for (const doc of [...documents].sort(compareDocuments)) {
+    for (const doc of documents.map(d => normaliseDocMeta(d, d && d.id)).sort(compareDocuments)) {
         const root = notes[doc.id];
         if (!isRoot(root)) continue;
-        const ownerKey = doc.quelle_id || '';
+        const ownerKey = doc.quelle_id || doc.source_id || '';
         let name = byId.get(ownerKey) || ownerKey || 'Ohne Quelle';
         if (sources.length === 1 && !byId.has(ownerKey)) name = byId.values().next().value || name;
         if (!accs.has(name)) accs.set(name, new SourceAccumulator(name));

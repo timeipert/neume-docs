@@ -402,7 +402,7 @@ describe('grouping columns under headings', () => {
     it('gives each special sign its own group when expanded', () => {
         const groups = groupColumns(buildColumns('expanded', ['*dL', '*uL', '*eOd'], freq));
         expect(groups.map(g => g.label)).toEqual([
-            'Neume shapes', 'L — Liqueszenz', 'O — Oriscus', 'Clef and custos'
+            'Neume shapes', 'L — Liquescent', 'O — Oriscus', 'Clef and custos'
         ]);
         expect(groups[1].columns.map(c => c.header)).toEqual(['*dL', '*uL']);
     });

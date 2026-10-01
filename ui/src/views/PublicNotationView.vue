@@ -194,7 +194,7 @@ watch([() => route.query.zoomId, manuscriptLines], ([zId, groups]) => {
                     <span class="icon">&larr;</span> Back to Directory
                 </button>
                 <button class="back-link" @click="router.push('/public/table')">
-                    Neumentabelle (Comparison) &rarr;
+                    Neume Table (Comparison) &rarr;
                 </button>
             </div>
             <div class="title-stack">

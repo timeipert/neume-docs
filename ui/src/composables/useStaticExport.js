@@ -232,7 +232,7 @@ h1{margin:4px 0 0;font-size:2.6rem;font-weight:800;letter-spacing:-.02em;}
 .ms-table .num{text-align:right;}
 .pill{background:var(--color-primary-light);color:var(--color-primary-hover);padding:4px 10px;border-radius:20px;font-size:.8rem;font-weight:600;}
 
-/* Neumentabelle Matrix */
+/* Neume Table Matrix */
 .matrix-wrapper{max-width:100%;overflow-x:auto;margin:20px 0;background:#fff;border:1px solid var(--color-border);border-radius:12px;box-shadow:0 4px 6px -1px rgba(0,0,0,.05);}
 .neume-matrix{border-collapse:separate;border-spacing:0;width:100%;text-align:left;}
 .matrix-corner{position:sticky;left:0;top:0;z-index:4;background:var(--color-bg);padding:16px;min-width:200px;border-bottom:2px solid var(--color-border);border-right:2px solid var(--color-border);font-weight:700;font-size:.8rem;color:var(--color-text-muted);text-transform:uppercase;}
@@ -410,7 +410,7 @@ function directoryHtml(entries) {
 <div class="dir-header">
 <div class="top-nav-bar">
 <span class="nav-tab active">Manuscript Directory</span>
-<a class="nav-tab" href="neumentabelle.html">Neumentabelle (Comparison) &rarr;</a>
+<a class="nav-tab" href="neume-table.html">Neume Table (Comparison) &rarr;</a>
 </div>
 <div class="brand">Notationsdokumentation</div><h1>Manuscripts</h1><p class="subtitle">Static export — ${todayStr()}</p></div>
 <table class="ms-table">
@@ -423,7 +423,7 @@ function directoryHtml(entries) {
 
 function directoryMarkdown(entries) {
     let md = `# Notationsdokumentation — Manuscripts\n\nStatic export — ${todayStr()}\n\n`;
-    md += `[View Neumentabelle (Comparison)](neumentabelle.md)\n\n`;
+    md += `[View Neume Table (Comparison)](neume-table.md)\n\n`;
     md += `| Source | Manuscript Title | Patterns |\n| --- | --- | --- |\n`;
     for (const e of entries) {
         md += `| [${e.source}](${e.mdHref}) | ${e.name || ''} | ${e.patternCount} |\n`;
@@ -431,9 +431,9 @@ function directoryMarkdown(entries) {
     return md;
 }
 
-// ---- Neumentabelle (Matrix Comparison) -------------------------------------
+// ---- Neume Table (Matrix Comparison) -------------------------------------
 
-function neumentabelleHtml({ publishedSources, allPatterns, matrixSnippets, glyphs, displayMode, signGlyphs = {}, signKeys = [] }) {
+function neumeTableHtml({ publishedSources, allPatterns, matrixSnippets, glyphs, displayMode, signGlyphs = {}, signKeys = [] }) {
     // Header row with patterns
     const ths = allPatterns.map(pat => {
         const patCell = patternMarkup(pat, glyphs, displayMode, signGlyphs);
@@ -479,10 +479,10 @@ ${tds}
 <div class="header-content">
 <div class="top-nav-bar">
 <a class="nav-tab" href="index.html">&larr; Manuscript Directory</a>
-<span class="nav-tab active">Neumentabelle (Comparison)</span>
+<span class="nav-tab active">Neume Table (Comparison)</span>
 </div>
 <div class="brand">Comparative Notation Analysis</div>
-<h1>Neumentabelle</h1>
+<h1>Neume Table</h1>
 <p class="subtitle">Side-by-side comparison of annotated neume shapes across published manuscripts.</p>
 </div>
 </header>
@@ -502,11 +502,11 @@ ${trs}
 </div>
 </main>`;
 
-    return htmlDoc('Neumentabelle — Comparative Notation Analysis', body);
+    return htmlDoc('Neume Table — Comparative Notation Analysis', body);
 }
 
-function neumentabelleMarkdown({ publishedSources, allPatterns, matrixSnippets }) {
-    let md = `# Neumentabelle — Comparative Notation Analysis\n\nStatic export — ${todayStr()}\n\n`;
+function neumeTableMarkdown({ publishedSources, allPatterns, matrixSnippets }) {
+    let md = `# Neume Table — Comparative Notation Analysis\n\nStatic export — ${todayStr()}\n\n`;
     md += `[Back to Manuscript Directory](README.md)\n\n`;
 
     // Markdown Table
@@ -577,7 +577,7 @@ export async function exportStaticSite(onProgress = () => {}) {
     let totalSnippets = 0;
     let totalFailures = 0;
 
-    // Neumentabelle collection state
+    // Neume Table collection state
     const publishedSourcesForMatrix = [];
     const matrixSnippets = {}; // source -> pattern -> Array<{ displayId, folio, snippetRelHref }>
     const patternCountMap = new Map();
@@ -642,7 +642,7 @@ export async function exportStaticSite(onProgress = () => {}) {
                 zip.file(`${folder}/snippets/${itemFname}`, icrop.blob);
                 totalSnippets++;
 
-                // Track item snippet for the Neumentabelle matrix
+                // Track item snippet for the Neume Table matrix
                 const pat = item.pattern.trim();
                 if (!matrixSnippets[source][pat]) matrixSnippets[source][pat] = [];
                 matrixSnippets[source][pat].push({
@@ -676,13 +676,13 @@ export async function exportStaticSite(onProgress = () => {}) {
         });
     }
 
-    // 3. Build Neumentabelle (Comparison Matrix)
-    report('neumentabelle', 'Building Neumentabelle comparative matrix…');
+    // 3. Build Neume Table (Comparison Matrix)
+    report('neume-table', 'Building Neume Table comparative matrix…');
     const allMatrixPatterns = Array.from(patternCountMap.keys()).sort((a, b) => compareChantPatterns(a, b, 'freq', patternCountMap));
     const glyphs = useTranscriptionData().glyphs.value;
     const ntSignGlyphs = resolveSignGlyphs(settings.customSigns, glyphs);
 
-    const ntHtml = neumentabelleHtml({
+    const ntHtml = neumeTableHtml({
         publishedSources: publishedSourcesForMatrix,
         allPatterns: allMatrixPatterns,
         matrixSnippets,
@@ -692,14 +692,14 @@ export async function exportStaticSite(onProgress = () => {}) {
         signKeys: settings.customSigns.map(s => s.key)
     });
 
-    const ntMd = neumentabelleMarkdown({
+    const ntMd = neumeTableMarkdown({
         publishedSources: publishedSourcesForMatrix,
         allPatterns: allMatrixPatterns,
         matrixSnippets,
     });
 
-    zip.file('neumentabelle.html', ntHtml);
-    zip.file('neumentabelle.md', ntMd);
+    zip.file('neume-table.html', ntHtml);
+    zip.file('neume-table.md', ntMd);
 
     // 4. Root directory + README
     report('bundle', 'Building directory and packaging ZIP…');

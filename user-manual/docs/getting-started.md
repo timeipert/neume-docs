@@ -7,7 +7,7 @@ The **Neumen-Editor** is a lightweight research application for **musicologists*
 
 It bridges the gap between abstract melodic data and the physical graphical reality of a manuscript. You can:
 1. Load a transcribed corpus and see which neume patterns occur in each manuscript.
-2. Document the neume shapes of a manuscript in a **Neumentabelle**: a fixed, comparable table of neumes ordered by number of tones and frequency in the CM.
+2. Document the neume shapes of a manuscript in a **Neume Table**: a fixed, comparable table of neumes ordered by number of tones and frequency in the CM.
 3. Link patterns directly to specific ink strokes on high-resolution IIIF manuscript scans.
 4. Establish a standard typology (Reference IDs) for graphical signs across manuscripts.
 5. Publish an interactive comparison of notation across manuscripts.

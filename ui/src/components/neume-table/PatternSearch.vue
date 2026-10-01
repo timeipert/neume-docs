@@ -6,7 +6,8 @@ import { searchLibrary, sortCodes, classify } from '../../utils/neumeTable';
 
 /**
  * Adds patterns to the expanded documentation: by searching the whole pattern
- * library by code, or from what this manuscript actually contains.
+ * library by code, or from what this manuscript actually contains. It sits
+ * beside the table, so every addition shows up at once.
  */
 const props = defineProps({
     allCodes: { type: Array, required: true },
@@ -21,12 +22,12 @@ const props = defineProps({
 const emit = defineEmits(['add']);
 
 const query = ref('');
-const showAllSuggestions = ref(false);
-const SUGGESTIONS = 18;
+const showAll = ref(false);
+const SUGGESTIONS = 20;
 
 const results = computed(() => searchLibrary(props.allCodes, query.value, props.freq, {
     exclude: props.inTable,
-    limit: 40
+    limit: 60
 }));
 
 /** What the manuscript has that the table does not yet cover, in table order. */
@@ -39,49 +40,42 @@ const found = computed(() => {
     return sortCodes(codes, props.freq);
 });
 
-const suggestions = computed(() => (showAllSuggestions.value ? found.value : found.value.slice(0, SUGGESTIONS)));
-
 const searching = computed(() => query.value.trim().length > 0);
-const list = computed(() => (searching.value ? results.value : suggestions.value));
+const list = computed(() => (searching.value ? results.value : (showAll.value ? found.value : found.value.slice(0, SUGGESTIONS))));
 
 const fmt = (n) => n.toLocaleString('en-US');
-
-function add(code) {
-    emit('add', code);
-}
 </script>
 
 <template>
-<section class="search-panel" aria-label="Add patterns to the expanded documentation">
-    <div class="field">
-        <label for="pattern-search">Add a pattern by code</label>
+<section class="panel" aria-label="Add patterns to the expanded documentation">
+    <header>
+        <label for="pattern-search" class="title">Add a pattern</label>
         <div class="input-wrap">
             <input
                 id="pattern-search"
                 v-model="query"
                 type="search"
-                placeholder="e.g. *udL, *eO, [*u]d …"
+                placeholder="Code, e.g. *udL, *eO, [*u]d"
                 autocomplete="off"
                 @keydown.esc="query = ''"
             />
         </div>
-        <p class="hint">
-            Without brackets the code matches every way of writing it; with brackets it matches exactly.
-            The whole pattern library is searched.
-        </p>
-    </div>
+        <p class="hint">Without brackets a code matches every way of writing it; with brackets, exactly. The whole library is searched.</p>
+    </header>
 
     <h3 class="list-title">
-        <template v-if="searching">{{ results.length }} match{{ results.length === 1 ? '' : 'es' }} in the library</template>
-        <template v-else>Found in this manuscript, not yet in the table <span class="n">{{ found.length }}</span></template>
+        <template v-if="searching">{{ results.length }} match{{ results.length === 1 ? '' : 'es' }}</template>
+        <template v-else>Found in this manuscript <span class="n">{{ found.length }}</span></template>
     </h3>
 
     <ul v-if="list.length" class="results">
         <li v-for="code in list" :key="code">
-            <button class="result" :title="`Add ${code} to the expanded documentation`" @click="add(code)">
-                <span class="r-glyph"><PatternDisplay :pattern="code" :glyphs="glyphs" :scale="1.2" /></span>
-                <PatternCode :pattern="code" />
-                <span class="r-meta">{{ fmt(freq.code(code)) }}× CM<template v-if="counts[code]"> · {{ fmt(counts[code]) }}× here</template></span>
+            <button class="result" :title="`Add ${code} to the expanded documentation`" @click="emit('add', code)">
+                <span class="r-glyph"><PatternDisplay :pattern="code" :glyphs="glyphs" :scale="0.9" /></span>
+                <span class="r-text">
+                    <PatternCode :pattern="code" />
+                    <span class="r-meta">{{ fmt(freq.code(code)) }}× CM<template v-if="counts[code]"> · <strong>{{ fmt(counts[code]) }}× here</strong></template></span>
+                </span>
                 <span class="r-add" aria-hidden="true">+</span>
             </button>
         </li>
@@ -89,26 +83,30 @@ function add(code) {
     <p v-else-if="searching" class="empty">No pattern in the library contains “{{ query }}”.</p>
     <p v-else class="empty">Everything this manuscript contains is already in the table, or no corpus is loaded for it.</p>
 
-    <button v-if="!searching && found.length > SUGGESTIONS" class="more" @click="showAllSuggestions = !showAllSuggestions">
-        {{ showAllSuggestions ? 'Show fewer' : `Show all ${found.length}` }}
+    <button v-if="!searching && found.length > SUGGESTIONS" class="ne-btn ne-btn--sm more" @click="showAll = !showAll">
+        {{ showAll ? 'Show fewer' : `Show all ${found.length}` }}
     </button>
 </section>
 </template>
 
 <style scoped>
-.search-panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); }
-.field label { display: block; font-weight: 600; margin-bottom: var(--space-1); }
-.input-wrap input { width: 100%; box-sizing: border-box; padding: 0.55em 0.8em; border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); font-family: ui-monospace, Menlo, monospace; font-size: 1rem; }
-.hint { margin: var(--space-1) 0 0; color: var(--color-text-muted); font-size: 0.82rem; }
-.list-title { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); margin: var(--space-4) 0 var(--space-2); }
+.panel { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); display: flex; flex-direction: column; min-height: 0; }
+.title { display: block; font-weight: 700; margin-bottom: var(--space-2); }
+.input-wrap input { width: 100%; box-sizing: border-box; padding: 0.5em 0.8em; border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); font-family: ui-monospace, Menlo, monospace; font-size: 0.95rem; }
+.hint { margin: var(--space-2) 0 0; color: var(--color-text-muted); font-size: 0.78rem; line-height: 1.4; }
+.list-title { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin: var(--space-4) 0 var(--space-2); }
 .n { background: var(--color-surface-muted); border-radius: 999px; padding: 0 0.5em; margin-left: 0.3em; }
-.results { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2); }
-.result { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--space-2); position: relative; background: var(--color-bg); }
-.result:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
-.r-glyph { min-height: 40px; display: flex; align-items: center; }
-.r-meta { font-size: 0.7rem; color: var(--color-text-muted); }
-.r-add { position: absolute; top: 2px; right: 8px; color: var(--color-primary); font-weight: 700; font-size: 1.1rem; }
-.empty { color: var(--color-text-light); font-style: italic; margin: var(--space-2) 0 0; }
-.more { margin-top: var(--space-3); font-size: 0.85rem; }
-.result { padding-top: var(--space-3); }
+
+.results { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; overflow-y: auto; min-height: 0; }
+.result { width: 100%; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-1) var(--space-2); text-align: left; background: transparent; border-color: transparent; }
+.result:hover { background: var(--color-primary-light); border-color: var(--color-primary-muted); }
+.r-glyph { flex: 0 0 64px; min-height: 34px; display: flex; align-items: center; justify-content: center; }
+.r-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.r-text :deep(.pattern-code) { font-size: 12px; color: var(--color-text); overflow: hidden; text-overflow: ellipsis; }
+.r-meta { font-size: 0.72rem; color: var(--color-text-muted); }
+.r-meta strong { color: var(--color-success-dark); font-weight: 600; }
+.r-add { color: var(--color-primary); font-weight: 700; font-size: 1.15rem; opacity: 0.4; }
+.result:hover .r-add { opacity: 1; }
+.empty { color: var(--color-text-light); font-style: italic; margin: var(--space-2) 0 0; font-size: 0.88rem; }
+.more { margin-top: var(--space-3); align-self: flex-start; }
 </style>

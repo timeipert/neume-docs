@@ -1,6 +1,6 @@
 # The Neume Table
 
-Each manuscript gets a **Neumentabelle**: the neume shapes it uses, in a fixed order, so that manuscripts can be compared column by column. Open **Neumentabellen** in the navigation bar and choose a manuscript.
+Each manuscript gets a **Neume Table**: the neume shapes it uses, in a fixed order, so that manuscripts can be compared column by column. Open **Neume Tables** in the navigation bar and choose a manuscript.
 
 ## The order of the columns
 
@@ -44,7 +44,7 @@ Each addition appears in the table at its place in the ordering.
 | **Expanded documentation** | The standard table, plus what is relevant for each manuscript, at its place in the ordering. |
 | **All codes** (public comparison only) | Every transcription code as a column of its own. |
 
-In the comparison table (*Public → Neumentabelle*) manuscripts are the rows, so you can read a column down to see how each manuscript writes that neume.
+In the comparison table (*Public → Neume Table*) manuscripts are the rows, so you can read a column down to see how each manuscript writes that neume.
 
 ## Reference IDs and snippets
 

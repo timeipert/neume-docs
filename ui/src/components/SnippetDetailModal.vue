@@ -161,7 +161,7 @@ function goToEditor() {
                             type="button"
                             class="variant-btn"
                             :class="{ active: (liveAnnotation?.variant || '') === v.key, legacy: v.legacy }"
-                            :title="v.legacy ? 'Nicht mehr konfiguriert — stammt aus einer älteren Einteilung' : ''"
+                            :title="v.legacy ? 'No longer configured — from an older classification' : ''"
                             @click="updateVariant(v.key)"
                         >{{ v.label }}<span v-if="v.legacy" class="legacy-mark">*</span></button>
                     </div>

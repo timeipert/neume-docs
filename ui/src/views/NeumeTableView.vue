@@ -206,7 +206,7 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
             <button class="ne-btn ne-btn--ghost ne-btn--sm" @click="router.push('/table')">&larr; All manuscripts</button>
         </nav>
 
-        <PageHeader :title="source" eyebrow="Neumentabelle">
+        <PageHeader :title="source" eyebrow="Neume Table">
             <template #subtitle>
                 <p v-if="meta">{{ meta }}</p>
                 <p v-if="record" class="dim">{{ fmt(neumeTotal) }} neumes in {{ fmt((record.documents || []).length) }} documents</p>
@@ -245,17 +245,8 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
             <button class="ne-btn ne-btn--sm" @click="mode = 'expanded'">Show Expanded Documentation</button>
         </p>
 
-        <PatternSearch
-            v-if="mode === 'expanded'"
-            class="search"
-            :all-codes="allCodes"
-            :freq="freq"
-            :glyphs="glyphs"
-            :counts="counts"
-            :in-table="inTable"
-            @add="addExpanded"
-        />
-
+        <div class="layout" :class="{ 'layout--aside': mode === 'expanded' }">
+        <div class="main-col">
         <section v-for="section in sections" :key="section.key" class="section">
             <h2 class="section-heading">
                 {{ section.label }}
@@ -292,6 +283,19 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
                 </li>
             </ul>
         </section>
+        </div>
+
+        <aside v-if="mode === 'expanded'" class="aside" aria-label="Add patterns">
+            <PatternSearch
+                :all-codes="allCodes"
+                :freq="freq"
+                :glyphs="glyphs"
+                :counts="counts"
+                :in-table="inTable"
+                @add="addExpanded"
+            />
+        </aside>
+        </div>
     </div>
 
     <Transition name="toast">
@@ -358,7 +362,17 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
 .toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
 .hidden-note { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; background: var(--color-surface); border: 1px dashed var(--color-border-hover); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); color: var(--color-text-muted); font-size: 0.9rem; margin: 0 0 var(--space-4); }
 
-.search { margin-bottom: var(--space-4); }
+/* Expanded documentation: the search sits beside the table, so each addition shows up at once. */
+.layout { display: block; }
+.layout--aside { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: var(--space-5); align-items: start; }
+.main-col { min-width: 0; }
+.aside { position: sticky; top: 132px; max-height: calc(100vh - 59px - 31px - 148px); display: flex; flex-direction: column; min-height: 0; }
+.aside :deep(.panel) { max-height: 100%; overflow: hidden; }
+@media (max-width: 1100px) {
+    .layout--aside { grid-template-columns: 1fr; }
+    .aside { position: static; max-height: none; order: -1; }
+    .aside :deep(.results) { max-height: 280px; }
+}
 
 .section { margin-top: var(--space-5); }
 .section:first-of-type { margin-top: 0; }

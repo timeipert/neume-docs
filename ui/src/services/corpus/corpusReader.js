@@ -314,7 +314,7 @@ export async function readCorpus(inputs, options = {}) {
                 summary.warnings.push(`${group.metaFile.path}: ${e.message}`);
             }
         }
-        const name = sourceMeta.quellensigle || sourceMeta.id || basename(srcDir) || 'Unbekannte Quelle';
+        const name = sourceMeta.quellensigle || sourceMeta.id || basename(srcDir) || 'Unknown source';
         if (!named.has(name)) named.set(name, { sourceMeta, docs: [] });
         const entry = named.get(name);
         if (!entry.sourceMeta.quellensigle && sourceMeta.quellensigle) entry.sourceMeta = sourceMeta;
@@ -396,7 +396,7 @@ export async function readCorpus(inputs, options = {}) {
 /** Turn one parsed standalone JSON into source accumulators. */
 function accumulatorsFromJson(json, file, skipSuffixes, summary) {
     if (isRoot(json)) {
-        const name = basename(file.path).replace(/\.[^.]+$/, '') || 'Unbekannte Quelle';
+        const name = basename(file.path).replace(/\.[^.]+$/, '') || 'Unknown source';
         const acc = new SourceAccumulator(name);
         acc.addDocument({ id: name, dokumenten_id: name }, json, skipSuffixes);
         return [acc];
@@ -415,7 +415,7 @@ function accumulatorsFromJson(json, file, skipSuffixes, summary) {
     const accs = new Map();
 
     for (const s of sources) {
-        const name = s.quellensigle || s.id || 'Unbekannte Quelle';
+        const name = s.quellensigle || s.id || 'Unknown source';
         if (!accs.has(name)) accs.set(name, new SourceAccumulator(name, s));
         byId.set(s.id, name);
         if (s.quellensigle) byId.set(s.quellensigle, name);
@@ -425,7 +425,7 @@ function accumulatorsFromJson(json, file, skipSuffixes, summary) {
         const root = notes[doc.id];
         if (!isRoot(root)) continue;
         const ownerKey = doc.quelle_id || doc.source_id || '';
-        let name = byId.get(ownerKey) || ownerKey || 'Ohne Quelle';
+        let name = byId.get(ownerKey) || ownerKey || 'No source';
         if (sources.length === 1 && !byId.has(ownerKey)) name = byId.values().next().value || name;
         if (!accs.has(name)) accs.set(name, new SourceAccumulator(name));
         accs.get(name).addDocument(doc, root, skipSuffixes);

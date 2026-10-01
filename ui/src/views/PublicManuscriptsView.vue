@@ -247,7 +247,7 @@ function goToOverview(source, isDirect = false) {
     <div class="header-section">
         <div class="top-nav-bar">
             <div class="nav-tab active">Manuscript Directory</div>
-            <button class="nav-tab" @click="router.push('/public/table')">Neumentabelle (Comparison) &rarr;</button>
+            <button class="nav-tab" @click="router.push('/public/table')">Neume Table (Comparison) &rarr;</button>
         </div>
 
         <h1>Notationsdokumentation</h1>

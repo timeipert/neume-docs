@@ -74,7 +74,7 @@ const open = (name) => router.push(`/table/${encodeURIComponent(name)}`);
 <template>
 <div class="list-view">
     <div class="wrap">
-        <PageHeader title="Neumentabellen" eyebrow="One table per manuscript">
+        <PageHeader title="Neume Tables" eyebrow="One table per manuscript">
             <template #subtitle>
                 <p>Fill in the standard table for each manuscript, then add whatever else it needs.
                     <template v-if="hasCorpus || all.length"><strong>{{ startedCount }}</strong> of {{ all.length }} started.</template>

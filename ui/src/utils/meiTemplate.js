@@ -27,35 +27,35 @@ export const NC_ATTRIBUTES = [
         name: 'tilt',
         label: 'Tilt',
         type: 'select',
-        title: 'Neigungsrichtung des Zeichens',
+        title: 'Direction of the sign\'s slant',
         options: [
             { value: '', label: '—' },
-            { value: 'n', label: 'n (Nord)' },
-            { value: 'ne', label: 'ne (Nordost)' },
-            { value: 'e', label: 'e (Ost)' },
-            { value: 'se', label: 'se (Südost)' },
-            { value: 's', label: 's (Süd)' },
-            { value: 'sw', label: 'sw (Südwest)' },
-            { value: 'w', label: 'w (West)' },
-            { value: 'nw', label: 'nw (Nordwest)' }
+            { value: 'n', label: 'n (north)' },
+            { value: 'ne', label: 'ne (north-east)' },
+            { value: 'e', label: 'e (east)' },
+            { value: 'se', label: 'se (south-east)' },
+            { value: 's', label: 's (south)' },
+            { value: 'sw', label: 'sw (south-west)' },
+            { value: 'w', label: 'w (west)' },
+            { value: 'nw', label: 'nw (north-west)' }
         ]
     },
     {
         name: 'curve',
         label: 'Curve',
         type: 'select',
-        title: 'Bogenrichtung',
+        title: 'Direction of the curve',
         options: [
             { value: '', label: '—' },
-            { value: 'a', label: 'a (aufwärts)' },
-            { value: 'c', label: 'c (abwärts)' }
+            { value: 'a', label: 'a (upwards)' },
+            { value: 'c', label: 'c (downwards)' }
         ]
     },
     {
         name: 'con',
         label: 'Con',
         type: 'select',
-        title: 'Verbindung zum nächsten nc',
+        title: 'Connection to the next nc',
         options: [
             { value: '', label: '—' },
             { value: 'g', label: 'g (gapped)' },
@@ -72,7 +72,7 @@ export const NC_ATTRIBUTES = [
         name: 'ho',
         label: 'Horizontal',
         type: 'boolean',
-        title: 'Horizontale Form (ho="true")'
+        title: 'Horizontal form (ho="true")'
     }
 ];
 

@@ -113,7 +113,7 @@ try {
     step('the progress bar jumps to a cell');
 
     await page.getByRole('radio', { name: 'Expanded Documentation' }).click();
-    await page.waitForSelector('.search-panel');
+    await page.waitForSelector('.aside .panel');
     await page.locator('#pattern-search').fill('*ed');
     await page.waitForSelector('.results .result');
     const first = (await page.locator('.results .result code').first().innerText()).trim();

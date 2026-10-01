@@ -47,13 +47,13 @@ const router = createRouter({
       path: '/table',
       name: 'tables',
       component: NeumeTableListView,
-      meta: { title: 'Neumentabellen', requiresWorkspace: true }
+      meta: { title: 'Neume Tables', requiresWorkspace: true }
     },
     {
       path: '/table/:source',
       name: 'table',
       component: NeumeTableView,
-      meta: { title: 'Neumentabelle', requiresWorkspace: true }
+      meta: { title: 'Neume Table', requiresWorkspace: true }
     },
     {
       path: '/compare',
@@ -119,7 +119,7 @@ const router = createRouter({
       path: '/public/table',
       name: 'public_neume_table',
       component: PublicNeumeTableView,
-      meta: { title: 'Neumentabelle' }
+      meta: { title: 'Neume Table' }
     },
     {
       path: '/public/custom/:source',

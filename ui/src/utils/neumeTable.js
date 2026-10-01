@@ -45,7 +45,7 @@ export const STANDARD_DIRECTIONS = ['*', '*d', '*u', '*e', '*dd', '*ud', '*uu', 
  * column is headed with a comma, the sign it is written with.
  */
 export const SPECIAL_COLUMNS = [
-    { key: 'L', header: 'L', label: 'Liqueszenz' },
+    { key: 'L', header: 'L', label: 'Liquescent' },
     { key: 'O', header: 'O', label: 'Oriscus' },
     { key: 'Q', header: 'Q', label: 'Quilisma' },
     { key: 'S', header: ',', label: 'Strophicus' }
@@ -213,7 +213,7 @@ export function compareSignatures(a, b, freq) {
 
 /**
  * Order codes: fewer tones first, then by the frequency of the code itself.
- * This is the "Tonzahl, then Häufigkeit" order for a flat list of patterns.
+ * This is the "tones, then frequency" order for a flat list of patterns.
  */
 export function compareCodes(a, b, freq) {
     const ta = toneCount(a);
@@ -383,7 +383,7 @@ function slotColumn(def) {
     };
 }
 
-const CLEF_COLUMN = { key: 'clef', group: 'clef', header: 'Clef', label: 'Schlüssel', slot: false };
+const CLEF_COLUMN = { key: 'clef', group: 'clef', header: 'Clef', label: 'Clef', slot: false };
 const CUSTOS_COLUMN = { key: 'custos', group: 'custos', header: 'Custos', label: 'Custos', slot: false };
 
 /**
@@ -467,7 +467,7 @@ export function buildColumns(mode, codes, freq) {
  * for the sections of the editor.
  *
  *   Neume shapes · Special signs (standard table)
- *   Neume shapes · L — Liqueszenz · O — Oriscus · … (expanded and full table)
+ *   Neume shapes · L — Liquescent · O — Oriscus · … (expanded and full table)
  *   Project-defined signs · Clef and custos
  *
  * @param {TableColumn[]} columns in table order

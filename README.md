@@ -1,6 +1,6 @@
 # Neumen-Editor
 
-A research tool for documenting the neume shapes of a manuscript against the *Corpus Monodicum* (CM). Load a transcribed corpus, fill in a **Neumentabelle** per manuscript, link the shapes to the scans, and compare manuscripts side by side.
+A research tool for documenting the neume shapes of a manuscript against the *Corpus Monodicum* (CM). Load a transcribed corpus, fill in a **Neume Table** per manuscript, link the shapes to the scans, and compare manuscripts side by side.
 
 It is the successor of the earlier *Neume Viewer* (CM-Transcription-Equivalents) with one radical change: **the editor starts empty.** Nothing is built in. You load a Monodi-Zero workspace or a Corpus Monodicum project, and everything is derived from that, in your browser.
 
@@ -21,7 +21,7 @@ The neume table orders and fills the columns of a table of neumes:
 2. **Standard table.** Fixed columns: `* | *d | *u | *e | *dd | *ud | *uu | *du | *udd | *uud | *ddu | L | O | Q | , | Clef | Custos`. Per directional column the pattern library offers the plain ways of writing it. The special columns L, O, Q and `,` (strophicus) each offer all patterns with that sign — a pattern with several signs goes to the column of its **first** sign — and a manuscript chooses **at most three** constellations per column.
 3. **Expanded documentation.** Any pattern can be added by searching the whole library by code (`*udL`); each addition appears at its place in the ordering. *Show Standard Table* hides everything but the standard selection again.
 
-The same three-level logic drives the comparison table (*Public → Neumentabelle*): manuscripts as rows, neume columns in the fixed order.
+The same three-level logic drives the comparison table (*Public → Neume Table*): manuscripts as rows, neume columns in the fixed order.
 
 ### Inherited from CM-Transcription-Equivalents
 

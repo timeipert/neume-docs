@@ -458,15 +458,15 @@ const visibleFilterSources = computed(() => {
         <div class="header-content">
             <div v-if="!embedded" class="top-nav-bar">
                 <button class="nav-tab" @click="router.push('/public')">&larr; Manuscript Directory</button>
-                <div class="nav-tab active">Neumentabelle (Comparison)</div>
+                <div class="nav-tab active">Neume Table (Comparison)</div>
             </div>
 
-            <PageHeader :title="embedded ? 'Compare manuscripts' : 'Neumentabelle'" :eyebrow="embedded ? 'Neumentabelle' : 'Comparative notation analysis'">
+            <PageHeader :title="embedded ? 'Compare manuscripts' : 'Neume Table'" :eyebrow="embedded ? 'Neume Table' : 'Comparative notation analysis'">
                 <template #subtitle>
                     <p>Side-by-side comparison of the neume shapes of the published manuscripts. Each column is a neume; read it downwards to see how every manuscript writes it.</p>
                 </template>
                 <template v-if="embedded" #actions>
-                    <RouterLink to="/table" class="ne-btn">Neumentabellen</RouterLink>
+                    <RouterLink to="/table" class="ne-btn">Neume Tables</RouterLink>
                     <a href="#/public/table" target="_blank" rel="noopener" class="ne-btn ne-btn--ghost">Public view ↗</a>
                 </template>
             </PageHeader>
@@ -571,7 +571,7 @@ const visibleFilterSources = computed(() => {
             <h3>No Published Manuscripts</h3>
             <p>Publish manuscripts with annotations in the editor to see them in this comparative table.</p>
             <ol v-if="embedded" class="how">
-                <li>Open a manuscript's table under <RouterLink to="/table">Neumentabellen</RouterLink> and choose its neumes.</li>
+                <li>Open a manuscript's table under <RouterLink to="/table">Neume Tables</RouterLink> and choose its neumes.</li>
                 <li>Mark the snippets on its images with <em>Annotate snippets</em>.</li>
                 <li>Switch on <em>Published</em>. The manuscript appears here.</li>
             </ol>

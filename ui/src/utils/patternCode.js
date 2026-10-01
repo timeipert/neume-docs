@@ -28,18 +28,18 @@ const MOVEMENT = { u: 'up', d: 'down', e: 'same' };
 
 /** Direction labels, level 1 of the hierarchy. */
 export const DIRECTIONS = {
-    base: 'Basis',
-    up: 'Aufwärts',
-    down: 'Abwärts',
-    same: 'Gleich',
-    mixed: 'Gemischt'
+    base: 'Base',
+    up: 'Upwards',
+    down: 'Downwards',
+    same: 'Same pitch',
+    mixed: 'Mixed'
 };
 
 /** Ligature labels, level 2 of the hierarchy. */
 export const LIGATURES = {
-    open: 'Offen',
-    partial: 'Teilweise verbunden',
-    connected: 'Verbunden'
+    open: 'Open',
+    partial: 'Partly connected',
+    connected: 'Connected'
 };
 
 /** First whitespace-delimited token of a pattern (drops a legacy " b" variant). */
@@ -164,7 +164,7 @@ export function modifierKey(parsed) {
  * @param {Array<{key: string, label: string}>} [customSigns]
  */
 export function modifierLabel(key, customSigns = []) {
-    if (!key) return 'Basis';
+    if (!key) return 'Base';
     return [...key]
         .map(ch => {
             const def = (customSigns || []).find(s => s.key === ch);
@@ -239,7 +239,7 @@ export function buildPatternHierarchy(codes, options = {}) {
 
         return {
             key: dirKey,
-            label: dirKey === 'other' ? 'Sonstige' : DIRECTIONS[dirKey],
+            label: dirKey === 'other' ? 'Other' : DIRECTIONS[dirKey],
             count: groups.reduce((s, g) => s + g.count, 0),
             groups
         };

@@ -602,9 +602,11 @@ const visibleFilterSources = computed(() => {
                             :title="isGroupOpen(g.key) ? 'Collapse this group' : `Expand ${g.label}`"
                             @click="toggleGroup(g.key)"
                         >
-                            <span class="caret" :class="{ open: isGroupOpen(g.key) }">▸</span>
-                            <span class="group-name">{{ g.label }}</span>
-                            <span class="group-count">{{ g.columns.length }}</span>
+                            <span class="group-label">
+                                <span class="caret" :class="{ open: isGroupOpen(g.key) }">▸</span>
+                                <span class="group-name">{{ g.label }}</span>
+                                <span class="group-count">{{ g.columns.length }}</span>
+                            </span>
                         </th>
                     </tr>
                     <tr>
@@ -790,7 +792,16 @@ const visibleFilterSources = computed(() => {
 .tb-spacer { flex: 1; }
 .inline-control { display: inline-flex; align-items: center; gap: var(--space-2); }
 .sort-select { width: auto; cursor: pointer; }
-.neume-table-view.embedded { min-height: 0; }
+.neume-table-view.embedded { height: 100%; min-height: 0; overflow: hidden; }
+.neume-table-view.embedded .header { flex: 0 0 auto; padding-bottom: var(--space-3); }
+.neume-table-view.embedded .table-wrapper { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--space-6) var(--space-4); overflow: hidden; }
+.neume-table-view.embedded .matrix-container { flex: 1; max-height: none; min-height: 0; }
+.neume-table-view.embedded .empty-state { overflow: auto; }
+/* On a short window the table matters more than the explanation above it. */
+@media (max-height: 940px) {
+    .neume-table-view.embedded .header :deep(.ph-sub) { display: none; }
+    .neume-table-view.embedded .header :deep(.page-header) { margin-bottom: var(--space-3); }
+}
 .how { text-align: left; display: inline-block; margin: var(--space-3) 0 0; color: var(--color-text-muted); line-height: 1.7; }
 .embedded .header { background: transparent; border-bottom: none; padding: var(--space-5) var(--space-6) 0; }
 .pseudo-head { font-weight: 700; color: var(--color-text-muted); font-size: 0.85rem; }
@@ -992,6 +1003,9 @@ const visibleFilterSources = computed(() => {
 
 .matrix-container {
     max-width: 100%;
+    /* Its own scroll area, so the header rows and the manuscript column stay in
+       view however many manuscripts the table has. */
+    max-height: max(420px, calc(100vh - 150px));
     overflow: auto;
     border: 1px solid var(--color-border);
     border-radius: 10px;
@@ -1046,7 +1060,7 @@ const visibleFilterSources = computed(() => {
     background: var(--color-surface-muted);
     border-bottom: 1px solid var(--color-border);
 }
-.group-corner { z-index: 6; top: 0 !important; }
+.group-corner { z-index: 6; top: 0 !important; padding-top: 4px; padding-bottom: 4px; box-sizing: border-box; }
 .group-controls { display: flex; gap: 5px; }
 .tree-btn {
     font-size: 0.7rem;
@@ -1059,7 +1073,9 @@ const visibleFilterSources = computed(() => {
 
 .group-header-cell {
     cursor: pointer;
-    padding: 6px 10px;
+    height: 34px;
+    box-sizing: border-box;
+    padding: 0 10px;
     border-right: 1px solid var(--color-border);
     white-space: nowrap;
     font-size: 0.7rem;
@@ -1070,6 +1086,8 @@ const visibleFilterSources = computed(() => {
     text-align: left;
 }
 .group-header-cell:hover { background: var(--color-border); }
+/* The label stays in view beside the manuscript column while a wide group scrolls. */
+.group-label { position: sticky; left: 272px; display: inline-flex; align-items: center; }
 .group-header-cell.collapsed .group-name { display: none; }
 .group-header-cell .caret { display: inline-block; transition: transform 0.15s ease; opacity: 0.6; margin-right: 4px; }
 .group-header-cell .caret.open { transform: rotate(90deg); }

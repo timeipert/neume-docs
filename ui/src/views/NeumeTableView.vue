@@ -108,13 +108,34 @@ async function jump(key) {
 // ---- editing ---------------------------------------------------------------
 
 const picker = ref(null);
-const notice = ref('');
-let noticeTimer = null;
 
-function say(text) {
-    notice.value = text;
-    clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => { notice.value = ''; }, 5000);
+// A short message at the bottom of the page; removals offer to be undone.
+const toast = ref(null);
+let toastTimer = null;
+
+function showToast(text, undo = null) {
+    toast.value = { text, undo };
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { toast.value = null; }, undo ? 8000 : 5000);
+}
+
+function undoToast() {
+    const t = toast.value;
+    toast.value = null;
+    clearTimeout(toastTimer);
+    if (t && t.undo) t.undo();
+}
+
+/** Remove a row, keeping what is needed to put it back exactly as it was. */
+function removeWithUndo(code) {
+    const row = rows.value.find(r => r.pattern === code);
+    if (!row) return;
+    const saved = { ...row };
+    tableStore.removeRow(source.value, code);
+    showToast(`Removed ${code}`, () => {
+        tableStore.addRow(source.value, saved.pattern, { tier: saved.tier, customId: saved.customId });
+        if (saved.notes) tableStore.updateRow(source.value, saved.pattern, { notes: saved.notes });
+    });
 }
 
 function defaultId(code) {
@@ -125,11 +146,11 @@ function defaultId(code) {
 function toggleStandard(code) {
     const row = rows.value.find(r => r.pattern === code);
     if (row && tierOf(row) === 'standard') {
-        tableStore.removeRow(source.value, code);
+        removeWithUndo(code);
         return;
     }
     const verdict = canSelectForStandard(rows.value, code, MAX_SPECIAL_SIGNATURES);
-    if (!verdict.ok) { say(verdict.reason); return; }
+    if (!verdict.ok) { showToast(verdict.reason); return; }
     tableStore.addRow(source.value, code, { tier: 'standard', customId: row ? undefined : defaultId(code) });
 }
 
@@ -140,9 +161,7 @@ function addExpanded(code) {
 }
 
 function remove(code) {
-    const row = rows.value.find(r => r.pattern === code);
-    if (row && row.notes && !window.confirm(`Remove ${code}? Its notes are lost.`)) return;
-    tableStore.removeRow(source.value, code);
+    removeWithUndo(code);
 }
 
 function setId(code, value) {
@@ -150,7 +169,7 @@ function setId(code, value) {
 }
 
 function togglePseudo(code) {
-    if (inTable.value.has(code)) tableStore.removeRow(source.value, code);
+    if (inTable.value.has(code)) removeWithUndo(code);
     else tableStore.addRow(source.value, code, { tier: 'standard' });
 }
 
@@ -221,8 +240,6 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
             </div>
         </div>
 
-        <p v-if="notice" class="notice" role="status">{{ notice }}</p>
-
         <p v-if="mode === 'standard' && hiddenCount" class="hidden-note">
             <span>{{ hiddenCount }} further pattern{{ hiddenCount === 1 ? ' is' : 's are' }} documented for this manuscript.</span>
             <button class="ne-btn ne-btn--sm" @click="mode = 'expanded'">Show Expanded Documentation</button>
@@ -277,6 +294,14 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
         </section>
     </div>
 
+    <Transition name="toast">
+        <div v-if="toast" class="toast" role="status" aria-live="polite">
+            <span>{{ toast.text }}</span>
+            <button v-if="toast.undo" class="toast-undo" @click="undoToast">Undo</button>
+            <button class="toast-x" aria-label="Dismiss" @click="toast = null">✕</button>
+        </div>
+    </Transition>
+
     <ColumnPicker
         v-if="picker"
         :column="picker"
@@ -323,7 +348,14 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
 .summary strong { color: var(--color-text); }
 .plus { color: var(--color-accent-dark); font-weight: 600; }
 
-.notice { background: var(--color-warning-light); border: 1px solid var(--color-warning-muted); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); }
+/* Toast */
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 52px; z-index: 500; display: flex; align-items: center; gap: var(--space-3); max-width: min(92vw, 560px); padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4); border-radius: var(--radius-lg); background: #0f172a; color: #f1f5f9; box-shadow: var(--shadow-lg); font-size: 0.9rem; }
+.toast-undo { background: transparent; border: 1px solid rgba(255, 255, 255, 0.35); color: #fff; font-weight: 700; padding: 0.2em 0.8em; }
+.toast-undo:hover { background: rgba(255, 255, 255, 0.14); }
+.toast-x { background: transparent; border: none; color: #94a3b8; padding: 0 4px; }
+.toast-x:hover { background: transparent; color: #fff; }
+.toast-enter-active, .toast-leave-active { transition: opacity 0.2s, transform 0.2s; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
 .hidden-note { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; background: var(--color-surface); border: 1px dashed var(--color-border-hover); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); color: var(--color-text-muted); font-size: 0.9rem; margin: 0 0 var(--space-4); }
 
 .search { margin-bottom: var(--space-4); }

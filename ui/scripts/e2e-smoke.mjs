@@ -99,6 +99,19 @@ try {
     step('L: three constellations chosen, the fourth is refused');
 
     // 5. Expanded documentation ----------------------------------------------
+    // Removing is undoable
+    const udCell = page.locator('.cell[data-column="dir:*ud"] .items li');
+    await udCell.first().getByRole('button', { name: /Remove/ }).click();
+    assert.equal(await udCell.count(), 0, 'the pattern is removed');
+    await page.getByRole('button', { name: 'Undo' }).click();
+    assert.equal(await udCell.count(), 1, 'Undo puts it back');
+    step('removal can be undone');
+
+    // Progress bar: clicking a segment jumps to its cell
+    await page.locator('.toolbar-progress .seg', { hasText: '*udd' }).click();
+    await page.waitForSelector('.cell.highlighted');
+    step('the progress bar jumps to a cell');
+
     await page.getByRole('radio', { name: 'Expanded Documentation' }).click();
     await page.waitForSelector('.search-panel');
     await page.locator('#pattern-search').fill('*ed');

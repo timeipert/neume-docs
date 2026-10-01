@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { usePersonalTablesStore } from '../stores/personalTables';
 import { useSettingsStore } from '../stores/settings';
@@ -7,7 +7,6 @@ import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { usePatternCatalog } from '../composables/usePatternCatalog';
 import {
     STANDARD_DIRECTIONS,
-    SPECIAL_COLUMNS,
     MAX_SPECIAL_SIGNATURES,
     buildColumns,
     columnFor,
@@ -15,12 +14,15 @@ import {
     tierOf,
     compareCodes,
     canSelectForStandard,
-    tableProgress,
+    standardCellStates,
     groupColumns
 } from '../utils/neumeTable';
 import NeumeColumnCard from '../components/neume-table/NeumeColumnCard.vue';
 import ColumnPicker from '../components/neume-table/ColumnPicker.vue';
 import PatternSearch from '../components/neume-table/PatternSearch.vue';
+import TableProgress from '../components/neume-table/TableProgress.vue';
+import SegmentedControl from '../components/ui/SegmentedControl.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -35,6 +37,10 @@ const counts = computed(() => (record.value && record.value.counts) || {});
 
 // ---- mode ------------------------------------------------------------------
 
+const MODES = [
+    { value: 'standard', label: 'Standard Table', title: 'Show Standard Table: the standard selection only' },
+    { value: 'expanded', label: 'Expanded Documentation', title: 'Show Expanded Documentation: the standard table plus what this manuscript needs beyond it' }
+];
 const mode = ref(route.query.mode === 'expanded' ? 'expanded' : 'standard');
 watch(mode, (m) => router.replace({ query: { ...route.query, mode: m === 'standard' ? undefined : m } }));
 
@@ -70,14 +76,34 @@ function isAdded(column) {
 }
 
 /** Columns under their headings. */
-const sections = computed(() => groupColumns(columns.value));
+const sections = computed(() => groupColumns(columns.value).map(section => ({
+    ...section,
+    filled: section.columns.filter(c => (rowsByColumn.value.get(c.key) || []).length > 0).length
+})));
 
 // ---- progress --------------------------------------------------------------
 
-const progress = computed(() => {
-    const p = tableProgress(rows.value);
-    return { ...p, specials: SPECIAL_COLUMNS.map(c => ({ ...c, n: p.specials[c.key] })) };
-});
+const standardColumns = computed(() => buildColumns('standard', [], freq.value));
+const cellStates = computed(() => standardCellStates(rows.value, standardColumns.value));
+const filledCells = computed(() => cellStates.value.filter(c => c.filled).length);
+const expandedCount = computed(() => rows.value.filter(r => tierOf(r) === 'expanded').length);
+
+const highlightKey = ref('');
+let highlightTimer = null;
+
+/** Scroll to a cell and flash it. In the expanded view a special-sign cell is several columns; go to the first. */
+async function jump(key) {
+    const state = cellStates.value.find(c => c.key === key);
+    await nextTick();
+    const root = document.querySelector('.table-view');
+    let target = root && root.querySelector(`[data-column="${key}"]`);
+    if (!target && state && root) target = root.querySelector(`[data-group="${state.group}"]`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    highlightKey.value = target.getAttribute('data-column');
+    clearTimeout(highlightTimer);
+    highlightTimer = setTimeout(() => { highlightKey.value = ''; }, 1500);
+}
 
 // ---- editing ---------------------------------------------------------------
 
@@ -88,7 +114,7 @@ let noticeTimer = null;
 function say(text) {
     notice.value = text;
     clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => { notice.value = ''; }, 4500);
+    noticeTimer = setTimeout(() => { notice.value = ''; }, 5000);
 }
 
 function defaultId(code) {
@@ -149,118 +175,107 @@ const meta = computed(() => {
         .filter(Boolean).join(' · ');
 });
 
+const neumeTotal = computed(() => Object.values(counts.value).reduce((a, b) => a + b, 0));
 const fmt = (n) => n.toLocaleString('en-US');
 const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.direction(col.pattern) : freq.value.signature(col.pattern)) : 0);
 </script>
 
 <template>
 <div class="table-view">
-    <header class="head">
-        <div class="crumbs">
-            <button class="crumb" @click="router.push('/table')">&larr; All manuscripts</button>
-        </div>
-        <div class="title-row">
-            <div>
-                <h1>{{ source }} <span class="tag">Neumentabelle</span></h1>
-                <p v-if="meta" class="meta">{{ meta }}</p>
-                <p v-else-if="!loading && !record" class="meta warn">
-                    This source is not in the loaded corpus. Frequencies are those of the whole CM.
-                </p>
-                <p v-if="record" class="meta">
-                    {{ fmt(Object.values(counts).reduce((a, b) => a + b, 0)) }} neumes in {{ fmt((record.documents || []).length) }} documents
-                </p>
-            </div>
-            <div class="actions">
-                <label class="publish" title="Show this manuscript in the comparison table (Public)">
+    <div class="wrap">
+        <nav class="crumbs" aria-label="Breadcrumb">
+            <button class="ne-btn ne-btn--ghost ne-btn--sm" @click="router.push('/table')">&larr; All manuscripts</button>
+        </nav>
+
+        <PageHeader :title="source" eyebrow="Neumentabelle">
+            <template #subtitle>
+                <p v-if="meta">{{ meta }}</p>
+                <p v-if="record" class="dim">{{ fmt(neumeTotal) }} neumes in {{ fmt((record.documents || []).length) }} documents</p>
+                <p v-else-if="!loading" class="warn">This source is not in the loaded corpus. Frequencies are those of the whole CM.</p>
+            </template>
+            <template #actions>
+                <label class="switch" title="Show this manuscript in the comparison table">
                     <input type="checkbox" :checked="published" @change="setPublished($event.target.checked)" />
+                    <span class="track" aria-hidden="true"></span>
                     Published
                 </label>
-                <button @click="annotate" title="Mark the snippets on the manuscript images">Annotate snippets &rarr;</button>
-                <button @click="router.push({ path: '/public/table' })" title="Compare with the other manuscripts">Compare &rarr;</button>
+                <button class="ne-btn" title="Mark the snippets on the manuscript images" @click="annotate">Annotate snippets &rarr;</button>
+                <button class="ne-btn" title="Compare with the other manuscripts" @click="router.push('/compare')">Compare &rarr;</button>
+            </template>
+        </PageHeader>
+
+        <div class="toolbar">
+            <div class="toolbar-top">
+                <SegmentedControl v-model="mode" :options="MODES" label="Table mode" />
+                <p class="mode-note">
+                    <template v-if="mode === 'standard'">The standard selection only — columns ordered by tones, then frequency in the CM.</template>
+                    <template v-else>The standard table plus everything added for this manuscript, each at its place in the ordering.</template>
+                </p>
+            </div>
+            <div class="toolbar-progress">
+                <TableProgress :cells="cellStates" @select="jump" />
+                <span class="summary">
+                    <strong>{{ filledCells }}</strong> of {{ cellStates.length }} filled
+                    <template v-if="expandedCount"> · <span class="plus">+{{ expandedCount }} expanded</span></template>
+                </span>
             </div>
         </div>
 
-        <div class="mode-row">
-            <div class="mode-switch" role="group" aria-label="Table mode">
-                <button :class="{ on: mode === 'standard' }" :aria-pressed="mode === 'standard'" title="Show Standard Table" @click="mode = 'standard'">
-                    Standard Table
-                </button>
-                <button :class="{ on: mode === 'expanded' }" :aria-pressed="mode === 'expanded'" title="Show Expanded Documentation" @click="mode = 'expanded'">
-                    Expanded Documentation
-                </button>
+        <p v-if="notice" class="notice" role="status">{{ notice }}</p>
+
+        <p v-if="mode === 'standard' && hiddenCount" class="hidden-note">
+            <span>{{ hiddenCount }} further pattern{{ hiddenCount === 1 ? ' is' : 's are' }} documented for this manuscript.</span>
+            <button class="ne-btn ne-btn--sm" @click="mode = 'expanded'">Show Expanded Documentation</button>
+        </p>
+
+        <PatternSearch
+            v-if="mode === 'expanded'"
+            class="search"
+            :all-codes="allCodes"
+            :freq="freq"
+            :glyphs="glyphs"
+            :counts="counts"
+            :in-table="inTable"
+            @add="addExpanded"
+        />
+
+        <section v-for="section in sections" :key="section.key" class="section">
+            <h2 class="section-heading">
+                {{ section.label }}
+                <span class="section-count">{{ section.filled }} of {{ section.columns.length }}</span>
+            </h2>
+            <div class="grid">
+                <NeumeColumnCard
+                    v-for="col in section.columns"
+                    :key="col.key"
+                    :column="col"
+                    :rows="rowsByColumn.get(col.key) || []"
+                    :glyphs="glyphs"
+                    :cm-count="cmCount(col)"
+                    :counts="counts"
+                    :max="MAX_SPECIAL_SIGNATURES"
+                    :added="isAdded(col)"
+                    :highlighted="highlightKey === col.key"
+                    :data-group="col.group"
+                    @pick="picker = $event"
+                    @remove="remove"
+                    @id="setId"
+                    @toggle-pseudo="togglePseudo"
+                />
             </div>
-            <p class="mode-note">
-                <template v-if="mode === 'standard'">
-                    The standard selection only. Columns are ordered by tones, then by frequency in the CM.
-                </template>
-                <template v-else>
-                    The standard table plus everything added for this manuscript, each at its place in the ordering.
-                </template>
-            </p>
-        </div>
+        </section>
 
-        <ul class="progress" aria-label="Progress of the standard table">
-            <li :class="{ done: progress.directions === STANDARD_DIRECTIONS.length }">
-                Shapes <strong>{{ progress.directions }}/{{ STANDARD_DIRECTIONS.length }}</strong>
-            </li>
-            <li v-for="s in progress.specials" :key="s.key" :class="{ done: s.n > 0 }">
-                {{ s.header }} <strong>{{ s.n }}/{{ MAX_SPECIAL_SIGNATURES }}</strong>
-            </li>
-            <li :class="{ done: progress.clef }">Clef <strong>{{ progress.clef ? '✓' : '–' }}</strong></li>
-            <li :class="{ done: progress.custos }">Custos <strong>{{ progress.custos ? '✓' : '–' }}</strong></li>
-            <li v-if="progress.expanded" class="extra">+{{ progress.expanded }} expanded</li>
-        </ul>
-    </header>
-
-    <p v-if="notice" class="notice" role="status">{{ notice }}</p>
-
-    <p v-if="mode === 'standard' && hiddenCount" class="hidden-note">
-        {{ hiddenCount }} further pattern{{ hiddenCount === 1 ? ' is' : 's are' }} documented for this manuscript.
-        <button class="inline" @click="mode = 'expanded'">Show expanded documentation</button>
-    </p>
-
-    <PatternSearch
-        v-if="mode === 'expanded'"
-        class="search"
-        :all-codes="allCodes"
-        :freq="freq"
-        :glyphs="glyphs"
-        :counts="counts"
-        :in-table="inTable"
-        @add="addExpanded"
-    />
-
-    <section v-for="section in sections" :key="section.key" class="section">
-        <h2 class="section-heading">{{ section.label }}</h2>
-        <div class="grid">
-            <NeumeColumnCard
-                v-for="col in section.columns"
-                :key="col.key"
-                :column="col"
-                :rows="rowsByColumn.get(col.key) || []"
-                :glyphs="glyphs"
-                :cm-count="cmCount(col)"
-                :counts="counts"
-                :max="MAX_SPECIAL_SIGNATURES"
-                :added="isAdded(col)"
-                @pick="picker = $event"
-                @remove="remove"
-                @id="setId"
-                @toggle-pseudo="togglePseudo"
-            />
-        </div>
-    </section>
-
-    <section v-if="unplaced.length" class="unplaced">
-        <h2 class="section-heading">Without a column</h2>
-        <p class="meta">These entries are not neume shapes, so they have no place in the table.</p>
-        <ul>
-            <li v-for="r in unplaced" :key="r.pattern">
-                <code>{{ r.pattern }}</code>
-                <button class="x" :aria-label="`Remove ${r.pattern}`" @click="remove(r.pattern)">✕</button>
-            </li>
-        </ul>
-    </section>
+        <section v-if="unplaced.length" class="section">
+            <h2 class="section-heading">Without a column</h2>
+            <p class="dim small">These entries are not neume shapes, so they have no place in the table.</p>
+            <ul class="unplaced">
+                <li v-for="r in unplaced" :key="r.pattern">
+                    <code>{{ r.pattern }}</code>
+                    <button class="x" :aria-label="`Remove ${r.pattern}`" @click="remove(r.pattern)">✕</button>
+                </li>
+            </ul>
+        </section>
+    </div>
 
     <ColumnPicker
         v-if="picker"
@@ -278,47 +293,55 @@ const cmCount = (col) => (col.pattern ? (col.group === 'direction' ? freq.value.
 </template>
 
 <style scoped>
-.table-view { padding: var(--space-5) var(--space-6) var(--space-6); max-width: 1400px; margin: 0 auto; overflow-y: auto; height: 100%; box-sizing: border-box; }
-.head { margin-bottom: var(--space-4); }
-.crumb { border: none; background: none; padding: 0; color: var(--color-primary); font-size: 0.9rem; }
-.crumb:hover { background: none; text-decoration: underline; }
-.title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); flex-wrap: wrap; }
-h1 { margin: var(--space-1) 0 0; font-size: 1.7rem; }
-.tag { font-size: 0.8rem; font-weight: 600; vertical-align: middle; color: var(--color-primary-dark); background: var(--color-primary-light); padding: 0.15em 0.6em; border-radius: 999px; margin-left: 0.4em; }
-.meta { margin: var(--space-1) 0 0; color: var(--color-text-muted); font-size: 0.9rem; }
-.meta.warn { color: var(--color-warning-dark); }
-.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
-.publish { display: inline-flex; align-items: center; gap: var(--space-1); font-size: 0.9rem; color: var(--color-text-muted); margin-right: var(--space-2); }
+.table-view { height: 100%; overflow-y: auto; box-sizing: border-box; padding: 0 var(--space-6) var(--space-6); }
+.wrap { max-width: 1400px; margin: 0 auto; }
+.crumbs { padding-top: var(--space-4); margin-left: -0.7em; }
 
-.mode-row { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-top: var(--space-4); }
-.mode-switch { display: inline-flex; border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); overflow: hidden; }
-.mode-switch button { border: none; border-radius: 0; padding: 0.5em 1.1em; font-weight: 600; background: var(--color-surface); }
-.mode-switch button + button { border-left: 1px solid var(--color-border-hover); }
-.mode-switch button.on { background: var(--color-primary); color: #fff; }
-.mode-note { margin: 0; color: var(--color-text-muted); font-size: 0.88rem; flex: 1; min-width: 240px; }
+.dim { color: var(--color-text-muted); font-size: 0.9rem; }
+.small { font-size: 0.85rem; }
+.warn { color: var(--color-warning-dark); }
 
-.progress { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0; margin: var(--space-3) 0 0; }
-.progress li { background: var(--color-surface-muted); border-radius: 999px; padding: 0.2em 0.8em; font-size: 0.82rem; color: var(--color-text-muted); }
-.progress li.done { background: var(--color-success-light); color: #166534; }
-.progress li.extra { background: #ede9fe; color: #5b21b6; }
-.progress strong { margin-left: 0.25em; }
+/* Publish switch */
+.switch { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 0.9rem; font-weight: 600; color: var(--color-text-muted); cursor: pointer; margin-right: var(--space-2); }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.track { position: relative; width: 34px; height: 20px; border-radius: 999px; background: var(--color-border-hover); transition: background-color 0.15s; flex: 0 0 auto; }
+.track::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: var(--shadow-sm); transition: transform 0.15s; }
+.switch input:checked + .track { background: var(--color-primary); }
+.switch input:checked + .track::after { transform: translateX(14px); }
+.switch input:focus-visible + .track { box-shadow: var(--ring); }
+
+/* Mode switch + progress stay in view while the table scrolls underneath */
+.toolbar {
+    position: sticky; top: 0; z-index: 20; margin: 0 calc(var(--space-6) * -1) var(--space-4); padding: var(--space-3) var(--space-6);
+    background: rgba(248, 250, 252, 0.94); backdrop-filter: blur(6px); border-bottom: 1px solid var(--color-border);
+    display: flex; flex-direction: column; gap: var(--space-3);
+}
+.toolbar-top { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.mode-note { margin: 0; color: var(--color-text-muted); font-size: 0.86rem; flex: 1; min-width: 240px; }
+.toolbar-progress { display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; }
+.summary { color: var(--color-text-muted); font-size: 0.85rem; white-space: nowrap; }
+.summary strong { color: var(--color-text); }
+.plus { color: var(--color-accent-dark); font-weight: 600; }
 
 .notice { background: var(--color-warning-light); border: 1px solid var(--color-warning-muted); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); margin: 0 0 var(--space-3); }
-.hidden-note { color: var(--color-text-muted); font-size: 0.9rem; margin: 0 0 var(--space-3); }
-button.inline { border: none; background: none; padding: 0; color: var(--color-primary); font-size: inherit; text-decoration: underline; }
-button.inline:hover { background: none; }
+.hidden-note { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; background: var(--color-surface); border: 1px dashed var(--color-border-hover); border-radius: var(--radius-md); padding: var(--space-2) var(--space-3); color: var(--color-text-muted); font-size: 0.9rem; margin: 0 0 var(--space-4); }
 
 .search { margin-bottom: var(--space-4); }
 
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-3); align-items: stretch; }
 .section { margin-top: var(--space-5); }
-.section-heading { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin: 0 0 var(--space-3); padding-bottom: var(--space-1); border-bottom: 1px solid var(--color-border); }
+.section:first-of-type { margin-top: 0; }
+.section-heading { display: flex; align-items: baseline; gap: var(--space-2); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.07em; color: var(--color-text-muted); margin: 0 0 var(--space-3); padding-bottom: var(--space-1); border-bottom: 1px solid var(--color-border); }
+.section-count { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--color-text-light); }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); gap: var(--space-3); align-items: stretch; }
 
-.unplaced ul { list-style: none; padding: 0; display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.unplaced { list-style: none; padding: 0; display: flex; gap: var(--space-2); flex-wrap: wrap; }
 .unplaced li { background: var(--color-surface-muted); padding: 0.2em 0.5em; border-radius: var(--radius-sm); display: flex; align-items: center; gap: var(--space-2); }
 .x { padding: 0 6px; border-color: transparent; background: transparent; }
 
 @media (max-width: 720px) {
-    .table-view { padding: var(--space-4); }
+    .table-view { padding: 0 var(--space-4) var(--space-5); }
+    .toolbar { position: static; margin: 0 calc(var(--space-4) * -1) var(--space-4); padding: var(--space-3) var(--space-4); backdrop-filter: none; }
+    .mode-note { display: none; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); }
 }
 </style>

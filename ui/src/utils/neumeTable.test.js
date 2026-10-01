@@ -22,7 +22,8 @@ import {
     libraryForColumn,
     searchLibrary,
     tableProgress,
-    groupColumns
+    groupColumns,
+    standardCellStates
 } from './neumeTable';
 
 /**
@@ -409,5 +410,31 @@ describe('grouping columns under headings', () => {
     it('keeps project-defined signs apart', () => {
         const groups = groupColumns(buildColumns('expanded', ['*uVd'], freq));
         expect(groups.map(g => g.label)).toContain('Project-defined signs');
+    });
+});
+
+describe('cell states for the progress bar', () => {
+    const cols = buildColumns('standard', [], freq);
+
+    it('has one state per standard column, in order', () => {
+        const states = standardCellStates([], cols);
+        expect(states.map(s => s.header)).toEqual(cols.map(c => c.header));
+        expect(states.every(s => !s.filled)).toBe(true);
+    });
+
+    it('marks filled columns and counts constellations in the special ones', () => {
+        const rows = [
+            { pattern: '[*u]d' },
+            { pattern: '*ud' },
+            { pattern: '*dL', tier: 'standard' },
+            { pattern: '[*dL]', tier: 'standard' }, // same constellation: counts once
+            { pattern: '*uL', tier: 'standard' },
+            { pattern: '*ed' } // expanded: not in the standard table
+        ];
+        const by = Object.fromEntries(standardCellStates(rows, cols).map(s => [s.key, s]));
+        expect(by['dir:*ud']).toMatchObject({ n: 2, filled: true, slot: false });
+        expect(by['dir:*d'].filled).toBe(false);
+        expect(by['special:L']).toMatchObject({ n: 2, max: 3, filled: true, slot: true });
+        expect(by['special:O'].filled).toBe(false);
     });
 });

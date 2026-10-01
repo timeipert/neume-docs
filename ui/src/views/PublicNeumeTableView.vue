@@ -11,6 +11,8 @@ import { useImageManifest } from '../composables/useImageManifest';
 import { comparePatternIds } from '../utils/sorting';
 import PatternDisplay from '../components/PatternDisplay.vue';
 import PatternCode from '../components/PatternCode.vue';
+import SegmentedControl from '../components/ui/SegmentedControl.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
 import { buildPatternHierarchy, getBaseCode } from '../utils/patternCode';
 import { usePatternCatalog } from '../composables/usePatternCatalog';
 import { buildColumns, columnFor, defaultTier, tierOf, sortCodes, groupColumns } from '../utils/neumeTable';
@@ -42,6 +44,14 @@ const { freq } = usePatternCatalog();
 //             every addition at its place in the ordering
 //   codes     every transcription code as a column of its own (the detailed view)
 const MODES = ['standard', 'expanded', 'codes'];
+const VIEW_OPTIONS = [
+    { value: 'standard', label: 'Standard Table', title: 'Show Standard Table: only the standard selection, in the fixed columns' },
+    { value: 'expanded', label: 'Expanded Documentation', title: 'Show Expanded Documentation: the standard table plus everything documented for each manuscript' },
+    { value: 'codes', label: 'All codes', title: 'Every transcription code as a column of its own' }
+];
+// Inside the editor (/compare) the page lives in the app shell; on /public/table it stands alone.
+const embedded = computed(() => route.name === 'compare');
+const msOpen = ref(false);
 const viewMode = ref(MODES.includes(route.query.mode) ? route.query.mode : 'standard');
 watch(viewMode, (m) => router.replace({ query: { ...route.query, mode: m === 'standard' ? undefined : m } }));
 const columnMode = computed(() => (viewMode.value === 'standard' ? 'standard' : 'expanded'));
@@ -442,87 +452,83 @@ const visibleFilterSources = computed(() => {
 </script>
 
 <template>
-<div class="neume-table-view">
+<div class="neume-table-view" :class="{ embedded }">
     <!-- Header Section -->
     <header class="header">
         <div class="header-content">
-            <div class="top-nav-bar">
+            <div v-if="!embedded" class="top-nav-bar">
                 <button class="nav-tab" @click="router.push('/public')">&larr; Manuscript Directory</button>
                 <div class="nav-tab active">Neumentabelle (Comparison)</div>
             </div>
 
-            <div class="title-stack">
-                <div class="brand">Comparative Notation Analysis</div>
-                <h1>Neumentabelle</h1>
-                <p class="subtitle">Side-by-side comparison of annotated neume shapes across published manuscripts.</p>
-            </div>
+            <PageHeader :title="embedded ? 'Compare manuscripts' : 'Neumentabelle'" :eyebrow="embedded ? 'Neumentabelle' : 'Comparative notation analysis'">
+                <template #subtitle>
+                    <p>Side-by-side comparison of the neume shapes of the published manuscripts. Each column is a neume; read it downwards to see how every manuscript writes it.</p>
+                </template>
+                <template v-if="embedded" #actions>
+                    <RouterLink to="/table" class="ne-btn">Neumentabellen</RouterLink>
+                    <a href="#/public/table" target="_blank" rel="noopener" class="ne-btn ne-btn--ghost">Public view ↗</a>
+                </template>
+            </PageHeader>
 
-            <!-- Controls Panel -->
+            <!-- Controls -->
             <div class="controls-card">
-                <div class="control-group">
-                    <label class="control-label" for="pat-search">Search Pattern Codes</label>
-                    <div class="input-wrap">
+                <div class="tb-row">
+                    <SegmentedControl v-model="viewMode" :options="VIEW_OPTIONS" label="Table view" />
+                    <p class="tb-hint">
+                        <template v-if="viewMode === 'standard'">The standard selection of every manuscript.</template>
+                        <template v-else-if="viewMode === 'expanded'">The standard table plus what each manuscript documents beyond it.</template>
+                        <template v-else>Every transcription code as a column of its own.</template>
+                    </p>
+                    <div class="input-wrap tb-search">
                         <span class="input-icon" aria-hidden="true">⌕</span>
                         <input
                             id="pat-search"
                             type="search"
                             v-model="patternSearchQuery"
-                            placeholder="e.g. *u, *uudd, [*ud]…"
+                            placeholder="Find a column: *u, *uudd, [*ud]…"
                             class="search-input has-icon"
+                            aria-label="Search pattern codes"
                             @keydown.esc="patternSearchQuery = ''"
                         />
                         <button v-if="patternSearchQuery" class="input-clear" aria-label="Clear pattern search"
                                 @click="patternSearchQuery = ''">×</button>
                     </div>
-                    <span class="control-hint">{{ columnCount }} column{{ columnCount === 1 ? '' : 's' }} shown</span>
                 </div>
 
-                <div class="control-group">
-                    <span class="control-label">Table</span>
-                    <div class="mode-switch" role="group" aria-label="Table view">
-                        <button :class="{ on: viewMode === 'standard' }" :aria-pressed="viewMode === 'standard'" @click="viewMode = 'standard'"
-                                title="Show Standard Table: only the standard selection, in the fixed columns">Standard Table</button>
-                        <button :class="{ on: viewMode === 'expanded' }" :aria-pressed="viewMode === 'expanded'" @click="viewMode = 'expanded'"
-                                title="Show Expanded Documentation: the standard table plus everything documented for each manuscript">Expanded Documentation</button>
-                        <button :class="{ on: viewMode === 'codes' }" :aria-pressed="viewMode === 'codes'" @click="viewMode = 'codes'"
-                                title="Every transcription code as a column of its own">All codes</button>
-                    </div>
-                    <span class="control-hint" v-if="viewMode !== 'codes'">Ordered by tones, then by frequency in the CM.</span>
-                </div>
+                <div class="tb-row tb-row--sub">
+                    <label class="inline-control">
+                        <span class="control-label">Snippet size</span>
+                        <input type="range" min="50" max="180" step="10" v-model.number="displaySize" class="range-slider" />
+                        <span class="control-hint">{{ displaySize }}px</span>
+                    </label>
 
-                <div class="control-group" v-if="viewMode === 'codes'">
-                    <label class="control-label">Order Patterns:</label>
-                    <select v-model="patternSortMode" class="search-input" style="padding: 6px 10px; cursor: pointer;">
-                        <option value="tones">Tones, then frequency in the CM</option>
-                        <option value="freq">Overall Frequency (Most used first)</option>
-                        <option value="length">Neume Length (Shorter first)</option>
-                        <option value="alpha">Alphabetical (Ignoring [ ])</option>
-                        <option value="id">Pattern Code / ID</option>
-                    </select>
-                </div>
-
-                <div class="control-group">
-                    <label class="control-label">Snippet Size ({{ displaySize }}px):</label>
-                    <input 
-                        type="range" 
-                        min="50" 
-                        max="180" 
-                        step="10" 
-                        v-model.number="displaySize" 
-                        class="range-slider"
-                    />
-                </div>
-
-                <div class="control-group check-group">
                     <label class="checkbox-label" :title="viewMode === 'standard' ? 'The standard table always shows all its columns' : ''">
                         <input type="checkbox" v-model="onlyAnnotatedPatterns" :disabled="viewMode === 'standard'" />
-                        Only show patterns with snippets
+                        Only columns with snippets
                     </label>
+
+                    <label v-if="viewMode === 'codes'" class="inline-control">
+                        <span class="control-label">Order</span>
+                        <select v-model="patternSortMode" class="search-input sort-select">
+                            <option value="tones">Tones, then frequency in the CM</option>
+                            <option value="freq">Overall frequency</option>
+                            <option value="length">Neume length</option>
+                            <option value="alpha">Alphabetical (ignoring [ ])</option>
+                            <option value="id">Pattern code / ID</option>
+                        </select>
+                    </label>
+
+                    <span class="tb-spacer"></span>
+                    <span class="control-hint">{{ columnCount }} column{{ columnCount === 1 ? '' : 's' }}</span>
+                    <button class="ne-btn ne-btn--sm" :aria-expanded="msOpen" @click="msOpen = !msOpen">
+                        Manuscripts: {{ selectedManuscriptFilter.length ? `${selectedManuscriptFilter.length} of ${allFilterableSources.length}` : `all ${allFilterableSources.length}` }}
+                        <span aria-hidden="true">{{ msOpen ? '▴' : '▾' }}</span>
+                    </button>
                 </div>
 
-                <div class="control-group ms-filter-group">
+                <div v-if="msOpen" class="ms-filter-group">
                     <div class="ms-filter-head">
-                        <span class="control-label">Filter Manuscripts</span>
                         <span v-if="selectedManuscriptFilter.length" class="ms-selected-count">
                             {{ selectedManuscriptFilter.length }} selected
                             <button class="ms-clear" @click="selectAllManuscripts">clear</button>
@@ -564,6 +570,11 @@ const visibleFilterSources = computed(() => {
         <div v-if="filteredTables.length === 0 && directRows.length === 0" class="empty-state">
             <h3>No Published Manuscripts</h3>
             <p>Publish manuscripts with annotations in the editor to see them in this comparative table.</p>
+            <ol v-if="embedded" class="how">
+                <li>Open a manuscript's table under <RouterLink to="/table">Neumentabellen</RouterLink> and choose its neumes.</li>
+                <li>Mark the snippets on its images with <em>Annotate snippets</em>.</li>
+                <li>Switch on <em>Published</em>. The manuscript appears here.</li>
+            </ol>
         </div>
 
         <div v-else-if="columnCount === 0" class="empty-state">
@@ -625,7 +636,7 @@ const visibleFilterSources = computed(() => {
                                     <strong>{{ table.source }}</strong>
                                     <span class="link-arrow">&rarr;</span>
                                 </button>
-                                <span class="ms-title" v-if="table.name">{{ table.name }}</span>
+                                <span class="ms-title" v-if="table.name && table.name !== table.source">{{ table.name }}</span>
                             </div>
                         </td>
 
@@ -770,11 +781,18 @@ const visibleFilterSources = computed(() => {
 </template>
 
 <style scoped>
-/* Table view switch */
-.mode-switch { display: inline-flex; border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); overflow: hidden; align-self: flex-start; }
-.mode-switch button { border: none; border-radius: 0; padding: 0.4em 0.9em; font-weight: 600; font-size: 0.88rem; background: var(--color-surface); }
-.mode-switch button + button { border-left: 1px solid var(--color-border-hover); }
-.mode-switch button.on { background: var(--color-primary); color: #fff; }
+/* Toolbar */
+.tb-row { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; }
+.tb-row--sub { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--color-surface-muted); }
+.tb-hint { margin: 0; flex: 1; min-width: 200px; color: var(--color-text-muted); font-size: 0.86rem; }
+.tb-search { margin-left: auto; }
+.tb-search .search-input { width: 260px; }
+.tb-spacer { flex: 1; }
+.inline-control { display: inline-flex; align-items: center; gap: var(--space-2); }
+.sort-select { width: auto; cursor: pointer; }
+.neume-table-view.embedded { min-height: 0; }
+.how { text-align: left; display: inline-block; margin: var(--space-3) 0 0; color: var(--color-text-muted); line-height: 1.7; }
+.embedded .header { background: transparent; border-bottom: none; padding: var(--space-5) var(--space-6) 0; }
 .pseudo-head { font-weight: 700; color: var(--color-text-muted); font-size: 0.85rem; }
 .snip-code { font-size: 0.65rem; color: var(--color-text-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -860,12 +878,8 @@ const visibleFilterSources = computed(() => {
     background: white;
     border: 1px solid var(--color-border);
     border-radius: 12px;
-    padding: 16px 20px;
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 24px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+    padding: var(--space-3) var(--space-4);
+    box-shadow: var(--shadow-sm);
 }
 
 .control-group {
@@ -908,8 +922,9 @@ const visibleFilterSources = computed(() => {
 }
 
 .ms-filter-group {
-    flex-basis: 100%;
-    margin-top: 4px;
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-surface-muted);
 }
 
 .filter-pills {
@@ -930,7 +945,7 @@ const visibleFilterSources = computed(() => {
     display: flex; align-items: center; justify-content: center;
 }
 .input-clear:hover { background: var(--color-border-hover); color: var(--color-text); }
-.control-hint { font-size: 10px; color: var(--color-text-muted); margin-top: 4px; }
+.control-hint { font-size: 0.78rem; color: var(--color-text-muted); }
 
 .ms-filter-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
 .ms-selected-count { font-size: 11px; font-weight: 700; color: var(--color-primary-hover); margin-left: auto; white-space: nowrap; }

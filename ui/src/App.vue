@@ -11,38 +11,22 @@ const isSetup = computed(() => route.path === '/setup');
 const isMenuOpen = ref(false);
 
 /**
- * The three ways a manuscript gets documented, each with the pages that belong
- * to it. `match` lists the route prefixes that should light the group up —
- * broader than the child links, because sub-editors (the region editor, a single
- * manuscript's table) live under the same workflow.
+ * The ways of linking a manuscript's neumes to its images, in one menu. `match`
+ * lists the route prefixes that light the group up — broader than the child
+ * links, because sub-editors (the region editor, one manuscript's annotations)
+ * live under the same workflow.
  */
 const navGroups = [
     {
-        key: 'iiif',
-        label: 'IIIF',
-        title: 'Manuscripts served over IIIF',
-        match: ['/equivalents', '/polygons', '/annotations'],
+        key: 'annotate',
+        label: 'Annotate',
+        title: 'Link neumes to the manuscript images',
+        match: ['/equivalents', '/polygons', '/annotations', '/custom-manuscripts', '/ommr'],
         children: [
-            { to: '/equivalents', label: 'Equivalents', hint: 'Pattern tables per manuscript' },
-            { to: '/polygons', label: 'Manuscripts', hint: 'Browse folios and annotate line regions' }
-        ]
-    },
-    {
-        key: 'local',
-        label: 'Local',
-        title: 'Manuscripts documented from your own images — no IIIF',
-        match: ['/custom-manuscripts'],
-        children: [
-            { to: '/custom-manuscripts', label: 'Custom Manuscripts', hint: 'Paste or upload your own snippets' }
-        ]
-    },
-    {
-        key: 'ommr',
-        label: 'OMMR Import',
-        title: 'Import an OMMR4all dataset',
-        match: ['/ommr'],
-        children: [
-            { to: '/ommr', label: 'Import Dataset', hint: 'Load an OMMR4all export' }
+            { to: '/equivalents', label: 'Equivalents', hint: 'Pattern tables and reference IDs per manuscript', section: 'IIIF images' },
+            { to: '/polygons', label: 'Manuscripts', hint: 'Browse folios and annotate line regions', section: 'IIIF images' },
+            { to: '/custom-manuscripts', label: 'Custom manuscripts', hint: 'Paste or upload your own snippets — no IIIF', section: 'Your own images' },
+            { to: '/ommr', label: 'OMMR4all import', hint: 'Load an OMMR4all export', section: 'Other sources' }
         ]
     }
 ];
@@ -80,6 +64,9 @@ onBeforeUnmount(() => {
   <div class="app-shell">
     <nav v-if="!isPublic && !isSetup" class="top-nav">
       <RouterLink to="/" class="nav-brand" aria-label="Neumen-Editor home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20"><ellipse cx="8" cy="8" rx="4.2" ry="3.2" transform="rotate(-18 8 8)" fill="currentColor"/><ellipse cx="16" cy="16" rx="4.2" ry="3.2" transform="rotate(-18 16 16)" fill="currentColor"/></svg>
+        </span>
         <span class="brand-text">Neumen-Editor</span>
       </RouterLink>
       <button class="hamburger-btn" @click="isMenuOpen = !isMenuOpen" :aria-expanded="isMenuOpen" aria-controls="nav-links" aria-label="Toggle navigation">
@@ -89,12 +76,13 @@ onBeforeUnmount(() => {
       <div id="nav-links" class="nav-links" :class="{ 'menu-open': isMenuOpen }">
         <RouterLink to="/corpus" active-class="active" @click="isMenuOpen = false">Corpus</RouterLink>
         <RouterLink to="/table" :class="{ active: route.path.startsWith('/table') }" @click="isMenuOpen = false">Neumentabellen</RouterLink>
-        <RouterLink to="/" exact-active-class="active" @click="isMenuOpen = false">Overview</RouterLink>
+        <RouterLink to="/compare" active-class="active" @click="isMenuOpen = false">Compare</RouterLink>
         <RouterLink to="/patterns" active-class="active" @click="isMenuOpen = false">Patterns</RouterLink>
+        <RouterLink to="/" exact-active-class="active" @click="isMenuOpen = false">Overview</RouterLink>
 
         <span class="nav-sep" aria-hidden="true"></span>
 
-        <!-- One group per workflow; its pages live in the submenu. -->
+        <!-- Annotation workflows; their pages live in the submenu. -->
         <div v-for="g in navGroups" :key="g.key" class="nav-group"
              :class="{ open: openGroup === g.key, active: isGroupActive(g) }">
           <button class="group-btn" :title="g.title"
@@ -104,12 +92,15 @@ onBeforeUnmount(() => {
             <span class="caret" aria-hidden="true">▾</span>
           </button>
           <div class="submenu" :class="{ open: openGroup === g.key }">
-            <RouterLink v-for="c in g.children" :key="c.to" :to="c.to"
+            <template v-for="(c, i) in g.children" :key="c.to">
+            <span v-if="i === 0 || g.children[i - 1].section !== c.section" class="sub-section">{{ c.section }}</span>
+            <RouterLink :to="c.to"
                         class="submenu-item" active-class="sub-active"
                         @click="openGroup = ''; isMenuOpen = false">
               <span class="sub-label">{{ c.label }}</span>
               <span class="sub-hint">{{ c.hint }}</span>
             </RouterLink>
+            </template>
           </div>
         </div>
 
@@ -176,8 +167,8 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 30px;
+  height: 30px;
   border-radius: 9px;
   background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
   color: #fff;
@@ -252,7 +243,7 @@ onBeforeUnmount(() => {
   background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
 }
 
-.caret { font-size: 0.65em; opacity: 0.7; transition: transform 0.15s ease; }
+.caret { font-size: 0.8em; opacity: 0.75; transition: transform 0.15s ease; }
 .nav-group.open .caret { transform: rotate(180deg); }
 
 .submenu {
@@ -277,6 +268,8 @@ onBeforeUnmount(() => {
 .submenu-item:hover { background: var(--color-bg); }
 .submenu-item.sub-active { background: var(--color-primary-light); }
 .submenu-item.sub-active .sub-label { color: var(--color-primary-hover); }
+.sub-section { padding: 8px 12px 2px; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-light); }
+.sub-section:first-child { padding-top: 4px; }
 .sub-label { font-size: 0.88rem; font-weight: 600; }
 .sub-hint { font-size: 0.72rem; color: var(--color-text-muted); line-height: 1.35; }
 /* The generic `.nav-links a` rules target the dark bar, not this light panel. */

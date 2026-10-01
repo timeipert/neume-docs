@@ -8,6 +8,7 @@ const settings = useSettingsStore();
 const props = defineProps({
   pattern: { type: String, required: true },
   glyphs: { type: Object, required: true },
+  scale: { type: Number, default: 1 },
 });
 
 const mode = computed(() => settings.displayMode);
@@ -28,6 +29,7 @@ const arrowRep = computed(() => {
         :pattern="pattern" 
         :glyphs="glyphs" 
         :isGroup="false" 
+        :scale="scale"
       />
       <span v-else-if="mode === 'arrow'" class="mode-arrow">{{ arrowRep }}</span>
       <span v-else class="mode-text">{{ textRep }}</span>

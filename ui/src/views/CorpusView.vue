@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { useCorpusImport } from '../composables/useCorpusImport';
 import { collectFromFileList, collectFromDrop } from '../services/corpus/corpusImport';
+import PageHeader from '../components/ui/PageHeader.vue';
 
 const router = useRouter();
 const { catalog, sourceNames, hasCorpus, corpusSummary, loading, removeSource, clearAll } = useTranscriptionData();
@@ -67,16 +68,14 @@ const fmt = (n) => n.toLocaleString('en-US');
 
 <template>
 <div class="corpus-view" @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="onDrop">
-    <header class="head">
-        <div>
-            <h1>Corpus</h1>
-            <p class="subtitle">
-                The editor starts empty. Load a Monodi-Zero workspace or a Corpus Monodicum project, and
-                the neume tables are built from it.
-            </p>
-        </div>
-        <button v-if="hasCorpus" class="btn-primary" @click="router.push('/table')">Open the neume tables &rarr;</button>
-    </header>
+    <PageHeader title="Corpus" eyebrow="Step 1 · Your data">
+        <template #subtitle>
+            <p>The editor starts empty. Load a Monodi-Zero workspace or a Corpus Monodicum project, and the neume tables are built from it.</p>
+        </template>
+        <template v-if="hasCorpus" #actions>
+            <button class="ne-btn ne-btn--primary" @click="router.push('/table')">Open the neume tables &rarr;</button>
+        </template>
+    </PageHeader>
 
     <section class="drop-card" :class="{ dragging, busy }" aria-label="Load data">
         <template v-if="!busy">
@@ -85,11 +84,11 @@ const fmt = (n) => n.toLocaleString('en-US');
             <p class="drop-hint">Drop files or a folder here, or choose them:</p>
 
             <div class="pick-row">
-                <label class="btn-primary pick">
+                <label class="ne-btn ne-btn--primary pick">
                     Choose files…
                     <input type="file" multiple accept=".monodijson,.json,.zip" @change="onPick" hidden />
                 </label>
-                <label class="btn-secondary pick">
+                <label class="ne-btn pick">
                     Choose a project folder…
                     <input type="file" webkitdirectory multiple @change="onPick" hidden />
                 </label>
@@ -109,7 +108,7 @@ const fmt = (n) => n.toLocaleString('en-US');
                 <div class="bar-fill" :class="{ indeterminate: percent === null }" :style="percent === null ? {} : { width: percent + '%' }"></div>
             </div>
             <p class="status small">{{ importedNow.length }} source{{ importedNow.length === 1 ? '' : 's' }} stored so far</p>
-            <button @click="cancel">Stop after the current source</button>
+            <button class="ne-btn" @click="cancel">Stop after the current source</button>
         </template>
     </section>
 
@@ -133,6 +132,12 @@ const fmt = (n) => n.toLocaleString('en-US');
     <section v-if="phase === 'error'" class="note bad" role="alert">
         <strong>That did not work.</strong> {{ errorMessage }}
     </section>
+
+    <ol v-if="!hasCorpus && !loading" class="steps" aria-label="How it works">
+        <li><span class="n">1</span><div><strong>Load your data</strong><p>A Monodi-Zero workspace or a Corpus Monodicum project.</p></div></li>
+        <li><span class="n">2</span><div><strong>Fill in the standard table</strong><p>Per manuscript: choose how it writes each neume, ordered by tones and frequency.</p></div></li>
+        <li><span class="n">3</span><div><strong>Add and compare</strong><p>Add what the manuscript needs, link neumes to the scans, compare manuscripts.</p></div></li>
+    </ol>
 
     <section v-if="!hasCorpus && !loading" class="formats">
         <h2>What can I load?</h2>
@@ -160,7 +165,7 @@ const fmt = (n) => n.toLocaleString('en-US');
         <div class="list-head">
             <h2>Loaded sources</h2>
             <input v-model="filter" type="search" placeholder="Filter…" aria-label="Filter loaded sources" />
-            <button class="danger" @click="removeAll">Remove all</button>
+            <button class="ne-btn ne-btn--sm ne-btn--danger" @click="removeAll">Remove all</button>
         </div>
 
         <table class="sources">
@@ -193,18 +198,7 @@ const fmt = (n) => n.toLocaleString('en-US');
 
 <style scoped>
 .corpus-view { padding: var(--space-6); max-width: 1100px; margin: 0 auto; overflow-y: auto; height: 100%; box-sizing: border-box; }
-.head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-5); margin-bottom: var(--space-5); }
-.head h1 { margin: 0; }
-.subtitle { color: var(--color-text-muted); margin: var(--space-1) 0 0; max-width: 60ch; }
 
-.btn-primary, .btn-secondary {
-    display: inline-block; padding: 0.55em 1.1em; border-radius: var(--radius-md); font-weight: 600;
-    cursor: pointer; border: 1px solid var(--color-primary); font-size: 0.95rem;
-}
-.btn-primary { background: var(--color-primary); color: #fff; }
-.btn-primary:hover { background: var(--color-primary-hover); border-color: var(--color-primary-hover); color: #fff; }
-.btn-secondary { background: var(--color-surface); color: var(--color-primary-dark); }
-.btn-secondary:hover { background: var(--color-primary-light); }
 
 .drop-card {
     border: 2px dashed var(--color-border-hover); border-radius: var(--radius-lg);
@@ -234,6 +228,10 @@ const fmt = (n) => n.toLocaleString('en-US');
 .note.bad { background: var(--color-danger-light); border-color: var(--color-danger-muted); }
 .warnings { margin: var(--space-2) 0 0; padding-left: 1.2em; font-size: 0.85rem; color: var(--color-text-muted); }
 
+.steps { list-style: none; margin: var(--space-5) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); }
+.steps li { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.steps .n { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--color-primary-light); color: var(--color-primary-dark); font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; justify-content: center; }
+.steps p { margin: 2px 0 0; color: var(--color-text-muted); font-size: 0.86rem; }
 .formats { margin-top: var(--space-6); }
 .formats h2 { font-size: 1.1rem; }
 .format-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); }
@@ -252,8 +250,8 @@ code { background: var(--color-surface-muted); padding: 0.05em 0.35em; border-ra
 .list-head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); }
 .list-head h2 { margin: 0; font-size: 1.1rem; flex: 1; }
 .list-head input { padding: 0.4em 0.7em; border: 1px solid var(--color-border); border-radius: var(--radius-md); width: 200px; }
-button.danger { color: var(--color-danger); }
-button.danger:hover { background: var(--color-danger-light); border-color: var(--color-danger-muted); }
+button.icon.danger { color: var(--color-danger); }
+button.icon.danger:hover { background: var(--color-danger-light); border-color: var(--color-danger-muted); }
 
 .sources { width: 100%; border-collapse: collapse; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; font-size: 0.92rem; }
 .sources th { text-align: left; padding: 0.55em 0.8em; background: var(--color-surface-muted); color: var(--color-text-muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -268,6 +266,5 @@ button.icon:hover { opacity: 1; }
 
 @media (max-width: 720px) {
     .corpus-view { padding: var(--space-4); }
-    .head { flex-direction: column; }
 }
 </style>

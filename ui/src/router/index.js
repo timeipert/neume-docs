@@ -56,6 +56,12 @@ const router = createRouter({
       meta: { title: 'Neumentabelle', requiresWorkspace: true }
     },
     {
+      path: '/compare',
+      name: 'compare',
+      component: PublicNeumeTableView,
+      meta: { title: 'Compare manuscripts', requiresWorkspace: true }
+    },
+    {
       path: '/patterns',
       name: 'patterns',
       component: PatternLibraryView,

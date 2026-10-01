@@ -70,13 +70,13 @@ try {
     await page.waitForSelector('.ms');
     const name = (await page.locator('.ms .ms-name').first().innerText()).trim();
     await page.locator('.ms').first().click();
-    await page.waitForSelector('.grid .col-card');
+    await page.waitForSelector('.grid .cell');
 
-    const headers = await page.locator('.col-card .code').allInnerTexts();
+    const headers = await page.locator('.cell .code').allInnerTexts();
     assert.deepEqual(headers, STANDARD, 'the standard table has the columns of the brief, in order');
     step('standard table: * *d *u *e *dd *ud *uu *du *udd *uud *ddu | L O Q , | Clef Custos');
 
-    await page.locator('.col-card[data-column="dir:*ud"]').getByRole('button', { name: /library/ }).click();
+    await page.locator('.cell[data-column="dir:*ud"]').getByRole('button', { name: /Choose for|Change/ }).click();
     await page.waitForSelector('.picker');
     const variants = await page.locator('.picker .variant').count();
     assert.ok(variants >= 1, 'the library offers variants for *ud');
@@ -84,35 +84,35 @@ try {
     assert.ok(letters.every(c => !/[A-Z]/.test(c)), 'a directional column offers no special signs');
     await page.locator('.picker .variant').first().click();
     await page.getByRole('button', { name: 'Done' }).click();
-    assert.equal(await page.locator('.col-card[data-column="dir:*ud"] .chosen li').count(), 1);
+    assert.equal(await page.locator('.cell[data-column="dir:*ud"] .items li').count(), 1);
     step('picked a plain variant for *ud from the library');
 
-    await page.locator('.col-card[data-column="special:L"]').getByRole('button', { name: /library/ }).click();
+    await page.locator('.cell[data-column="special:L"]').getByRole('button', { name: /Choose for|Change/ }).click();
     await page.waitForSelector('.picker');
     const groups = page.locator('.picker .sig-group');
     assert.ok(await groups.count() >= 4, 'the L library offers several constellations');
     for (let i = 0; i < 3; i++) await groups.nth(i).locator('.variant').first().click();
-    assert.equal((await page.locator('.picker .count').innerText()).trim(), '3/3 chosen');
+    assert.equal((await page.locator('.picker .chosen-label strong').innerText()).trim(), '3/3');
     assert.ok(await groups.nth(3).locator('.variant').first().isDisabled(), 'a fourth constellation is refused');
     await shot('picker-L');
     await page.getByRole('button', { name: 'Done' }).click();
     step('L: three constellations chosen, the fourth is refused');
 
     // 5. Expanded documentation ----------------------------------------------
-    await page.getByRole('button', { name: 'Expanded Documentation' }).click();
+    await page.getByRole('radio', { name: 'Expanded Documentation' }).click();
     await page.waitForSelector('.search-panel');
     await page.locator('#pattern-search').fill('*ed');
     await page.waitForSelector('.results .result');
     const first = (await page.locator('.results .result code').first().innerText()).trim();
     await page.locator('.results .result').first().click();
-    const expanded = await page.locator('.col-card .code').allInnerTexts();
+    const expanded = await page.locator('.cell .code').allInnerTexts();
     assert.ok(expanded.some(h => h.startsWith('*ed')), 'the addition got a column of its own');
     assert.ok(expanded.indexOf('*du') > expanded.indexOf('*uu'), 'the standard columns keep their order');
     await shot('expanded');
     step(`expanded documentation: added ${first} by code`);
 
-    await page.getByRole('button', { name: 'Standard Table' }).click();
-    const hidden = await page.locator('.col-card .code').allInnerTexts();
+    await page.getByRole('radio', { name: 'Standard Table' }).click();
+    const hidden = await page.locator('.cell .code').allInnerTexts();
     assert.deepEqual(hidden, STANDARD, 'the standard table hides the addition');
     step('Show Standard Table hides it again');
 

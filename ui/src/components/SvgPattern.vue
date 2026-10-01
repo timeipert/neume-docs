@@ -9,7 +9,9 @@ const settings = useSettingsStore();
 const props = defineProps({
   pattern: { type: String, required: true },
   glyphs: { type: Object, required: true },
-  isGroup: { type: Boolean, default: false }
+  isGroup: { type: Boolean, default: false },
+  /** Draw larger or smaller than the natural size, keeping proportions. */
+  scale: { type: Number, default: 1 }
 });
 
 const signGlyphs = computed(() => resolveSignGlyphs(settings.customSigns, props.glyphs));
@@ -22,8 +24,8 @@ const rendered = computed(() => {
 <template>
   <svg 
     class="svg-pattern"
-    :width="rendered.width" 
-    :height="rendered.height" 
+    :width="rendered.width * scale" 
+    :height="rendered.height * scale" 
     :viewBox="rendered.viewBox"
     v-html="rendered.content"
   ></svg>

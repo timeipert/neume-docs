@@ -79,7 +79,7 @@ function add(code) {
     <ul v-if="list.length" class="results">
         <li v-for="code in list" :key="code">
             <button class="result" :title="`Add ${code} to the expanded documentation`" @click="add(code)">
-                <span class="r-glyph"><PatternDisplay :pattern="code" :glyphs="glyphs" /></span>
+                <span class="r-glyph"><PatternDisplay :pattern="code" :glyphs="glyphs" :scale="1.2" /></span>
                 <PatternCode :pattern="code" />
                 <span class="r-meta">{{ fmt(freq.code(code)) }}× CM<template v-if="counts[code]"> · {{ fmt(counts[code]) }}× here</template></span>
                 <span class="r-add" aria-hidden="true">+</span>
@@ -102,12 +102,13 @@ function add(code) {
 .hint { margin: var(--space-1) 0 0; color: var(--color-text-muted); font-size: 0.82rem; }
 .list-title { font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); margin: var(--space-4) 0 var(--space-2); }
 .n { background: var(--color-surface-muted); border-radius: 999px; padding: 0 0.5em; margin-left: 0.3em; }
-.results { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-2); }
+.results { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-2); }
 .result { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: var(--space-2); position: relative; background: var(--color-bg); }
 .result:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
-.r-glyph { min-height: 32px; display: flex; align-items: center; }
+.r-glyph { min-height: 40px; display: flex; align-items: center; }
 .r-meta { font-size: 0.7rem; color: var(--color-text-muted); }
 .r-add { position: absolute; top: 2px; right: 8px; color: var(--color-primary); font-weight: 700; font-size: 1.1rem; }
 .empty { color: var(--color-text-light); font-style: italic; margin: var(--space-2) 0 0; }
 .more { margin-top: var(--space-3); font-size: 0.85rem; }
+.result { padding-top: var(--space-3); }
 </style>

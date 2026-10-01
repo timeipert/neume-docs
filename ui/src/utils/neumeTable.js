@@ -315,6 +315,26 @@ export function tableProgress(rows) {
     };
 }
 
+/**
+ * The state of every cell of the standard table, for drawing a progress bar.
+ *
+ * @param {Array<{pattern: string, tier?: string}>} rows a manuscript's rows
+ * @param {TableColumn[]} columns the standard columns, in order (buildColumns('standard', …))
+ * @param {number} [max]
+ * @returns {Array<{ key: string, header: string, group: string, slot: boolean, n: number, max: number, filled: boolean }>}
+ */
+export function standardCellStates(rows, columns, max = MAX_SPECIAL_SIGNATURES) {
+    const standard = (rows || []).filter(r => tierOf(r) === 'standard');
+    return columns.map(col => {
+        const inColumn = standard.filter(r => {
+            const target = columnFor(r.pattern, 'standard');
+            return target && target.key === col.key;
+        });
+        const n = col.slot ? new Set(inColumn.map(r => signatureOf(r.pattern))).size : inColumn.length;
+        return { key: col.key, header: col.header, group: col.group, slot: !!col.slot, n, max: col.slot ? max : 1, filled: n > 0 };
+    });
+}
+
 // ---------------------------------------------------------------------------
 // Columns
 // ---------------------------------------------------------------------------

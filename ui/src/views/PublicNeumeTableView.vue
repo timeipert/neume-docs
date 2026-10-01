@@ -1,0 +1,1313 @@
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
+import { usePersonalTablesStore } from '../stores/personalTables';
+import { useAnnotationsStore } from '../stores/annotations';
+import { useIiifStore } from '../stores/iiif';
+import { useSettingsStore } from '../stores/settings';
+import { useTranscriptionData } from '../composables/useTranscriptionData';
+import { useDirectSnippetsStore } from '../stores/directSnippets';
+import { useImageManifest } from '../composables/useImageManifest';
+import { comparePatternIds } from '../utils/sorting';
+import PatternDisplay from '../components/PatternDisplay.vue';
+import PatternCode from '../components/PatternCode.vue';
+import { buildPatternHierarchy, getBaseCode } from '../utils/patternCode';
+import { usePatternCatalog } from '../composables/usePatternCatalog';
+import { buildColumns, columnFor, defaultTier, tierOf, sortCodes, groupColumns } from '../utils/neumeTable';
+import { stripSignKeys, signMarker } from '../utils/signs';
+import AnnotationCutout from '../components/AnnotationCutout.vue';
+import StateWrapper from '../components/StateWrapper.vue';
+
+const router = useRouter();
+const route = useRoute();
+const tableStore = usePersonalTablesStore();
+const annotStore = useAnnotationsStore();
+const iiifStore = useIiifStore();
+const settings = useSettingsStore();
+const directStore = useDirectSnippetsStore();
+const { glyphs, rawData, loadSource, loading: dataLoading, error: dataError } = useTranscriptionData();
+const { hasImage } = useImageManifest();
+
+// View Controls
+const selectedManuscriptFilter = ref([]);
+const patternSearchQuery = ref('');
+const displaySize = ref(80); // Snippet width in px
+const onlyAnnotatedPatterns = ref(true); // If true, only show patterns that have at least 1 polygon snippet
+const patternSortMode = ref('tones'); // 'tones' | 'freq' | 'length' | 'alpha' | 'id' (only used by the "All codes" view)
+const { freq } = usePatternCatalog();
+
+// What the table shows:
+//   standard  the fixed standard columns, filled from each manuscript's standard selection
+//   expanded  the standard columns plus whatever each manuscript documents beyond them,
+//             every addition at its place in the ordering
+//   codes     every transcription code as a column of its own (the detailed view)
+const MODES = ['standard', 'expanded', 'codes'];
+const viewMode = ref(MODES.includes(route.query.mode) ? route.query.mode : 'standard');
+watch(viewMode, (m) => router.replace({ query: { ...route.query, mode: m === 'standard' ? undefined : m } }));
+const columnMode = computed(() => (viewMode.value === 'standard' ? 'standard' : 'expanded'));
+
+import { compareChantPatterns } from '../utils/sorting';
+
+// Magnifier / Zoom Modal
+const isZoomOpen = ref(false);
+const zoomedItem = ref(null);
+
+function handleZoom(item) {
+    zoomedItem.value = item;
+    isZoomOpen.value = true;
+}
+
+function closeZoom() {
+    isZoomOpen.value = false;
+    zoomedItem.value = null;
+}
+
+function isStarred(item) {
+    if (!item) return false;
+    const sid = `${item.source}|${item.folio}|${item.pattern}|${item.id}`;
+    return tableStore.starredItems.has(sid);
+}
+
+function toggleStar(item) {
+    if (!item) return;
+    const sid = `${item.source}|${item.folio}|${item.pattern}|${item.id}`;
+    tableStore.toggleStarred(sid);
+}
+
+// 1. Published Manuscripts
+const publishedTables = computed(() => {
+    return tableStore.tables.filter(t => {
+        if (!t.isPublished) return false;
+        const prefix = t.source + '_';
+        return Object.keys(annotStore.regions).some(k => 
+            k.startsWith(prefix) && annotStore.regions[k].length > 0
+        );
+    });
+});
+
+const filteredTables = computed(() => {
+    if (selectedManuscriptFilter.value.length === 0) {
+        return publishedTables.value;
+    }
+    const set = new Set(selectedManuscriptFilter.value);
+    return publishedTables.value.filter(t => set.has(t.source));
+});
+
+// Load manifests and raw transcription data for all published sources
+onMounted(async () => {
+    directStore.load();
+    for (const t of publishedTables.value) {
+        iiifStore.ensureLoaded(t.source);
+        loadSource(t.source);
+    }
+});
+
+watch(publishedTables, (tables) => {
+    for (const t of tables) {
+        iiifStore.ensureLoaded(t.source);
+        loadSource(t.source);
+    }
+}, { deep: true });
+
+// 2. Collect all annotated items grouped by [source][pattern]
+// A single snippet is a polygon annotation item attached to a line region.
+const snippetMatrix = computed(() => {
+    // Structure: { [source]: { [pattern]: [ { item, line, folio, ... } ] } }
+    const matrix = {};
+
+    for (const table of publishedTables.value) {
+        const source = table.source;
+        matrix[source] = {};
+
+        const prefix = source + '_';
+        for (const [key, pageRegions] of Object.entries(annotStore.regions || {})) {
+            if (!key.startsWith(prefix)) continue;
+            const folio = key.substring(prefix.length);
+
+            for (const r of pageRegions) {
+                const items = annotStore.regionItems?.[r.id] || [];
+                for (const item of items) {
+                    if (!item || !item.pattern || !item.points) continue;
+                    
+                    const pat = item.pattern.trim();
+                    const basePat = pat.split(' ')[0];
+
+                    // Determine the display Ref ID. A code variant has no row of its
+                    // own, so fall back to the Ref ID of the code without its signs and
+                    // mark the variant — the same rule the line gallery uses, so the two
+                    // views cannot disagree about what a snippet is called.
+                    const keys = settings.customSigns.map(sg => sg.key);
+                    const codeNoSigns = stripSignKeys(basePat, keys);
+                    const rowMatch = (table.rows || []).find(row =>
+                        row.pattern === basePat || row.pattern === pat || row.pattern === codeNoSigns);
+                    const baseRefId = rowMatch?.customId
+                        || settings.getGlobalId(basePat)
+                        || settings.getGlobalId(codeNoSigns)
+                        || '-';
+                    let variant = item.variant || '';
+                    if (!variant && pat.includes(' ')) variant = pat.split(' ')[1];
+                    const marker = settings.discriminateSigns ? signMarker(basePat, settings.customSigns) : '';
+                    let displayId = baseRefId;
+                    if (marker) displayId += `·${marker}`;
+                    if (variant) displayId += variant;
+
+                    if (!matrix[source][pat]) matrix[source][pat] = [];
+
+                    matrix[source][pat].push({
+                        ...item,
+                        source,
+                        folio,
+                        regionId: r.id,
+                        lineName: r.name,
+                        displayId,
+                        variant,
+                        points: item.points
+                    });
+                }
+            }
+        }
+    }
+    return matrix;
+});
+
+// 3. Extract all unique patterns across all published manuscripts
+const allPatterns = computed(() => {
+    const patternCountMap = new Map(); // pattern -> total annotated count
+
+    for (const table of publishedTables.value) {
+        const source = table.source;
+        // Include patterns from table rows
+        for (const row of table.rows || []) {
+            if (!patternCountMap.has(row.pattern)) {
+                patternCountMap.set(row.pattern, 0);
+            }
+        }
+        // Include patterns from real annotated snippets
+        if (snippetMatrix.value[source]) {
+            for (const [pat, items] of Object.entries(snippetMatrix.value[source])) {
+                const cur = patternCountMap.get(pat) || 0;
+                patternCountMap.set(pat, cur + items.length);
+            }
+        }
+    }
+
+    // Include patterns declared in / used by published direct collections, so a
+    // collection documented entirely without IIIF still gets its own columns.
+    for (const c of directStore.publishedCollections) {
+        for (const p of c.patterns || []) {
+            if (!patternCountMap.has(p.code)) patternCountMap.set(p.code, 0);
+        }
+        for (const s of c.snippets || []) {
+            if (!s.pattern) continue;
+            patternCountMap.set(s.pattern, (patternCountMap.get(s.pattern) || 0) + 1);
+        }
+    }
+
+    let patterns = Array.from(patternCountMap.keys());
+
+    // Filter only annotated if toggled
+    if (onlyAnnotatedPatterns.value) {
+        patterns = patterns.filter(p => (patternCountMap.get(p) || 0) > 0);
+    }
+
+    // Filter by search query
+    if (patternSearchQuery.value.trim()) {
+        const q = patternSearchQuery.value.toLowerCase().trim();
+        patterns = patterns.filter(p => p.toLowerCase().includes(q));
+    }
+
+    // Sort patterns using chosen sort mode
+    if (patternSortMode.value === 'tones') return sortCodes(patterns, freq.value);
+    patterns.sort((a, b) => compareChantPatterns(a, b, patternSortMode.value, patternCountMap));
+    return patterns;
+});
+
+// --- Direct snippet collections (no IIIF, images pasted straight in) ---
+// These appear as ordinary rows: their snippets are stored images rather than
+// IIIF crops, so the cell renders an <img> instead of an AnnotationCutout.
+const directRows = computed(() => {
+    const rows = directStore.publishedCollections.map(c => ({
+        id: c.id,
+        source: c.source,
+        name: c.name,
+        isDirect: true,
+        collection: c
+    }));
+    if (selectedManuscriptFilter.value.length === 0) return rows;
+    const set = new Set(selectedManuscriptFilter.value);
+    return rows.filter(r => set.has(r.source));
+});
+
+/** { [collectionId]: { [pattern]: [snippet] } } */
+const directMatrix = computed(() => {
+    const matrix = {};
+    for (const c of directStore.publishedCollections) {
+        matrix[c.id] = {};
+        for (const s of c.snippets) {
+            if (!s.pattern) continue;
+            if (!matrix[c.id][s.pattern]) matrix[c.id][s.pattern] = [];
+            matrix[c.id][s.pattern].push({
+                ...s,
+                source: c.source,
+                displayId: s.refId || '-',
+                isDirect: true
+            });
+        }
+    }
+    return matrix;
+});
+
+/**
+ * Whether a manuscript shows a pattern in the current view. The standard table
+ * shows a manuscript's standard selection; a plain pattern of a standard
+ * direction that was annotated before the manuscript had a table counts as
+ * selected. The other views show everything the manuscript documents.
+ */
+function showsPattern(table, pattern) {
+    if (viewMode.value !== 'standard') return true;
+    const row = table && (table.rows || []).find(r => r.pattern === pattern || r.pattern === getBaseCode(pattern));
+    return (row ? tierOf(row) : defaultTier(pattern)) === 'standard';
+}
+
+/** Every pattern in play, for placing the extra columns of the expanded view. */
+const patternsInPlay = computed(() => {
+    const set = new Set();
+    for (const table of filteredTables.value) {
+        for (const pat of Object.keys(snippetMatrix.value[table.source] || {})) {
+            if (showsPattern(table, pat)) set.add(getBaseCode(pat));
+        }
+        if (!onlyAnnotatedPatterns.value) {
+            for (const row of table.rows || []) set.add(getBaseCode(row.pattern));
+        }
+    }
+    for (const row of directRows.value) {
+        for (const pat of Object.keys(directMatrix.value[row.id] || {})) set.add(getBaseCode(pat));
+    }
+    return set;
+});
+
+/** `{ key, header, pattern }` columns, grouped under a heading. */
+const columnGroups = computed(() => {
+    if (viewMode.value === 'codes') {
+        // The detailed view: the direction -> ligature -> modifier hierarchy the
+        // pattern library uses, one column per transcription code.
+        const tree = buildPatternHierarchy(allPatterns.value, {
+            signKeys: settings.customSigns.map(s => s.key),
+            customSigns: settings.customSigns
+        });
+        const groups = [];
+        for (const dir of tree) {
+            for (const lig of dir.groups) {
+                for (const mod of lig.groups) {
+                    groups.push({
+                        key: `${dir.key}/${lig.key}/${mod.key}`,
+                        label: dir.label + ' · ' + lig.label + (mod.key === '_base' ? '' : ' · ' + mod.label),
+                        columns: mod.codes.map(code => ({ key: code, header: code, pattern: code }))
+                    });
+                }
+            }
+        }
+        return groups;
+    }
+
+    let cols = buildColumns(columnMode.value, patternsInPlay.value, freq.value);
+
+    // Without a search the standard columns are always all there — that fixed
+    // layout is the point of the standard table. Extras only appear if they hold something.
+    if (viewMode.value === 'expanded' && onlyAnnotatedPatterns.value) {
+        cols = cols.filter(c => STANDARD_KEYS.value.has(c.key) || columnHasContent(c));
+    }
+    const q = patternSearchQuery.value.trim().toLowerCase();
+    if (q) cols = cols.filter(c => `${c.header} ${c.pattern || ''}`.toLowerCase().includes(q));
+
+    return groupColumns(cols);
+});
+
+const STANDARD_KEYS = computed(() => new Set(buildColumns('standard', [], freq.value).map(c => c.key)));
+
+/** Does any manuscript on show have a snippet in this column? */
+function columnHasContent(col) {
+    for (const table of filteredTables.value) {
+        if ((cellIndex.value[table.id] || {})[col.key]) return true;
+    }
+    for (const row of directRows.value) {
+        if ((directCellIndex.value[row.id] || {})[col.key]) return true;
+    }
+    return false;
+}
+
+/** { [tableId]: { [columnKey]: snippets[] } } for the two column views. */
+const cellIndex = computed(() => {
+    const out = {};
+    if (viewMode.value === 'codes') return out;
+    for (const table of filteredTables.value) {
+        const cells = {};
+        for (const [pat, list] of Object.entries(snippetMatrix.value[table.source] || {})) {
+            if (!showsPattern(table, pat)) continue;
+            const col = columnFor(pat, columnMode.value);
+            if (!col) continue;
+            (cells[col.key] || (cells[col.key] = [])).push(...list);
+        }
+        out[table.id] = cells;
+    }
+    return out;
+});
+
+const directCellIndex = computed(() => {
+    const out = {};
+    if (viewMode.value === 'codes') return out;
+    for (const row of directRows.value) {
+        const cells = {};
+        for (const [pat, list] of Object.entries(directMatrix.value[row.id] || {})) {
+            if (viewMode.value === 'standard' && defaultTier(pat) !== 'standard') continue;
+            const col = columnFor(pat, columnMode.value);
+            if (!col) continue;
+            (cells[col.key] || (cells[col.key] = [])).push(...list);
+        }
+        out[row.id] = cells;
+    }
+    return out;
+});
+
+/** The snippets a manuscript has in a column. */
+function snippetsFor(table, col) {
+    if (viewMode.value === 'codes') return (snippetMatrix.value[table.source] || {})[col.pattern] || [];
+    return (cellIndex.value[table.id] || {})[col.key] || [];
+}
+
+function directSnippetsFor(row, col) {
+    if (viewMode.value === 'codes') return (directMatrix.value[row.id] || {})[col.pattern] || [];
+    return (directCellIndex.value[row.id] || {})[col.key] || [];
+}
+
+const columnCount = computed(() => columnGroups.value.reduce((n, g) => n + g.columns.length, 0));
+
+const collapsedGroups = ref(new Set());
+
+function toggleGroup(key) {
+    const next = new Set(collapsedGroups.value);
+    if (next.has(key)) next.delete(key);
+    else next.add(key);
+    collapsedGroups.value = next;
+}
+
+function isGroupOpen(key) {
+    return !collapsedGroups.value.has(key);
+}
+
+function collapseAllGroups() {
+    collapsedGroups.value = new Set(columnGroups.value.map(g => g.key));
+}
+
+function expandAllGroups() {
+    collapsedGroups.value = new Set();
+}
+
+// Navigation helpers
+function goToSingleManuscript(source, isDirect = false) {
+    // Custom manuscripts have their own public page — the IIIF notation view
+    // would find no folios or line regions for them.
+    router.push(isDirect
+        ? `/public/custom/${encodeURIComponent(source)}`
+        : `/public/${encodeURIComponent(source)}`);
+}
+
+function toggleManuscriptFilter(source) {
+    const idx = selectedManuscriptFilter.value.indexOf(source);
+    if (idx === -1) {
+        selectedManuscriptFilter.value.push(source);
+    } else {
+        selectedManuscriptFilter.value.splice(idx, 1);
+    }
+}
+
+function selectAllManuscripts() {
+    selectedManuscriptFilter.value = [];
+}
+
+// The pill list is unusable once a project has dozens of manuscripts, so it is
+// searchable and scrolls rather than pushing the table off screen.
+const msFilterSearch = ref('');
+
+const allFilterableSources = computed(() => [
+    ...publishedTables.value.map(t => ({ id: t.id, source: t.source, isDirect: false })),
+    ...directStore.publishedCollections.map(c => ({ id: c.id, source: c.source, isDirect: true }))
+]);
+
+const visibleFilterSources = computed(() => {
+    const q = msFilterSearch.value.trim().toLowerCase();
+    if (!q) return allFilterableSources.value;
+    return allFilterableSources.value.filter(x => x.source.toLowerCase().includes(q));
+});
+</script>
+
+<template>
+<div class="neume-table-view">
+    <!-- Header Section -->
+    <header class="header">
+        <div class="header-content">
+            <div class="top-nav-bar">
+                <button class="nav-tab" @click="router.push('/public')">&larr; Manuscript Directory</button>
+                <div class="nav-tab active">Neumentabelle (Comparison)</div>
+            </div>
+
+            <div class="title-stack">
+                <div class="brand">Comparative Notation Analysis</div>
+                <h1>Neumentabelle</h1>
+                <p class="subtitle">Side-by-side comparison of annotated neume shapes across published manuscripts.</p>
+            </div>
+
+            <!-- Controls Panel -->
+            <div class="controls-card">
+                <div class="control-group">
+                    <label class="control-label" for="pat-search">Search Pattern Codes</label>
+                    <div class="input-wrap">
+                        <span class="input-icon" aria-hidden="true">⌕</span>
+                        <input
+                            id="pat-search"
+                            type="search"
+                            v-model="patternSearchQuery"
+                            placeholder="e.g. *u, *uudd, [*ud]…"
+                            class="search-input has-icon"
+                            @keydown.esc="patternSearchQuery = ''"
+                        />
+                        <button v-if="patternSearchQuery" class="input-clear" aria-label="Clear pattern search"
+                                @click="patternSearchQuery = ''">×</button>
+                    </div>
+                    <span class="control-hint">{{ columnCount }} column{{ columnCount === 1 ? '' : 's' }} shown</span>
+                </div>
+
+                <div class="control-group">
+                    <span class="control-label">Table</span>
+                    <div class="mode-switch" role="group" aria-label="Table view">
+                        <button :class="{ on: viewMode === 'standard' }" :aria-pressed="viewMode === 'standard'" @click="viewMode = 'standard'"
+                                title="Only the standard selection: the fixed columns of the standard table">Standard table</button>
+                        <button :class="{ on: viewMode === 'expanded' }" :aria-pressed="viewMode === 'expanded'" @click="viewMode = 'expanded'"
+                                title="The standard table plus everything documented for each manuscript">Expanded documentation</button>
+                        <button :class="{ on: viewMode === 'codes' }" :aria-pressed="viewMode === 'codes'" @click="viewMode = 'codes'"
+                                title="Every transcription code as a column of its own">All codes</button>
+                    </div>
+                    <span class="control-hint" v-if="viewMode !== 'codes'">Ordered by tones, then by frequency in the CM.</span>
+                </div>
+
+                <div class="control-group" v-if="viewMode === 'codes'">
+                    <label class="control-label">Order Patterns:</label>
+                    <select v-model="patternSortMode" class="search-input" style="padding: 6px 10px; cursor: pointer;">
+                        <option value="tones">Tones, then frequency in the CM</option>
+                        <option value="freq">Overall Frequency (Most used first)</option>
+                        <option value="length">Neume Length (Shorter first)</option>
+                        <option value="alpha">Alphabetical (Ignoring [ ])</option>
+                        <option value="id">Pattern Code / ID</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label">Snippet Size ({{ displaySize }}px):</label>
+                    <input 
+                        type="range" 
+                        min="50" 
+                        max="180" 
+                        step="10" 
+                        v-model.number="displaySize" 
+                        class="range-slider"
+                    />
+                </div>
+
+                <div class="control-group check-group">
+                    <label class="checkbox-label" :title="viewMode === 'standard' ? 'The standard table always shows all its columns' : ''">
+                        <input type="checkbox" v-model="onlyAnnotatedPatterns" :disabled="viewMode === 'standard'" />
+                        Only show patterns with snippets
+                    </label>
+                </div>
+
+                <div class="control-group ms-filter-group">
+                    <div class="ms-filter-head">
+                        <span class="control-label">Filter Manuscripts</span>
+                        <span v-if="selectedManuscriptFilter.length" class="ms-selected-count">
+                            {{ selectedManuscriptFilter.length }} selected
+                            <button class="ms-clear" @click="selectAllManuscripts">clear</button>
+                        </span>
+                    </div>
+                    <input v-if="allFilterableSources.length > 8"
+                           v-model="msFilterSearch" type="search" class="ms-filter-search"
+                           placeholder="Find a manuscript…" aria-label="Find a manuscript to filter by" />
+                    <div class="filter-pills">
+                        <button
+                            class="pill-btn pill-all"
+                            :class="{ active: selectedManuscriptFilter.length === 0 }"
+                            @click="selectAllManuscripts"
+                        >
+                            All ({{ allFilterableSources.length }})
+                        </button>
+                        <button
+                            v-for="x in visibleFilterSources"
+                            :key="x.id"
+                            class="pill-btn"
+                            :class="{ active: selectedManuscriptFilter.includes(x.source) }"
+                            :title="x.isDirect ? 'Documented from own images' : 'IIIF manuscript'"
+                            @click="toggleManuscriptFilter(x.source)"
+                        >
+                            {{ x.source }}
+                            <span v-if="x.isDirect" class="pill-dot" aria-hidden="true">•</span>
+                        </button>
+                        <span v-if="visibleFilterSources.length === 0" class="pill-empty">
+                            No manuscript matches “{{ msFilterSearch }}”.
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Table Section -->
+    <main class="table-wrapper">
+        <div v-if="filteredTables.length === 0 && directRows.length === 0" class="empty-state">
+            <h3>No Published Manuscripts</h3>
+            <p>Publish manuscripts with annotations in the editor to see them in this comparative table.</p>
+        </div>
+
+        <div v-else-if="columnCount === 0" class="empty-state">
+            <h3>No Matching Patterns</h3>
+            <p>No patterns match your search filter or have snippet annotations.</p>
+        </div>
+
+        <div v-else class="matrix-container">
+            <table class="neume-matrix">
+                <thead>
+                    <!-- Hierarchy groups; click a group to fold its columns away -->
+                    <tr class="group-row">
+                        <th class="corner-cell sticky-col sticky-corner group-corner">
+                            <div class="group-controls">
+                                <button class="tree-btn" @click="expandAllGroups">Expand all</button>
+                                <button class="tree-btn" @click="collapseAllGroups">Collapse</button>
+                            </div>
+                        </th>
+                        <th
+                            v-for="g in columnGroups"
+                            :key="g.key"
+                            class="group-header-cell"
+                            :class="{ collapsed: !isGroupOpen(g.key) }"
+                            :colspan="isGroupOpen(g.key) ? g.columns.length : 1"
+                            :title="isGroupOpen(g.key) ? 'Collapse this group' : `Expand ${g.label}`"
+                            @click="toggleGroup(g.key)"
+                        >
+                            <span class="caret" :class="{ open: isGroupOpen(g.key) }">▸</span>
+                            <span class="group-name">{{ g.label }}</span>
+                            <span class="group-count">{{ g.columns.length }}</span>
+                        </th>
+                    </tr>
+                    <tr>
+                        <th class="corner-cell sticky-col sticky-corner">
+                            <span class="corner-title">Manuscript \ Pattern</span>
+                        </th>
+                        <template v-for="g in columnGroups" :key="g.key">
+                            <th v-if="!isGroupOpen(g.key)" class="collapsed-cell"></th>
+                            <th v-else v-for="col in g.columns" :key="col.key" class="pattern-header-cell">
+                                <div class="pat-header-box">
+                                    <div class="pat-svg-box">
+                                        <PatternDisplay v-if="col.pattern" :pattern="col.pattern" :glyphs="glyphs" />
+                                        <span v-else class="pseudo-head" :title="col.label">{{ col.header }}</span>
+                                    </div>
+                                    <div class="pat-code">
+                                        <PatternCode v-if="col.pattern" :pattern="col.pattern" />
+                                    </div>
+                                </div>
+                            </th>
+                        </template>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for="table in filteredTables" :key="table.id">
+                        <!-- Left Manuscript Header Column -->
+                        <td class="ms-cell sticky-col">
+                            <div class="ms-info-box">
+                                <button class="ms-link" @click="goToSingleManuscript(table.source)">
+                                    <strong>{{ table.source }}</strong>
+                                    <span class="link-arrow">&rarr;</span>
+                                </button>
+                                <span class="ms-title" v-if="table.name">{{ table.name }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Pattern Cells for this Manuscript -->
+                        <template v-for="g in columnGroups" :key="g.key">
+                        <td v-if="!isGroupOpen(g.key)" class="collapsed-cell"></td>
+ <td v-else v-for="col in g.columns" :key="col.key" class="snippet-cell">
+                            <div 
+                                v-if="snippetsFor(table, col).length > 0" 
+                                class="snippets-grid"
+                            >
+                                <div 
+                                    v-for="snip in snippetsFor(table, col)" 
+                                    :key="snip.id"
+                                    class="snippet-card"
+                                    @click="handleZoom(snip)"
+                                    title="Click to zoom snippet"
+                                >
+                                    <div class="cutout-wrapper">
+                                        <AnnotationCutout 
+                                            v-if="hasImage(table.source, snip.folio) && snip.points"
+                                            :source="table.source" 
+                                            :folio="snip.folio" 
+                                            :points="snip.points"
+                                            :width="displaySize" 
+                                            :height="Math.round(displaySize * 0.75)" 
+                                            :padding="0.08"
+                                            :hideLabel="true"
+                                            :overlays="[snip]"
+                                        />
+                                    </div>
+                                    <div class="snip-meta">
+                                        <span class="snip-id">{{ snip.displayId }}</span>
+                                        <span class="snip-loc">{{ snip.folio }}</span>
+                                        <code v-if="viewMode !== 'codes'" class="snip-code" :title="snip.pattern">{{ snip.pattern }}</code>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="empty-cell">
+                                <span class="dash">—</span>
+                            </div>
+                        </td>
+                        </template>
+                    </tr>
+
+                    <!-- Direct snippet collections: stored images, no IIIF -->
+                    <tr v-for="row in directRows" :key="row.id">
+                        <td class="ms-cell sticky-col">
+                            <div class="ms-info-box">
+                                <button class="ms-link" @click="goToSingleManuscript(row.source, true)">
+                                    <strong>{{ row.source }}</strong>
+                                    <span class="link-arrow">&rarr;</span>
+                                </button>
+                                <span class="ms-title" v-if="row.name">{{ row.name }}</span>
+                                <span class="direct-badge" title="Documented from directly added snippets (no IIIF)">own snippets</span>
+                            </div>
+                        </td>
+                        <template v-for="g in columnGroups" :key="g.key">
+                        <td v-if="!isGroupOpen(g.key)" class="collapsed-cell"></td>
+ <td v-else v-for="col in g.columns" :key="col.key" class="snippet-cell">
+                            <div v-if="directSnippetsFor(row, col).length > 0"
+                                 class="snippets-grid">
+                                <div v-for="snip in directSnippetsFor(row, col)" :key="snip.id"
+                                     class="snippet-card"
+                                     @click="handleZoom(snip)"
+                                     title="Click to zoom snippet">
+                                    <div class="cutout-wrapper">
+                                        <img class="direct-img" :src="snip.image"
+                                             :alt="snip.caption || snip.pattern"
+                                             :style="{ width: displaySize + 'px', height: Math.round(displaySize * 0.75) + 'px' }" />
+                                    </div>
+                                    <div class="snip-meta">
+                                        <span class="snip-id">{{ snip.displayId }}</span>
+                                        <span class="snip-loc">{{ snip.caption }}</span>
+                                        <code v-if="viewMode !== 'codes'" class="snip-code" :title="snip.pattern">{{ snip.pattern }}</code>
+                                    </div>
+                                </div>
+                            </div>
+                            <div v-else class="empty-cell">
+                                <span class="dash">—</span>
+                            </div>
+                        </td>
+                        </template>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Detail Magnifier Modal -->
+    <Transition name="fade">
+        <div v-if="isZoomOpen && zoomedItem" class="zoom-overlay" @click.self="closeZoom">
+            <div class="zoom-content">
+                <button class="close-btn" @click="closeZoom">&times;</button>
+                
+                <div class="zoom-header">
+                    <button class="star-toggle-btn" :class="{ active: isStarred(zoomedItem) }" @click="toggleStar(zoomedItem)">
+                        {{ isStarred(zoomedItem) ? '★ Starred' : '☆ Star' }}
+                    </button>
+                    <div class="ref-pill">
+                        Ref ID: {{ zoomedItem.displayId }}
+                    </div>
+                    <div class="zoom-meta">
+                        <PatternDisplay :pattern="zoomedItem.pattern" :glyphs="glyphs" />
+                    </div>
+                </div>
+
+                <div class="zoom-body">
+                    <img v-if="zoomedItem.isDirect" class="zoom-direct-img"
+                         :src="zoomedItem.image" :alt="zoomedItem.caption || zoomedItem.pattern" />
+                    <AnnotationCutout
+                        v-else
+                        :source="zoomedItem.source"
+                        :folio="zoomedItem.folio"
+                        :points="zoomedItem.points"
+                        :width="550"
+                        :height="320"
+                        fit="contain"
+                        :hideLabel="true"
+                        :overlays="[zoomedItem]"
+                        :useFullRes="true"
+                    />
+                </div>
+
+                <div class="zoom-footer-info">
+                    <template v-if="zoomedItem.isDirect">
+                        <strong>{{ zoomedItem.source }}</strong>
+                        <span v-if="zoomedItem.caption"> &bull; {{ zoomedItem.caption }}</span>
+                        <span class="direct-badge">own snippet</span>
+                    </template>
+                    <template v-else>
+                        <strong>{{ zoomedItem.source }}</strong> &bull; Folio {{ zoomedItem.folio }} &bull; {{ zoomedItem.lineName }}
+                        <button class="btn-jump-source" @click="goToSingleManuscript(zoomedItem.source, zoomedItem.isDirect)">
+                            Open Manuscript View &rarr;
+                        </button>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </Transition>
+</div>
+</template>
+
+<style scoped>
+/* Table view switch */
+.mode-switch { display: inline-flex; border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); overflow: hidden; align-self: flex-start; }
+.mode-switch button { border: none; border-radius: 0; padding: 0.4em 0.9em; font-weight: 600; font-size: 0.88rem; background: var(--color-surface); }
+.mode-switch button + button { border-left: 1px solid var(--color-border-hover); }
+.mode-switch button.on { background: var(--color-primary); color: #fff; }
+.pseudo-head { font-weight: 700; color: var(--color-text-muted); font-size: 0.85rem; }
+.snip-code { font-size: 0.65rem; color: var(--color-text-muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Direct (non-IIIF) snippets: stored images rather than live IIIF crops. */
+.direct-img { object-fit: contain; background: var(--color-bg); border-radius: 3px; display: block; }
+.zoom-direct-img { max-width: 550px; max-height: 320px; width: auto; height: auto; object-fit: contain; background: var(--color-bg); border-radius: 6px; }
+.direct-badge { font-size: 9px; text-transform: uppercase; font-weight: 800; letter-spacing: .03em; background: var(--color-surface-muted); color: var(--color-text-muted); padding: 2px 6px; border-radius: 3px; margin-left: 6px; }
+
+.neume-table-view {
+    background: var(--color-bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.header {
+    background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-muted) 100%);
+    border-bottom: 1px solid var(--color-border);
+    padding: 30px 20px;
+}
+
+.header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.top-nav-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.nav-tab {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    padding: 6px 14px;
+    border-radius: 6px;
+    color: var(--color-text-muted);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: all 0.2s;
+}
+
+.nav-tab:hover {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+}
+
+.nav-tab.active {
+    background: var(--color-primary);
+    color: white;
+    border-color: var(--color-primary);
+}
+
+.title-stack h1 {
+    font-size: 2.2rem;
+    margin: 4px 0 0;
+    color: var(--color-text);
+    font-weight: 800;
+}
+
+.brand {
+    color: var(--color-primary-hover);
+    font-size: 0.85rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.subtitle {
+    color: var(--color-text-muted);
+    margin: 4px 0 0;
+    font-size: 1.05rem;
+}
+
+/* Controls Card */
+.controls-card {
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 24px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+}
+
+.control-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.search-input {
+    padding: 6px 12px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    width: 220px;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+}
+
+.range-slider {
+    cursor: pointer;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text);
+    cursor: pointer;
+}
+
+.ms-filter-group {
+    flex-basis: 100%;
+    margin-top: 4px;
+}
+
+.filter-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+/* --- polished control styles --- */
+.input-wrap { position: relative; display: flex; align-items: center; }
+.input-icon { position: absolute; left: 10px; font-size: 16px; color: var(--color-text-light); pointer-events: none; line-height: 1; }
+.search-input.has-icon { padding-left: 30px; padding-right: 30px; }
+.search-input::-webkit-search-cancel-button { display: none; }
+.input-clear {
+    position: absolute; right: 7px; width: 20px; height: 20px;
+    border: none; border-radius: 50%; cursor: pointer; line-height: 1; font-size: 14px;
+    background: var(--color-surface-muted); color: var(--color-text-muted);
+    display: flex; align-items: center; justify-content: center;
+}
+.input-clear:hover { background: var(--color-border-hover); color: var(--color-text); }
+.control-hint { font-size: 10px; color: var(--color-text-muted); margin-top: 4px; }
+
+.ms-filter-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.ms-selected-count { font-size: 11px; font-weight: 700; color: var(--color-primary-hover); margin-left: auto; white-space: nowrap; }
+.ms-clear { background: none; border: none; color: var(--color-text-muted); font-size: 11px; font-weight: 600; cursor: pointer; text-decoration: underline; padding: 0 0 0 4px; }
+.ms-clear:hover { color: var(--color-text); }
+.ms-filter-search {
+    width: 100%; padding: 6px 10px; margin-bottom: 8px; box-sizing: border-box;
+    border: 1px solid var(--color-border); border-radius: 6px; font-size: 12px; font-family: inherit;
+}
+/* Cap the pill area so a large project cannot push the table off screen */
+.filter-pills { max-height: 148px; overflow-y: auto; }
+.pill-dot { color: var(--color-text-muted); font-size: 14px; line-height: 0; }
+.pill-btn.active .pill-dot { color: rgba(255,255,255,.75); }
+.pill-empty { font-size: 12px; color: var(--color-text-light); font-style: italic; padding: 6px 2px; }
+
+.pill-btn {
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.pill-btn:hover {
+    background: var(--color-surface-muted);
+}
+
+.pill-btn.active {
+    background: var(--color-primary-light);
+    color: var(--color-primary-hover);
+    border-color: var(--color-primary);
+}
+
+/* Matrix Table Container */
+.table-wrapper {
+    flex: 1;
+    padding: 20px;
+    overflow: auto;
+}
+
+.matrix-container {
+    max-width: 100%;
+    overflow: auto;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+}
+
+.neume-matrix {
+    border-collapse: separate;
+    border-spacing: 0;
+    width: 100%;
+    text-align: left;
+}
+
+/* Sticky Headers and Columns */
+.sticky-col {
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 2;
+    border-right: 2px solid var(--color-border);
+}
+
+.sticky-corner {
+    position: sticky;
+    top: 34px;
+    left: 0;
+    z-index: 4;
+    background: var(--color-bg) !important;
+}
+
+.corner-cell {
+    padding: 16px 20px;
+    min-width: 220px;
+    border-bottom: 2px solid var(--color-border);
+}
+
+.corner-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text-muted);
+}
+
+/* Hierarchy group row above the pattern headers */
+.group-row th {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    height: 34px;
+    background: var(--color-surface-muted);
+    border-bottom: 1px solid var(--color-border);
+}
+.group-corner { z-index: 6; top: 0 !important; }
+.group-controls { display: flex; gap: 5px; }
+.tree-btn {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    background: var(--color-surface);
+    cursor: pointer;
+}
+
+.group-header-cell {
+    cursor: pointer;
+    padding: 6px 10px;
+    border-right: 1px solid var(--color-border);
+    white-space: nowrap;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-muted);
+    font-weight: 700;
+    text-align: left;
+}
+.group-header-cell:hover { background: var(--color-border); }
+.group-header-cell.collapsed .group-name { display: none; }
+.group-header-cell .caret { display: inline-block; transition: transform 0.15s ease; opacity: 0.6; margin-right: 4px; }
+.group-header-cell .caret.open { transform: rotate(90deg); }
+.group-count {
+    margin-left: 6px;
+    font-size: 0.65rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 9px;
+    padding: 0 6px;
+}
+
+.collapsed-cell {
+    min-width: 30px;
+    width: 30px;
+    background: var(--color-surface-muted);
+    border-right: 1px solid var(--color-border);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.pattern-header-cell {
+    position: sticky;
+    top: 34px;
+    background: var(--color-bg);
+    z-index: 3;
+    border-bottom: 2px solid var(--color-border);
+    border-right: 1px solid var(--color-border);
+    padding: 12px 14px;
+    min-width: 130px;
+    text-align: center;
+    vertical-align: top;
+}
+
+.pat-header-box {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.pat-svg-box {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pat-code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+
+/* Rows and Cells */
+.ms-cell {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: top;
+    min-width: 220px;
+}
+
+.ms-info-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ms-link {
+    background: none;
+    border: none;
+    padding: 0;
+    text-align: left;
+    color: var(--color-text);
+    font-size: 1.05rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.ms-link:hover {
+    color: var(--color-primary);
+}
+
+.link-arrow {
+    font-size: 0.9rem;
+    color: var(--color-primary);
+}
+
+.ms-title {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.snippet-cell {
+    padding: 10px;
+    border-bottom: 1px solid var(--color-border);
+    border-right: 1px solid var(--color-surface-muted);
+    vertical-align: top;
+}
+
+.snippets-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: flex-start;
+}
+
+.snippet-card {
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.snippet-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.cutout-wrapper {
+    border-radius: 4px;
+    overflow: hidden;
+    background: var(--color-bg);
+}
+
+.snip-meta {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    padding: 2px 4px 0;
+    font-size: 0.7rem;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+.snip-id {
+    font-weight: 700;
+    color: var(--color-primary-hover);
+}
+
+.snip-loc {
+    color: var(--color-text-muted);
+}
+
+.empty-cell {
+    height: 100%;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dash {
+    color: var(--color-border);
+    font-size: 1.2rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    background: white;
+    border-radius: 12px;
+    border: 1px dashed var(--color-border-hover);
+    max-width: 600px;
+    margin: 40px auto;
+}
+
+/* Modal */
+.zoom-overlay {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(4px);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+
+.zoom-content {
+    background: white; border-radius: 20px; padding: 30px; position: relative;
+    max-width: 90%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+
+.close-btn {
+    position: absolute; top: 16px; right: 20px; background: none; border: none;
+    font-size: 2rem; color: var(--color-text-light); cursor: pointer; line-height: 1;
+}
+.close-btn:hover { color: var(--color-text); }
+
+.zoom-header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.ref-pill {
+    background: var(--color-text); color: white; padding: 4px 14px; border-radius: 20px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 1rem;
+}
+
+.zoom-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+
+.zoom-body {
+    border: 1px solid var(--color-border); border-radius: 8px; overflow: hidden;
+    background: var(--color-bg); padding: 12px;
+}
+
+.zoom-footer-info {
+    font-size: 0.9rem;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.btn-jump-source {
+    background: var(--color-primary-light);
+    color: var(--color-primary-hover);
+    border: 1px solid var(--color-primary);
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.btn-jump-source:hover {
+    background: var(--color-primary);
+    color: white;
+}
+
+.star-toggle-btn {
+    background: white;
+    border: 1px solid var(--color-border);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.star-toggle-btn.active {
+    background: var(--color-warning-light, #fef3c7);
+    color: var(--color-warning, #d97706);
+    border-color: var(--color-warning, #d97706);
+}
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

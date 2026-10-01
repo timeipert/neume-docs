@@ -1,0 +1,14 @@
+{
+  "name": "cm-neumen-editor",
+  "private": true,
+  "description": "Neumen-Editor: document the neume shapes of a manuscript against the Corpus Monodicum.",
+  "scripts": {
+    "dev": "npm --prefix ui run dev",
+    "build": "npm --prefix ui run build",
+    "preview": "npm --prefix ui run preview",
+    "test": "npm --prefix ui test",
+    "build:reference": "node ui/scripts/build-cm-reference.mjs",
+    "build:glyphs": "node ui/scripts/build-glyphs.mjs",
+    "build:manual": "npm --prefix user-manual run build && rm -rf ui/public/manual && cp -r user-manual/.vitepress/dist ui/public/manual"
+  }
+}

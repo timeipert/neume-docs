@@ -1,0 +1,32 @@
+# Build output
+dist/
+ui/dist/
+
+# Node
+node_modules/
+ui/node_modules/
+user-manual/node_modules/
+user-manual/.vitepress/cache/
+user-manual/.vitepress/dist/
+
+# The built manual is generated into the app: npm run build:manual
+ui/public/manual/
+
+# Local data. The editor starts without any; never commit a corpus.
+export/
+data/
+*.monodijson
+
+# Local editor / agent config
+.claude/
+ui/.claude/
+.gemini/
+.agent/
+.antigravity/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Scratch
+ui/scripts/_*.mjs

@@ -1,0 +1,729 @@
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { usePersonalTablesStore } from '../stores/personalTables';
+import { useAnnotationsStore } from '../stores/annotations';
+import { useIiifStore } from '../stores/iiif';
+import { useSettingsStore } from '../stores/settings';
+import { useTranscriptionData } from '../composables/useTranscriptionData';
+import PatternDisplay from '../components/PatternDisplay.vue';
+import PatternCode from '../components/PatternCode.vue';
+import PatternHierarchyTree from '../components/patterns/PatternHierarchyTree.vue';
+import AnnotationCutout from '../components/AnnotationCutout.vue';
+import StateWrapper from '../components/StateWrapper.vue';
+import { useImageManifest } from '../composables/useImageManifest';
+import { buildPatternRefMap, buildManuscriptLines, getBasePattern } from '../composables/usePublicNotation';
+
+
+const route = useRoute();
+const router = useRouter();
+const tableStore = usePersonalTablesStore();
+const annotStore = useAnnotationsStore();
+const iiifStore = useIiifStore();
+const settings = useSettingsStore();
+const { glyphs, rawData, loadSource, loading: dataLoading, error: dataError } = useTranscriptionData();
+const { hasImage } = useImageManifest();
+
+const source = route.params.source;
+
+const combinedLoading = computed(() => {
+    return dataLoading.value || iiifStore.manifestStatus[source]?.status === 'loading';
+});
+const combinedError = computed(() => {
+    if (iiifStore.manifestStatus[source]?.status === 'error') return iiifStore.manifestStatus[source].error;
+    if (dataError.value) return dataError.value;
+    return null;
+});
+const isDataEmpty = computed(() => {
+    return !combinedLoading.value && table.value && table.value.rows.length === 0;
+});
+function retryLoad() {
+    if (iiifStore.manifestStatus[source]?.status === 'error') iiifStore.ensureLoaded(source);
+}
+
+const zoomedItem = ref(null);
+const isZoomOpen = ref(false);
+
+const highlightedLineId = ref(null);
+const highlightedPattern = ref(null);
+const highlightedAnnotationId = ref(null);
+
+function handleZoom(item) {
+    router.push({ query: { ...route.query, zoomId: item.id } });
+}
+
+function closeZoom() {
+    router.push({ query: { ...route.query, zoomId: undefined } });
+}
+
+
+function scrollToLine(regionId, annId) {
+    const el = document.getElementById(`line-${regionId}`);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        highlightedLineId.value = regionId;
+        highlightedAnnotationId.value = annId;
+        setTimeout(() => {
+            highlightedLineId.value = null;
+            highlightedAnnotationId.value = null;
+        }, 3000);
+    }
+}
+
+function scrollToPattern(pattern) {
+    const el = document.getElementById(`pattern-${pattern}`);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        highlightedPattern.value = pattern;
+        setTimeout(() => highlightedPattern.value = null, 2000);
+    }
+}
+
+const starredIdsSet = computed(() => {
+    const set = new Set();
+    for (const sid of tableStore.starredItems) {
+        if (sid.startsWith(source + '|')) {
+            const parts = sid.split('|');
+            set.add(parts[parts.length - 1]); // the ann.id
+        }
+    }
+    return set;
+});
+
+function toggleStar(item) {
+    const sid = `${source}|${item.folio}|${item.pattern}|${item.id}`;
+    tableStore.toggleStarred(sid);
+}
+
+function isStarred(item) {
+    const sid = `${source}|${item.folio}|${item.pattern}|${item.id}`;
+    return tableStore.starredItems.has(sid);
+}
+
+onMounted(async () => {
+    // Ensure IIIF manifest is loaded for snippets to work
+    await iiifStore.ensureLoaded(source);
+    await loadSource(source);
+});
+const table = computed(() => tableStore.tables.find(t => t.source === source));
+
+// Build a map of Ref IDs for each pattern (shared with the static exporter)
+const patternRefMap = computed(() => buildPatternRefMap(table.value, settings.getGlobalId));
+
+/** Every pattern code listed: the table's rows, in hierarchy order. */
+const listedCodes = computed(() => {
+    const set = new Set();
+    for (const row of table.value?.rows || []) {
+        const code = getBasePattern(row.pattern);
+        if (code) set.add(code);
+    }
+    return Array.from(set);
+});
+
+const treeRef = ref(null);
+
+// Extract all lines from both transcription data AND annotations (shared with the static exporter)
+const manuscriptLines = computed(() => buildManuscriptLines({
+    source,
+    rawDataForSource: rawData.value[source],
+    regions: annotStore.regions,
+    regionItems: annotStore.regionItems,
+    patternRefMap: patternRefMap.value,
+    signKeys: settings.customSigns.map(s => s.key),
+    discriminateSigns: settings.discriminateSigns
+}));
+
+// For the Patterns table: map pattern -> { variant -> Set({ label, regionId, annId }) }
+const patternOccurrences = computed(() => {
+    const map = {};
+    const lines = manuscriptLines.value || [];
+    for (const line of lines) {
+        const lineLabel = `${line.folio} / ${line.lineName}`;
+        for (const item of line.items || []) {
+            if (!item || !item.pattern) continue;
+            if (!map[item.pattern]) map[item.pattern] = {};
+            const vKey = item.variant || '_base';
+            if (!map[item.pattern][vKey]) map[item.pattern][vKey] = new Set();
+            
+            map[item.pattern][vKey].add({ 
+                label: lineLabel, 
+                regionId: line.regionId,
+                annId: item.id
+            });
+        }
+    }
+    return map;
+});
+
+watch([() => route.query.zoomId, manuscriptLines], ([zId, groups]) => {
+    if (zId && groups && groups.length > 0) {
+        let found = null;
+        for (const group of groups) {
+            for (const item of group.items) {
+                if (String(item.id) === String(zId)) {
+                    found = item;
+                    break;
+                }
+            }
+            if (found) break;
+        }
+        if (found) {
+            zoomedItem.value = found;
+            isZoomOpen.value = true;
+        } else {
+            isZoomOpen.value = false;
+        }
+    } else if (!zId) {
+        isZoomOpen.value = false;
+        zoomedItem.value = null;
+    }
+}, { immediate: true });
+
+</script>
+
+<template>
+<div v-if="!table" class="error-state">
+    Manuscript not found or not published.
+    <button @click="router.push('/public')">Back to Directory</button>
+</div>
+<div v-else class="public-notation-view">
+    <header class="header">
+        <div class="header-content">
+            <div class="top-nav-bar">
+                <button class="back-link" @click="router.push('/public')">
+                    <span class="icon">&larr;</span> Back to Directory
+                </button>
+                <button class="back-link" @click="router.push('/public/table')">
+                    Neumentabelle (Comparison) &rarr;
+                </button>
+            </div>
+            <div class="title-stack">
+                <div class="brand">
+                    Notationsdokumentation
+                    <span class="info-icon" title="This page provides a detailed index of transcription patterns and their corresponding locations within the manuscript. Patterns are identified by Ref IDs, which are cross-referenced with the annotated line gallery below.">?</span>
+                </div>
+                <h1>{{ source }}</h1>
+                <p class="subtitle">{{ table.name }}</p>
+                <div class="notes-text" v-if="table.notes">{{ table.notes }}</div>
+            </div>
+        </div>
+    </header>
+
+    <StateWrapper 
+        :loading="combinedLoading"
+        :error="combinedError"
+        :empty="isDataEmpty"
+        loadingText="Loading notation and images..."
+        emptyText="This manuscript currently has no annotations to display."
+        @retry="retryLoad"
+    >
+    <div class="main-content">
+
+
+        <!-- Section 1: Patterns Overview -->
+        <section class="section table-section">
+            <div class="section-header">
+                <h2>Patterns &amp; Equivalents</h2>
+                <span class="badge">{{ listedCodes.length }} Patterns</span>
+                <span class="spacer"></span>
+                <button class="tree-btn" @click="treeRef?.expandAll()">Expand all</button>
+                <button class="tree-btn" @click="treeRef?.collapseAll()">Collapse</button>
+            </div>
+
+            <PatternHierarchyTree
+                ref="treeRef"
+                :codes="listedCodes"
+                emptyText="No patterns."
+                v-slot="{ code }"
+            >
+                <div class="pattern-entry"
+                     :id="`pattern-${code}`"
+                     :class="{ 'row-highlight': highlightedPattern === code }">
+                    <div class="entry-head">
+                        <span class="entry-glyph">
+                            <PatternDisplay :pattern="code" :glyphs="glyphs" />
+                        </span>
+                        <button class="entry-code btn-scroll-link" @click="scrollToPattern(code)">
+                            <PatternCode :pattern="code" />
+                        </button>
+                        <span class="entry-ref" v-if="patternRefMap[code] && patternRefMap[code] !== '-'"
+                              title="Ref ID (printed volume)">Ref {{ patternRefMap[code] }}</span>
+                    </div>
+
+                    <div class="entry-occurrences">
+                        <div v-if="patternOccurrences?.[code]" class="variant-groups">
+                            <div v-for="(locs, variant) in patternOccurrences[code]" :key="variant" class="variant-group">
+                                <div class="variant-header" v-if="variant !== '_base'">
+                                    Variant {{ variant }}
+                                </div>
+                                <div class="loc-list">
+                                    <span v-for="loc in Array.from(locs)" :key="loc.annId"
+                                          class="loc-tag clickable"
+                                          @click="scrollToLine(loc.regionId, loc.annId)">
+                                        {{ loc.label }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <span v-else class="no-data">None</span>
+                    </div>
+                </div>
+            </PatternHierarchyTree>
+        </section>
+
+        <!-- Section 2: Manuscript Line Gallery -->
+        <section class="section lines-section">
+            <div class="section-header">
+                <h2>Manuscript Line Gallery</h2>
+                <span class="badge">{{ manuscriptLines.length }} Entries</span>
+                <span class="hint">Includes all transcription occurrences and annotated polygons</span>
+            </div>
+
+            <div v-if="manuscriptLines.length === 0" class="empty-msg">
+                No annotated manuscript lines found for this source.
+            </div>
+
+            <div class="lines-list">
+            <div v-for="line in manuscriptLines" :key="line.regionId || (line.folio + line.lineName)" 
+                 :id="`line-${line.regionId || (line.folio + line.lineName)}`"
+                 class="line-card"
+                 :class="{ 'line-highlight': highlightedLineId === (line.regionId || (line.folio + line.lineName)) }">
+                <div class="line-header">
+                    <h3>
+                        <span class="fol">{{ line.folio }}</span>
+                        <span class="divider">/</span>
+                        <span class="num">{{ line.lineName }}</span>
+                    </h3>
+                    <div class="line-tags">
+                        <span v-for="item in line.items" :key="item.id" 
+                              class="ref-tag clickable"
+                              @click="scrollToPattern(item.pattern)">
+                            {{ item.displayId }}
+                        </span>
+                    </div>
+                </div>
+                    
+                    <div class="line-content">
+                        <AnnotationCutout 
+                            v-if="hasImage(source, line.folio) && line.points"
+                            :source="source" 
+                            :folio="line.folio" 
+                            :points="line.points"
+                            :width="1200" 
+                            :height="200" 
+                            fit="cover"
+                            :padding="0.05"
+                            :hideLabel="true"
+                            :overlays="line.items"
+                            :highlightId="highlightedAnnotationId"
+                            :starredIds="starredIdsSet"
+                            @zoom-item="handleZoom"
+                        />
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+    </StateWrapper>
+
+    <!-- Magnifier Modal -->
+    <Transition name="fade">
+        <div v-if="isZoomOpen" class="zoom-overlay" @click.self="closeZoom">
+            <div class="zoom-content">
+                <button class="close-btn" @click="closeZoom">&times;</button>
+                
+                <div class="zoom-header">
+                    <button class="star-toggle-btn" :class="{active: isStarred(zoomedItem)}" @click="toggleStar(zoomedItem)">
+                        {{ isStarred(zoomedItem) ? '★ Starred' : '☆ Star' }}
+                    </button>
+                    <button class="ref-pill clickable" @click="scrollToPattern(zoomedItem.pattern); closeZoom()">
+                        {{ zoomedItem.displayId }}
+                    </button>
+                    <div class="zoom-meta">
+                        <PatternDisplay :pattern="zoomedItem.pattern" :glyphs="glyphs" />
+                        <PatternCode :pattern="zoomedItem.pattern" />
+                    </div>
+                </div>
+
+                <div class="zoom-body">
+                    <AnnotationCutout 
+                        v-if="zoomedItem"
+                        :source="source" 
+                        :folio="zoomedItem.folio" 
+                        :points="zoomedItem.points"
+                        :width="600" 
+                        :height="350" 
+                        fit="contain"
+                        :hideLabel="true"
+                        :overlays="[zoomedItem]"
+                        :useFullRes="true"
+                    />
+                </div>
+                <p class="zoom-caption">Detail View • <span class="clickable" @click="scrollToLine(zoomedItem.regionId, zoomedItem.id); closeZoom()">Ref ID {{ zoomedItem.displayId }}</span></p>
+            </div>
+        </div>
+    </Transition>
+</div>
+</template>
+
+<style scoped>
+.public-notation-view {
+    background: var(--color-bg);
+    min-height: 100vh;
+}
+
+.header {
+    background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-muted) 100%);
+    border-bottom: 1px solid var(--color-border);
+    padding: 40px 20px;
+}
+
+.header-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.top-nav-bar {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.back-link {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    border-radius: 20px;
+    width: fit-content;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+.back-link:hover {
+    color: var(--color-primary-hover);
+    border-color: var(--color-primary-hover);
+    background: var(--color-primary-light);
+}
+
+.title-stack h1 {
+    margin: 4px 0 0 0;
+    font-size: 2.8rem;
+    color: var(--color-text);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.brand {
+    color: var(--color-primary-hover);
+    font-size: 0.9rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: -4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: var(--color-border-hover);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: bold;
+    cursor: help;
+    transition: background 0.2s;
+}
+.info-icon:hover {
+    background: var(--color-primary);
+}
+
+.notes-text {
+    margin-top: 12px;
+    color: var(--color-text);
+    font-size: 1.05rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    max-width: 800px;
+}
+
+.subtitle {
+    margin: 4px 0 0 0;
+    color: var(--color-text-muted);
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.main-content {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 50px;
+}
+
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 12px;
+}
+
+.section-header h2 {
+    margin: 0;
+    color: var(--color-text);
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.badge {
+    background: var(--color-primary-hover);
+    color: var(--color-surface);
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.spacer { flex: 1; }
+.tree-btn {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: white;
+    cursor: pointer;
+}
+
+/* One pattern entry inside the hierarchy */
+.pattern-entry {
+    background: white;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 8px 12px;
+}
+.entry-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.entry-glyph { min-width: 42px; display: flex; justify-content: center; }
+.entry-code { background: none; border: none; padding: 0; cursor: pointer; }
+.entry-code :deep(.pattern-code) { font-size: 0.95rem; font-weight: 800; color: var(--color-text); }
+.entry-code:hover :deep(.pattern-code) { color: var(--color-primary-hover); }
+.entry-ref {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    padding: 1px 8px;
+}
+.entry-occurrences { margin-top: 6px; padding-left: 52px; }
+
+/* Glyphs plus the code beneath: with code variants the distinction can be a
+   single letter, so the code is shown as a caption under the notation. */
+.pattern-cell { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.zoom-meta { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+
+.variant-groups { display: flex; flex-direction: column; gap: 6px; }
+.variant-group { display: flex; flex-direction: column; gap: 2px; }
+.variant-header { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: var(--color-text-muted); letter-spacing: 0.05em; }
+
+.loc-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.loc-tag {
+    background: var(--color-primary-light);
+    border: 1px solid var(--color-primary-light);
+    padding: 1px 8px;
+    border-radius: 4px;
+    color: var(--color-primary-dark);
+    font-weight: 600;
+    font-size: 0.75rem;
+}
+
+.loc-tag.clickable:hover {
+    background: var(--color-primary-hover); color: white; border-color: var(--color-primary-active);
+}
+
+.no-data { color: var(--color-text-light); font-style: italic; font-size: 0.85rem; }
+
+.ref-tag.clickable { cursor: pointer; transition: all 0.2s; }
+.ref-tag.clickable:hover { background: var(--color-border); color: var(--color-text); border-color: var(--color-text-light); }
+
+.line-highlight {
+    background: var(--color-primary-light) !important;
+    outline: 2px solid var(--color-primary);
+    outline-offset: 8px;
+    transition: all 0.5s ease;
+}
+
+.row-highlight {
+    background: var(--color-primary-light) !important;
+    transition: all 0.5s ease;
+}
+
+.btn-scroll-link {
+    background: none; border: none; padding: 0; color: inherit; cursor: pointer; text-align: left;
+}
+.btn-scroll-link:hover { text-decoration: underline; color: var(--color-primary-hover); }
+
+.clickable { cursor: pointer; }
+
+/* Lines Gallery Styles */
+.lines-list { display: flex; flex-direction: column; gap: 30px; }
+
+.line-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--color-border);
+}
+.faded { opacity: 0.5; pointer-events: none; }
+
+
+.line-header {
+    padding: 10px 15px;
+    background: var(--color-bg);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.line-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.divider { color: var(--color-border-hover); font-weight: 400; }
+
+.line-tags { display: flex; gap: 10px; flex-wrap: wrap; }
+.ref-tag {
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-family: 'JetBrains Mono', monospace;
+    border: 1px solid var(--color-border);
+}
+
+.line-image {
+    padding: 0;
+    background: transparent;
+    display: flex;
+    justify-content: flex-start;
+    border-radius: 0;
+    overflow: visible;
+}
+
+.error-state {
+    padding: 100px; text-align: center; color: var(--color-text-muted); font-size: 1.2rem;
+}
+.error-state button { margin-top: 20px; padding: 10px 20px; font-size: 1rem; cursor: pointer; }
+
+/* Magnifier Modal */
+.zoom-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(15, 23, 42, 0.9); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+
+.zoom-content {
+    background: white; border-radius: 24px; padding: 40px; position: relative;
+    max-width: 90%; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    display: flex; flex-direction: column; align-items: center; gap: 24px;
+}
+
+.close-btn {
+    position: absolute; top: 20px; right: 24px; background: none; border: none;
+    font-size: 2rem; color: var(--color-text-light); cursor: pointer; line-height: 1;
+}
+.close-btn:hover { color: var(--color-text); }
+
+.zoom-header { display: flex; align-items: center; gap: 20px; }
+.ref-pill {
+    background: var(--color-text); color: var(--color-surface); padding: 6px 16px; border-radius: 30px;
+    font-family: 'JetBrains Mono', monospace; font-weight: 800; font-size: 1.2rem;
+}
+
+.zoom-body {
+    border: 1px solid var(--color-border); border-radius: 12px; overflow: hidden;
+    background: var(--color-bg); padding: 20px;
+}
+
+.zoom-caption { color: var(--color-text-muted); font-weight: 600; font-size: 0.9rem; margin: 0; }
+
+/* Optimized High-Density Virtual Gallery */
+.v-line-row {
+    background: white; border: 1px solid var(--color-border); border-radius: 8px; 
+    margin-bottom: 16px; display: flex; flex-direction: column; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.v-line-header { background: var(--color-bg); padding: 8px 16px; border-bottom: 1px solid var(--color-border); }
+.v-line-info { display: flex; justify-content: space-between; align-items: center; }
+.v-fol-line { font-weight: 800; font-size: 0.8rem; color: var(--color-text); font-family: monospace; }
+.v-status-badges { display: flex; gap: 6px; }
+.v-badge { font-size: 0.6rem; padding: 2px 8px; border-radius: 10px; font-weight: 700; text-transform: uppercase; }
+.v-badge.warn { background: var(--color-danger-light); color: var(--color-danger); border: 1px solid var(--color-danger-light); }
+.v-badge.info { background: var(--color-primary-light); color: var(--color-primary); border: 1px solid var(--color-primary-light); }
+
+.v-tokens-list { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; background: var(--color-surface); }
+.v-token-compact {
+    border: 1px solid var(--color-surface-muted); border-radius: 6px; background: var(--color-surface);
+    padding: 6px 10px; min-width: 90px; transition: all 0.2s;
+    display: flex; flex-direction: column;
+}
+.v-token-compact.starred { background: var(--color-warning-light); border-color: var(--color-warning); }
+.v-token-main { display: flex; flex-direction: column; gap: 4px; }
+.v-token-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+.v-token-id { font-size: 0.7rem; font-weight: 800; color: var(--color-text-light); font-family: monospace; }
+.v-token-star { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--color-border-hover); padding: 0; line-height: 1; }
+.v-token-compact.starred .v-token-star { color: var(--color-warning); }
+
+.v-token-meta { margin-top: 4px; border-top: 1px solid var(--color-surface-muted); padding-top: 4px; }
+.v-syl { font-size: 0.75rem; font-weight: 800; color: var(--color-text); display: block; }
+.v-pitch { font-size: 0.65rem; color: var(--color-text-muted); font-family: monospace; display: block; }
+
+
+.hint { font-size: 0.8rem; color: var(--color-text-light); font-style: italic; }
+
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.3s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+
+.w-70 { width: 70px; }
+.w-140 { width: 140px; }
+
+@media (max-width: 768px) {
+    .header-content { align-items: flex-start; }
+    .title-stack h1 { font-size: 2rem; }
+    .entry-occurrences { padding-left: 0; }
+    .table-column { width: 100%; overflow-x: auto; }
+    .zoom-content { padding: 20px; width: 95vw; }
+    .zoom-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .ref-pill { align-self: flex-start; }
+}
+</style>

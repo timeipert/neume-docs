@@ -1,89 +1,33 @@
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue';
+import { ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
-import { collectFromFileList, collectFromDrop, runImport } from '../services/corpus/corpusImport';
-import { DEFAULT_SKIPPED_SUFFIXES } from '../services/corpus/corpusReader';
+import { useCorpusImport } from '../composables/useCorpusImport';
+import { collectFromFileList, collectFromDrop } from '../services/corpus/corpusImport';
 
 const router = useRouter();
-const { catalog, sourceNames, hasCorpus, corpusSummary, loading, refresh, removeSource, clearAll } = useTranscriptionData();
+const { catalog, sourceNames, hasCorpus, corpusSummary, loading, removeSource, clearAll } = useTranscriptionData();
+const {
+    phase, importedNow, result, errorMessage, busy, percent, statusLine, start, cancel, reset
+} = useCorpusImport();
 
-const phase = ref('idle'); // idle | collecting | importing | done | error
-const progress = ref({ doneDocs: 0, totalDocs: 0, doneSources: 0, totalSources: 0, source: '', phase: '' });
-const importedNow = ref([]);
-const result = ref(null);
-const errorMessage = ref('');
 const dragging = ref(false);
 const skipWorkingCopies = ref(true);
 const filter = ref('');
-let current = null;
 
-const busy = computed(() => phase.value === 'collecting' || phase.value === 'importing');
-
-const percent = computed(() => {
-    const p = progress.value;
-    if (p.phase === 'json') return null;
-    return p.totalDocs ? Math.min(100, Math.round((p.doneDocs / p.totalDocs) * 100)) : 0;
-});
-
-const statusLine = computed(() => {
-    const p = progress.value;
-    if (phase.value === 'collecting') return 'Looking through the selection…';
-    if (p.phase === 'scan') return 'Unpacking and listing files…';
-    if (p.phase === 'json') return `Reading ${p.file}…`;
-    return `${p.source || '…'} — ${p.doneDocs} of ${p.totalDocs} documents, ${p.doneSources} of ${p.totalSources} sources`;
-});
-
-async function start(items) {
-    if (busy.value) return;
-    errorMessage.value = '';
-    result.value = null;
-    importedNow.value = [];
-
-    if (!items.length) {
-        phase.value = 'error';
-        errorMessage.value = 'No .monodijson, .json or .zip files found in that selection.';
-        return;
-    }
-
-    phase.value = 'importing';
-    progress.value = { doneDocs: 0, totalDocs: 0, doneSources: 0, totalSources: 0, source: '', phase: 'scan' };
-
-    try {
-        current = runImport(items, {
-            skipSuffixes: skipWorkingCopies.value ? DEFAULT_SKIPPED_SUFFIXES : [],
-            onProgress: (p) => { progress.value = { ...progress.value, ...p }; },
-            onSource: (record) => { importedNow.value.push(record.name); }
-        });
-        result.value = await current.promise;
-        await refresh();
-        phase.value = 'done';
-    } catch (e) {
-        console.error(e);
-        errorMessage.value = e.message || String(e);
-        phase.value = 'error';
-        await refresh();
-    } finally {
-        current = null;
-    }
-}
-
-function cancel() {
-    if (current) current.abort();
-}
+const begin = (items) => start(items, { skipWorkingCopies: skipWorkingCopies.value });
 
 async function onPick(event) {
     const items = collectFromFileList(event.target.files);
     event.target.value = '';
-    await start(items);
+    await begin(items);
 }
 
 async function onDrop(event) {
     dragging.value = false;
-    phase.value = 'collecting';
+    if (busy.value) return;
     const items = await collectFromDrop(event.dataTransfer);
-    phase.value = 'idle';
-    await start(items);
+    await begin(items);
 }
 
 async function remove(name) {
@@ -94,8 +38,7 @@ async function remove(name) {
 async function removeAll() {
     if (!window.confirm('Remove the whole loaded corpus? Your tables and annotations are kept; you can import the data again at any time.')) return;
     await clearAll();
-    phase.value = 'idle';
-    result.value = null;
+    reset();
 }
 
 const rows = computed(() => {
@@ -120,8 +63,6 @@ const rows = computed(() => {
 });
 
 const fmt = (n) => n.toLocaleString('en-US');
-
-onBeforeUnmount(() => { if (current) current.abort(); });
 </script>
 
 <template>

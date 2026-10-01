@@ -11,7 +11,7 @@ It is the successor of the earlier *Neume Viewer* (CM-Transcription-Equivalents)
 - **`.monodijson`** — a Monodi-Zero workspace (`{ sources, documents, notes }`), or a single-source bundle.
 - **Corpus Monodicum project** — a folder or ZIP laid out as `source/meta.json`, `source/document/meta.json`, `source/document/data.json` (monodi+ export). The whole project, one source or one document.
 
-Files are read in a Web Worker and stored in IndexedDB. The entire CM (116 sources, ~6,000 documents, ~950,000 neumes, 1.8 GB) loads in about 15 seconds and survives a reload. Nothing leaves the browser.
+Files are read in a Web Worker and stored in IndexedDB. The entire CM (112 sources, ~6,000 documents, ~950,000 neumes, 1.8 GB) loads in about 15 seconds and survives a reload. Nothing leaves the browser.
 
 ### The neume table (new)
 

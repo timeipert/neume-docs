@@ -15,7 +15,7 @@ A project folder may be the whole project, a single source, or a single document
 
 1. Open **Corpus** in the navigation bar.
 2. Drop files or a folder onto the page, or use **Choose files…** / **Choose a project folder…**.
-3. Wait for the import to finish. The whole Corpus Monodicum (about 1.8 GB, 116 sources, 6,000 documents) takes under a minute.
+3. Wait for the import to finish. The whole Corpus Monodicum (about 1.8 GB, 112 sources, 6,000 documents) takes under a minute.
 
 Everything is read **in your browser** and kept in its local storage. Nothing is uploaded. Because the browser owns the storage, clearing the site data for this page removes the loaded corpus — you can simply import it again. Your tables and annotations are stored separately and are not affected.
 

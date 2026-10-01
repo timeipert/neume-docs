@@ -4,13 +4,15 @@ import { useAnnotationsStore } from '../stores/annotations';
 import { useSettingsStore } from '../stores/settings';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useTranscriptionData } from './useTranscriptionData';
+import { usePatternCatalog } from './usePatternCatalog';
 import { getBaseCode } from '../utils/patternCode';
 import { stripSignKeys } from '../utils/signs';
 
 /**
  * Collects every pattern the workspace knows about:
  *
- *   1. the transcription data (for the sources already loaded),
+ *   0. the whole pattern library of the Corpus Monodicum (the built-in snapshot),
+ *   1. the loaded transcription data,
  *   2. the manuscripts' equivalent tables,
  *   3. the polygon annotations,
  *   4. the project's code variants (settings.codeVariants),
@@ -26,7 +28,8 @@ export function usePatternIndex() {
     const annotStore = useAnnotationsStore();
     const settings = useSettingsStore();
     const library = usePatternLibraryStore();
-    const { rawData, glyphs, loadSource, loading } = useTranscriptionData();
+    const { catalog, glyphs, loadSource, loading } = useTranscriptionData();
+    const { freq, allCodes: libraryCodes } = usePatternCatalog();
 
     const signKeys = computed(() => settings.customSigns.map(s => s.key));
 
@@ -60,6 +63,7 @@ export function usePatternIndex() {
                 map.set(key, {
                     code: key,
                     sources: new Set(),
+                    cmCount: freq.value.code(key),
                     dataCount: 0,
                     annotationCount: 0,
                     manual: false,
@@ -71,13 +75,16 @@ export function usePatternIndex() {
             return map.get(key);
         };
 
-        // 1. Transcription data
-        for (const [source, patterns] of Object.entries(rawData.value || {})) {
-            for (const [pattern, occs] of Object.entries(patterns || {})) {
+        // 0. The whole library: every code the CM snapshot and the loaded corpus know
+        for (const code of libraryCodes.value) entry(code);
+
+        // 1. Transcription data: counts per source, straight from the catalog
+        for (const [source, record] of Object.entries(catalog.value || {})) {
+            for (const [pattern, count] of Object.entries(record.counts || {})) {
                 const e = entry(pattern);
                 if (!e) continue;
                 e.sources.add(source);
-                e.dataCount += Array.isArray(occs) ? occs.length : 0;
+                e.dataCount += count;
             }
         }
 

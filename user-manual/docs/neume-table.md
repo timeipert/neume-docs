@@ -34,7 +34,14 @@ What a manuscript needs beyond the standard table goes into the **expanded docum
 - **Add a pattern by code.** Search the whole pattern library — `*udL` finds every way of writing it; with brackets (`[*u]d`) the code must match exactly.
 - **Found in this manuscript.** Patterns the loaded transcriptions contain but the table does not yet cover are offered directly.
 
-Each addition appears in the table at its place in the ordering.
+Each addition appears in the table at its place in the ordering. The search sits beside the table, so you see every addition at once.
+
+## Working in the editor
+
+- The bar under the title shows the 17 cells of the standard table as segments; click a segment to jump to its cell. A filled segment is done; a special-sign segment fills up to three.
+- Click the glyph area of a cell to open its pattern library. Empty cells show a faint drawing of their neume.
+- Removing a pattern shows an **Undo** message for a few seconds; Undo restores the pattern with its Ref ID and notes.
+- The **Published** switch decides whether the manuscript appears in the comparison table.
 
 ## Three views of the same data
 

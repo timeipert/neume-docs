@@ -19,7 +19,9 @@ const props = defineProps({
     forceOpen: { type: Boolean, default: false },
     // Show "n" badges next to group headers
     showCounts: { type: Boolean, default: true },
-    emptyText: { type: String, default: 'Keine Pattern vorhanden.' }
+    emptyText: { type: String, default: 'No patterns.' },
+    // Order of the codes inside a group; defaults to tones, then plainness, then alphabet
+    compare: { type: Function, default: null }
 });
 
 const settings = useSettingsStore();
@@ -28,7 +30,8 @@ const settings = useSettingsStore();
 // apart from a built-in note-shape suffix.
 const tree = computed(() => buildPatternHierarchy(props.codes, {
     signKeys: settings.customSigns.map(s => s.key),
-    customSigns: settings.customSigns
+    customSigns: settings.customSigns,
+    compare: props.compare || undefined
 }));
 
 // Open state keyed by path, so expanding survives re-renders of the tree

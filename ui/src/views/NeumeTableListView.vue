@@ -154,10 +154,10 @@ const open = (name) => router.push(`/table/${encodeURIComponent(name)}`);
 .ms-foot { display: flex; align-items: center; justify-content: space-between; font-size: 0.82rem; color: var(--color-text-muted); margin-top: 2px; }
 .ms-foot strong { color: var(--color-text); }
 .plus { color: var(--color-accent-dark); font-weight: 600; }
-.dim { color: var(--color-text-light); }
+.dim { color: var(--color-text-muted); }
 .go { color: var(--color-text-light); transition: transform 0.15s, color 0.15s; }
 .ms:hover .go { color: var(--color-primary); transform: translateX(3px); }
-.none { grid-column: 1 / -1; text-align: center; color: var(--color-text-light); font-style: italic; padding: var(--space-5); }
+.none { grid-column: 1 / -1; text-align: center; color: var(--color-text-muted); font-style: italic; padding: var(--space-5); }
 
 .empty { text-align: center; padding: var(--space-6) var(--space-4); max-width: 480px; margin: 0 auto; }
 .empty-art svg { fill: var(--color-primary-muted); }

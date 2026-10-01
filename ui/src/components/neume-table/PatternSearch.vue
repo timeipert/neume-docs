@@ -107,6 +107,6 @@ const fmt = (n) => n.toLocaleString('en-US');
 .r-meta strong { color: var(--color-success-dark); font-weight: 600; }
 .r-add { color: var(--color-primary); font-weight: 700; font-size: 1.15rem; opacity: 0.4; }
 .result:hover .r-add { opacity: 1; }
-.empty { color: var(--color-text-light); font-style: italic; margin: var(--space-2) 0 0; font-size: 0.88rem; }
+.empty { color: var(--color-text-muted); font-style: italic; margin: var(--space-2) 0 0; font-size: 0.88rem; }
 .more { margin-top: var(--space-3); align-self: flex-start; }
 </style>

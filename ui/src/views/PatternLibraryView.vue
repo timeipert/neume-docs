@@ -15,6 +15,8 @@ import { ref, computed, onMounted } from 'vue';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useSettingsStore } from '../stores/settings';
 import { usePatternIndex } from '../composables/usePatternIndex';
+import { usePatternCatalog } from '../composables/usePatternCatalog';
+import { compareCodes } from '../utils/neumeTable';
 import { parsePatternCode, getBaseCode } from '../utils/patternCode';
 import { stripSignKeys } from '../utils/signs';
 
@@ -32,9 +34,15 @@ const {
     sources, loadAllSources, index, allCodes, getInfo, refIdFor, signKeys, glyphs, loading
 } = usePatternIndex();
 
+const { freq } = usePatternCatalog();
+/** Inside a group: fewer tones first, then more frequent in the CM. */
+const byTonesThenFrequency = (a, b) => compareCodes(a, b, freq.value);
+
 onMounted(() => {
     loadAllSources();
 });
+
+const fmt = (n) => n.toLocaleString('en-US');
 
 // --- Filtering ---
 const search = ref('');
@@ -236,8 +244,8 @@ const stats = computed(() => ({
         <div class="header-main">
             <h2>Pattern Library</h2>
             <p class="subtitle">
-                All notation shapes of this workspace — collected from the transcription data,
-                the annotations and the code variants, and extendable with shapes that exist only on scans.
+                Every notation shape the editor knows — the whole Corpus Monodicum, your loaded corpus, the
+                annotations and the code variants — and extendable with shapes that exist only on scans.
             </p>
         </div>
         <div class="header-stats">
@@ -376,6 +384,7 @@ const stats = computed(() => ({
             ref="treeRef"
             :codes="filteredCodes"
             :forceOpen="!!search.trim()"
+            :compare="byTonesThenFrequency"
             emptyText="No patterns found."
             v-slot="{ code }"
         >
@@ -403,8 +412,12 @@ const stats = computed(() => ({
                             Ref {{ refIdFor(code) }}
                         </span>
                         <span class="count-chip"
-                              :title="`${getInfo(code)?.dataCount || 0} occurrences in the transcription data, ${getInfo(code)?.annotationCount || 0} annotations`">
-                            {{ getInfo(code)?.dataCount || 0 }} / {{ getInfo(code)?.annotationCount || 0 }}
+                              :title="`${fmt(getInfo(code)?.cmCount || 0)} occurrences in the Corpus Monodicum, ${fmt(getInfo(code)?.dataCount || 0)} in your loaded corpus`">
+                            {{ fmt(getInfo(code)?.cmCount || getInfo(code)?.dataCount || 0) }}×
+                        </span>
+                        <span v-if="getInfo(code)?.annotationCount" class="count-chip count-chip--ann"
+                              :title="`${getInfo(code).annotationCount} annotated snippets`">
+                            {{ getInfo(code).annotationCount }} annotated
                         </span>
                     </span>
                 </div>
@@ -632,7 +645,8 @@ const stats = computed(() => ({
 .manual-chip { background: var(--color-warning-light); color: var(--color-warning-dark); }
 .mei-chip { background: var(--color-primary-light); color: var(--color-primary-dark); }
 .variant-chip { background: var(--color-primary); color: #fff; }
-.count-chip { color: var(--color-text-light); font-family: monospace; font-weight: 600; }
+.count-chip { color: var(--color-text-muted); font-family: monospace; font-weight: 600; }
+.count-chip--ann { background: var(--color-primary-light); color: var(--color-primary-dark); font-family: inherit; }
 
 .row-detail { padding: 12px 14px 14px; border-top: 1px solid var(--color-border); background: var(--color-bg); }
 .detail-fields { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }

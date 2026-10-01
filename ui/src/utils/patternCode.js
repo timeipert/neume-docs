@@ -181,7 +181,7 @@ export function modifierLabel(key, customSigns = []) {
  * @param {{signKeys?: string[], customSigns?: Array}} [options]
  */
 export function buildPatternHierarchy(codes, options = {}) {
-    const { signKeys = [], customSigns = [] } = options;
+    const { signKeys = [], customSigns = [], compare = null } = options;
     const order = ['base', 'up', 'down', 'same', 'mixed'];
     const ligOrder = ['open', 'partial', 'connected'];
 
@@ -220,7 +220,7 @@ export function buildPatternHierarchy(codes, options = {}) {
 
             const modGroups = modKeys.map(modKey => {
                 const list = modMap.get(modKey).slice()
-                    .sort((a, b) => comparePatternCodes(a, b, signKeys));
+                    .sort(compare || ((a, b) => comparePatternCodes(a, b, signKeys)));
                 return {
                     key: modKey || '_base',
                     label: modifierLabel(modKey, customSigns),

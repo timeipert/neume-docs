@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import { useSettingsStore } from '../stores/settings';
 import { useDataManagement } from '../composables/useDataManagement';
 import SvgPattern from '../components/SvgPattern.vue';
@@ -444,11 +444,45 @@ const alignPreview = computed(() => {
     const iiifStr = indexToFolio(iiifIdx, editingAlignment.value.iiifType);
     return `Data [${startStr}] ➔ IIIF [${iiifStr || 'Invalid'}]`;
 });
+
+// "On this page": a section index built from the cards, with the current one highlighted.
+const pageRoot = ref(null);
+const toc = ref([]);
+const activeSection = ref('');
+let sectionObserver = null;
+
+onMounted(async () => {
+    await nextTick();
+    const headings = pageRoot.value ? [...pageRoot.value.querySelectorAll('.card.section > h2')] : [];
+    toc.value = headings.map((el, i) => {
+        if (!el.id) el.id = `settings-section-${i}`;
+        return { id: el.id, text: el.textContent.trim() };
+    });
+    if (typeof IntersectionObserver === 'undefined') return;
+    sectionObserver = new IntersectionObserver((entries) => {
+        const visible = entries.filter(e => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+        if (visible.length) activeSection.value = visible[0].target.id;
+    }, { rootMargin: '0px 0px -70% 0px' });
+    headings.forEach(h => sectionObserver.observe(h));
+});
+
+onBeforeUnmount(() => { if (sectionObserver) sectionObserver.disconnect(); });
+
+function jumpToSection(id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    activeSection.value = id;
+}
 </script>
 
 <template>
-<div class="settings-container">
-    <h1>Global Settings</h1>
+<div class="settings-page">
+<nav v-if="toc.length" class="toc" aria-label="Sections of this page">
+    <p class="toc-title">On this page</p>
+    <button v-for="t in toc" :key="t.id" class="toc-link" :class="{ active: activeSection === t.id }" @click="jumpToSection(t.id)">{{ t.text }}</button>
+</nav>
+<div class="settings-container" ref="pageRoot">
+    <h1>Settings</h1>
 
     <!-- PROJECT FOLDER SECTION -->
     <div class="card section" v-if="storage.isSupported">
@@ -1109,10 +1143,22 @@ const alignPreview = computed(() => {
         @deleted="onManuscriptDeleted"
     />
 </div>
+</div>
 </template>
 
 <style scoped>
-.settings-container { padding: 30px; max-width: 800px; margin: 0 auto; }
+.settings-page { display: grid; grid-template-columns: 190px minmax(0, 800px); gap: 36px; justify-content: center; padding: 0 20px; }
+.settings-container { padding: 30px 0; min-width: 0; }
+.toc { position: sticky; top: 28px; align-self: start; margin-top: 86px; display: flex; flex-direction: column; gap: 2px; }
+.toc-title { margin: 0 0 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); }
+.toc-link { text-align: left; border: none; background: transparent; border-left: 2px solid var(--color-border); border-radius: 0; padding: 5px 10px; font-size: 0.84rem; color: var(--color-text-muted); font-weight: 500; }
+.toc-link:hover { background: transparent; color: var(--color-text); border-left-color: var(--color-border-hover); }
+.toc-link.active { color: var(--color-primary-dark); border-left-color: var(--color-primary); font-weight: 600; }
+@media (max-width: 1100px) {
+    .settings-page { display: block; padding: 0 20px; }
+    .toc { display: none; }
+    .settings-container { max-width: 800px; margin: 0 auto; }
+}
 h1 { margin-bottom: 30px; }
 .section { margin-bottom: 30px; text-align: left; }
 
@@ -1152,7 +1198,7 @@ h1 { margin-bottom: 30px; }
 .type-chip.t-location { background: #dcfce7; color: #15803d; }
 .warn-chip { font-size: 10px; font-weight: 700; background: var(--color-warning-light); color: var(--color-warning-dark); padding: 1px 6px; border-radius: 3px; margin-left: 6px; }
 .meta-input { width: 100%; min-width: 120px; padding: 5px 8px; border: 1px solid var(--color-border); border-radius: 4px; font-size: 12px; box-sizing: border-box; }
-.section h2 { margin-top: 0; border-bottom: 1px solid var(--color-border); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.2em; }
+.section h2 { scroll-margin-top: 48px; margin-top: 0; border-bottom: 1px solid var(--color-border); padding-bottom: 10px; margin-bottom: 20px; font-size: 1.2em; }
 .desc { color: var(--color-text-muted); font-size: 14px; margin-top: -5px; margin-bottom: 15px; }
 .desc.small { font-size: 0.85rem; margin: 4px 0 0 24px; }
 

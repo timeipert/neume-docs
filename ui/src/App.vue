@@ -268,7 +268,7 @@ onBeforeUnmount(() => {
 .submenu-item:hover { background: var(--color-bg); }
 .submenu-item.sub-active { background: var(--color-primary-light); }
 .submenu-item.sub-active .sub-label { color: var(--color-primary-hover); }
-.sub-section { padding: 8px 12px 2px; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-light); }
+.sub-section { display: block; padding: 8px 12px 2px; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-light); }
 .sub-section:first-child { padding-top: 4px; }
 .sub-label { font-size: 0.88rem; font-weight: 600; }
 .sub-hint { font-size: 0.72rem; color: var(--color-text-muted); line-height: 1.35; }
@@ -380,5 +380,10 @@ onBeforeUnmount(() => {
   .submenu-item.sub-active { background: rgba(255,255,255,0.12); }
   .submenu-item.sub-active .sub-label { color: var(--color-surface); }
   .sub-hint { display: none; }
+  .sub-section { text-align: center; }
+  .nav-sep { width: 100%; height: 1px; margin: var(--space-2) 0; }
+  /* Room to spell the save status out in the opened menu. */
+  .nav-links :deep(.pill-label) { display: inline !important; }
+  .nav-links :deep(.save-pill) { padding: 6px 12px; }
 }
 </style>

@@ -11,7 +11,7 @@
  * where `rism` is a library siglum such as "D-Eu", `city` the place of the library,
  * `shelfmark` the call number ("84", "VI G 5") and `date` a free-text dating.
  */
-import { parseDateRange, rangesOverlap } from '../../utils/sourceMeta';
+import { parseDateRange, rangesOverlap } from '../../utils/sourceMeta.js';
 
 // ---- normalising ------------------------------------------------------------------------
 

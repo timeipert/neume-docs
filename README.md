@@ -39,6 +39,7 @@ To suggest IIIF manifests and catalogue data for manuscripts it has not seen, th
 
 ```bash
 npm run crawl:mmmo        # polite and resumable: honours robots.txt and its 10 s crawl-delay
+npm run crawl:mmmo -- --for /path/to/corpus-folder --only-matched   # just the manuscripts of your corpus: under an hour
 ```
 
 Without it the editor works as before and says that no catalogue is available. Check the MMMO's terms before sharing the collected file or an app that contains it. See `user-manual/docs/iiif-sources.md`.

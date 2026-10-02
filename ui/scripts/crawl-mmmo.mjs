@@ -7,6 +7,8 @@
  *   node scripts/crawl-mmmo.mjs                    # listing, then detail pages; resumable
  *   node scripts/crawl-mmmo.mjs --phase listing    # only the 100-per-page listing (about 90 requests)
  *   node scripts/crawl-mmmo.mjs --minutes 110      # stop after a while; run it again to go on
+ *   node scripts/crawl-mmmo.mjs --for ~/cm-export --only-matched
+ *                                                  # only the sources that match a corpus (a folder of source/meta.json)
  *   node scripts/crawl-mmmo.mjs --contact you@example.org
  *
  * Good manners, because this is somebody else's server:
@@ -20,12 +22,19 @@
  * The listing carries siglum, place, origin, century, type and links of every
  * source. Only the detail page of a source names its IIIF manifest, so the detail
  * phase is what takes long (one request per source, roughly a day for the whole
- * database). It works through the sources most likely to have images first.
+ * database). With `--for <corpus folder>` it reads the sources that match your
+ * corpus first, and with `--only-matched` it stops after those (a few hundred
+ * pages, under an hour). Otherwise it works through the sources most likely to
+ * have images first.
+ *
+ * Keep the computer awake while it runs (on a Mac: `caffeinate -i npm run crawl:mmmo`);
+ * a sleeping machine just stalls it, and it picks up where it stopped.
  *
  * Output (default `src/data/mmmo/`): listing.json, details.json (the crawl state)
  * and sources.json (the merged, compact catalogue the editor reads).
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, readdirSync, statSync } from 'node:fs';
+import { buildIndex, suggest } from '../src/services/mmmo/matching.js';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -43,6 +52,8 @@ const outDir = resolve(opt('out', join(HERE, '..', 'src', 'data', 'mmmo')));
 const phase = opt('phase', 'all'); // listing | details | all | merge
 const minutes = Number(opt('minutes', 0)); // 0 = no limit
 const maxDetails = Number(opt('max-details', 0));
+const corpusDir = opt('for', '');
+const onlyMatched = flag('only-matched');
 const requestedDelay = Number(opt('delay', 10));
 const contact = opt('contact', '');
 const userAgent = `cm-neumen-editor-metadata-crawler/1.0 (research use; polite, one request at a time)${contact ? ` ${contact}` : ''}`;
@@ -209,11 +220,45 @@ async function crawlListing() {
 /** Sources that name a digital copy come first: they are the ones likely to carry a manifest. */
 const priority = (row) => (row.links.length ? 0 : 1);
 
+/**
+ * The listing entries that match the sources of a corpus folder (`source/meta.json`,
+ * as in a Corpus Monodicum project): id -> best score. These are the pages worth
+ * reading first, since they are the manuscripts the editor will ask about.
+ */
+function matchesForCorpus(dir, listing) {
+    const index = buildIndex(listing.rows);
+    const wanted = new Map();
+    let sources = 0;
+    for (const name of readdirSync(dir)) {
+        const metaFile = join(dir, name, 'meta.json');
+        if (!existsSync(metaFile) || !statSync(join(dir, name)).isDirectory()) continue;
+        let meta;
+        try { meta = JSON.parse(readFileSync(metaFile, 'utf8')); } catch { continue; }
+        sources++;
+        const found = suggest(index, {
+            siglum: meta.cantus_siglum || meta.quellensigle || name,
+            city: meta.bibliotheksort,
+            library: meta.bibliothek,
+            shelfmark: meta.bibliothekssignatur,
+            origin: meta.herkunftsort,
+            date: meta.datierung || meta.jahrhundert || meta.cantus_century
+        }, { limit: 3, minScore: 45 });
+        for (const f of found) wanted.set(f.record.id, Math.max(wanted.get(f.record.id) || 0, f.score));
+    }
+    log(`corpus: ${sources} sources read, ${wanted.size} catalogue entries match them`);
+    return wanted;
+}
+
 async function crawlDetails(listing) {
     const details = flag('refresh') ? {} : readJson('details.json', {});
-    const todo = listing.rows
+    const matched = corpusDir ? matchesForCorpus(resolve(corpusDir), listing) : new Map();
+    let todo = listing.rows
         .filter(r => !(r.id in details))
-        .sort((a, b) => priority(a) - priority(b) || a.id - b.id);
+        .sort((a, b) => (matched.get(b.id) || 0) - (matched.get(a.id) || 0) || priority(a) - priority(b) || a.id - b.id);
+    if (onlyMatched) {
+        if (!corpusDir) throw new Error('--only-matched needs --for <corpus folder>');
+        todo = todo.filter(r => matched.has(r.id));
+    }
     log(`details: ${Object.keys(details).length} done, ${todo.length} to go`);
     let done = 0;
     for (const row of todo) {

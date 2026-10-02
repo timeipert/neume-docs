@@ -38,6 +38,14 @@ The catalogue is third-party data, so it is not part of the editor: each install
 npm run crawl:mmmo
 ```
 
-This reads the MMMO listing (about 90 pages) and then the page of each source, because only that page names the IIIF manifest. It is slow on purpose: it obeys the site's `robots.txt` and waits at least its `Crawl-delay` (10 seconds) between requests, so the whole database takes about a day. It can be stopped at any time and continues where it stopped; `--minutes 120` makes it stop by itself. Sources that name a digital copy are read first, since they are the likeliest to have a manifest. The result is written to `ui/src/data/mmmo/` and read by the editor the next time it is built or reloaded.
+This reads the MMMO listing (about 90 pages) and then the page of each source, because only that page names the IIIF manifest. It is slow on purpose: it obeys the site's `robots.txt` and waits at least its `Crawl-delay` (10 seconds) between requests, so the whole database takes about a day. It can be stopped at any time and continues where it stopped; `--minutes 120` makes it stop by itself. Keep the computer awake while it runs (on a Mac, `caffeinate -i npm run crawl:mmmo`): a sleeping machine only stalls it. The result is written to `ui/src/data/mmmo/` and read by the editor the next time it is built or reloaded.
+
+Most of the value comes from a small part of the database: the manuscripts you actually work on. Point the crawler at your corpus (a folder of `source/meta.json`, such as an unpacked project) and it reads only the catalogue entries that match them, which is a few hundred pages, under an hour:
+
+```bash
+npm run crawl:mmmo -- --for /path/to/corpus-folder --only-matched
+```
+
+Without `--only-matched` the matching sources are read first and the rest follow. For the whole Corpus Monodicum (255 sources) 114 catalogue entries match, and about half of them name a manifest.
 
 Before sharing the collected file or an app built with it, check the terms of the MMMO database and keep its name and address (shown in the table) visible.

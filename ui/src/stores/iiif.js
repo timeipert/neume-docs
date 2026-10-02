@@ -8,6 +8,9 @@ export const useIiifStore = defineStore('iiif', () => {
     const links = ref(JSON.parse(localStorage.getItem('iiifLinks') || '{}'));
     const parsedData = ref({}); // source -> array of { folio, imgUrl }
     const manifestStatus = ref({}); // source -> { status: 'loading' | 'ok' | 'error', error: null }
+    // Sources whose pages come from the page images named in the corpus's document
+    // metadata rather than from a manifest. Rebuilt on every start, never saved.
+    const folioImageSources = ref({});
     
     // In-flight manifest request deduplication
     const inflightFetches = new Map();
@@ -35,6 +38,23 @@ export const useIiifStore = defineStore('iiif', () => {
         await fetchAndParseManifest(source, url, true); // force fresh on manual add
     }
 
+    /**
+     * Set or clear a source's manifest address without fetching it (it loads when
+     * its images are first needed), dropping whatever was cached for the old one.
+     * Meant for editing many addresses at once, where fetching each would be wasteful.
+     */
+    async function setLink(source, url) {
+        const next = String(url || '').trim();
+        if ((links.value[source] || '') === next) return;
+        if (next) links.value[source] = next;
+        else delete links.value[source];
+        delete parsedData.value[source];
+        delete folioImageSources.value[source];
+        delete manifestStatus.value[source];
+        await deleteCachedItem('manifests', source);
+        await clearStore('images'); // region crops were keyed to the old service URL
+    }
+
     function removeManifest(source) {
         delete links.value[source];
         delete parsedData.value[source];
@@ -51,7 +71,7 @@ export const useIiifStore = defineStore('iiif', () => {
     }
 
     async function fetchAndParseManifest(source, url, forceRefresh = false) {
-        if (parsedData.value[source] && !forceRefresh) return;
+        if (parsedData.value[source] && !folioImageSources.value[source] && !forceRefresh) return;
         
         // If already in flight, reuse promise — but a forced refresh must not
         // piggy-back on a stale in-flight (possibly cache-backed) request.
@@ -201,6 +221,7 @@ export const useIiifStore = defineStore('iiif', () => {
             
             if (folios.length > 0) {
                 parsedData.value[source] = folios;
+                delete folioImageSources.value[source];
                 manifestStatus.value[source] = { status: 'ok', error: null };
                 // Cache parsed manifest data in IndexedDB for fast reloads
                 setCachedItem('manifests', source, folios).catch(e => console.warn("Failed caching manifest", e));
@@ -242,10 +263,46 @@ export const useIiifStore = defineStore('iiif', () => {
      * Called lazily when a source's images are actually needed.
      */
     async function ensureLoaded(source) {
-        if (parsedData.value[source]) return; // Already loaded
+        if (parsedData.value[source] && !folioImageSources.value[source]) return; // Already loaded
         const url = links.value[source];
         if (!url) return; // No URL known
         await fetchAndParseManifest(source, url);
+    }
+
+    /**
+     * Show a source's pages from the image addresses its documents name.
+     *
+     * A manifest the user linked wins, and so does anything already loaded from one.
+     *
+     * @param {string} source
+     * @param {Array<[string, string]>} images [normalised folio, IIIF image base address]
+     * @returns {boolean} whether the pages were set
+     */
+    function setFolioImages(source, images) {
+        if (!images || images.length === 0) return false;
+        if (links.value[source]) return false;
+        if (parsedData.value[source] && !folioImageSources.value[source]) return false;
+
+        parsedData.value[source] = images.map(([folio, base]) => ({
+            folio,
+            // Image API 3 takes "max", older servers "full".
+            imgUrl: `${base}/full/${/\/iiif\/3\//.test(base) ? 'max' : 'full'}/0/default.jpg`,
+            serviceUrl: base,
+            w: 0,
+            h: 0,
+            originalFolio: folio
+        }));
+        folioImageSources.value[source] = true;
+        manifestStatus.value[source] = { status: 'ok', error: null, fromDocuments: true };
+        return true;
+    }
+
+    /** Forget pages that were taken from document metadata (the source was removed or re-imported). */
+    function clearFolioImages(source) {
+        if (!folioImageSources.value[source]) return;
+        delete parsedData.value[source];
+        delete folioImageSources.value[source];
+        delete manifestStatus.value[source];
     }
 
     // No eager loading — all manifests are loaded lazily via ensureLoaded()
@@ -255,9 +312,13 @@ export const useIiifStore = defineStore('iiif', () => {
         parsedData,
         manifestStatus,
         addManifest,
+        setLink,
         removeManifest,
         refreshManifest,
         importFromDataManifests,
-        ensureLoaded
+        ensureLoaded,
+        folioImageSources,
+        setFolioImages,
+        clearFolioImages
     };
 });

@@ -22,6 +22,7 @@ export default defineConfig({
       {
         text: 'Features & Usage',
         items: [
+          { text: 'Manuscript Metadata', link: '/docs/manuscript-metadata' },
           { text: 'The Neume Table', link: '/docs/neume-table' },
           { text: 'Equivalents Management', link: '/docs/equivalents' },
           { text: 'Manuscript Annotation', link: '/docs/annotation' },

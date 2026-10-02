@@ -75,6 +75,7 @@ onBeforeUnmount(() => {
       </button>
       <div id="nav-links" class="nav-links" :class="{ 'menu-open': isMenuOpen }">
         <RouterLink to="/corpus" active-class="active" @click="isMenuOpen = false">Corpus</RouterLink>
+        <RouterLink to="/metadata" active-class="active" @click="isMenuOpen = false">Metadata</RouterLink>
         <RouterLink to="/table" :class="{ active: route.path.startsWith('/table') }" @click="isMenuOpen = false">Neume Tables</RouterLink>
         <RouterLink to="/compare" active-class="active" @click="isMenuOpen = false">Compare</RouterLink>
         <RouterLink to="/patterns" active-class="active" @click="isMenuOpen = false">Patterns</RouterLink>

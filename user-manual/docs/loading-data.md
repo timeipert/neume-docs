@@ -25,7 +25,7 @@ By default, documents whose ID ends in `TR` or `GS` are left out. These are work
 
 ## What is extracted
 
-For every syllable with notes, the neumes are read as **pattern codes** (see [Conventions](./conventions) and [The Neume Table](./neume-table)), together with their folio, line and syllable. From the source's `meta.json` the catalogue data (place, date, library, shelfmark) and the IIIF manifest address are taken.
+For every syllable with notes, the neumes are read as **pattern codes** (see [Conventions](./conventions) and [The Neume Table](./neume-table)), together with their folio, line and syllable. From the source's `meta.json` every field with a value is taken (place, date, library, shelfmark, the IIIF manifest address, …), and from the documents the page images they name (IIIF Image API addresses in the `iiifs` field). See [Manuscript Metadata](./manuscript-metadata).
 
 ## Removing data
 

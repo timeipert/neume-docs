@@ -14,6 +14,7 @@ import PublicNeumeTableView from '../views/PublicNeumeTableView.vue'
 import PublicCustomManuscriptView from '../views/PublicCustomManuscriptView.vue'
 import SetupView from '../views/SetupView.vue'
 import CorpusView from '../views/CorpusView.vue'
+import ManuscriptMetadataView from '../views/ManuscriptMetadataView.vue'
 import NeumeTableListView from '../views/NeumeTableListView.vue'
 import NeumeTableView from '../views/NeumeTableView.vue'
 
@@ -42,6 +43,12 @@ const router = createRouter({
       name: 'corpus',
       component: CorpusView,
       meta: { title: 'Corpus', requiresWorkspace: true }
+    },
+    {
+      path: '/metadata',
+      name: 'metadata',
+      component: ManuscriptMetadataView,
+      meta: { title: 'Manuscript metadata', requiresWorkspace: true }
     },
     {
       path: '/table',

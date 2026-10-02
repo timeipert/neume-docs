@@ -3,6 +3,7 @@ import { useAnnotationsStore } from '../stores/annotations';
 import { usePersonalTablesStore } from '../stores/personalTables';
 import { useIiifStore } from '../stores/iiif';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
+import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
 import { useOmmrStore } from '../stores/ommr';
 import { useDirectSnippetsStore } from '../stores/directSnippets';
 import { useSaveReminderStore } from '../stores/saveReminder';
@@ -18,6 +19,7 @@ export function useDataManagement() {
     const ommrStore = useOmmrStore();
     const directStore = useDirectSnippetsStore();
     const libraryStore = usePatternLibraryStore();
+    const metaStore = useManuscriptMetaStore();
 
     function getLocalFullState() {
         return {
@@ -60,7 +62,8 @@ export function useDataManagement() {
                     sourceMetaFields: settings.sourceMetaFields,
                     sourceMeta: settings.sourceMeta
                 } : undefined,
-                patternLibrary: includeSettings ? libraryStore.serialize() : undefined
+                patternLibrary: includeSettings ? libraryStore.serialize() : undefined,
+                manuscriptMeta: includeSettings ? metaStore.serialize() : undefined
             }
         };
 
@@ -131,7 +134,8 @@ export function useDataManagement() {
                 sourceMetaFields: settings.sourceMetaFields,
                 sourceMeta: settings.sourceMeta
             },
-            patternLibrary: libraryStore.serialize()
+            patternLibrary: libraryStore.serialize(),
+            manuscriptMeta: metaStore.serialize()
         };
 
         const json = JSON.stringify(payload, null, 2);
@@ -167,6 +171,8 @@ export function useDataManagement() {
         // templates are workspace-wide, not per manuscript).
         const lib = configPayload.patternLibrary || configPayload.data?.patternLibrary;
         if (lib) libraryStore.hydrate(lib);
+        const meta = configPayload.manuscriptMeta || configPayload.data?.manuscriptMeta;
+        if (meta) metaStore.mergeIn(meta);
     }
 
     function readFileAsJson(file) {
@@ -318,6 +324,9 @@ export function useDataManagement() {
         // so it travels with the settings rather than through the merge strategies.
         if (importSettings && parsedJson.data?.patternLibrary) {
             libraryStore.hydrate(parsedJson.data.patternLibrary);
+        }
+        if (importSettings && parsedJson.data?.manuscriptMeta) {
+            metaStore.mergeIn(parsedJson.data.manuscriptMeta);
         }
 
         // Direct snippet collections are keyed by their own ids, independent of the

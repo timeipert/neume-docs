@@ -69,6 +69,7 @@ export function toCatalogRecord(result, importedAt = new Date().toISOString()) {
         documents: result.documents,
         counts: result.counts,
         folios: result.folios,
+        images: result.images || [],
         clefs: result.clefs,
         skippedDocuments: result.skippedDocuments,
         importedAt

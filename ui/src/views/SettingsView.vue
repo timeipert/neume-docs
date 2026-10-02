@@ -733,7 +733,9 @@ function jumpToSection(id) {
         <h2>Source Metadata</h2>
         <p class="desc">Define free-text attributes for manuscripts (e.g. <em>Century</em>, <em>Region</em>,
             <em>Notation type</em>), then fill in a value per source. Readers can filter and search by these
-            attributes in the public manuscript directory.</p>
+            attributes in the public manuscript directory.
+            Filling in many sources is quickest in the <RouterLink to="/metadata">Metadata table</RouterLink>, where these
+            attributes are columns next to the corpus catalogue.</p>
 
         <div class="add-row">
             <input v-model="newMetaLabel" placeholder="Attribute name (e.g. Century)" @keyup.enter="addMetaField" />

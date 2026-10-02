@@ -5,6 +5,7 @@ import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { useCorpusImport } from '../composables/useCorpusImport';
 import { collectFromFileList, collectFromDrop } from '../services/corpus/corpusImport';
 import PageHeader from '../components/ui/PageHeader.vue';
+import { useEffectiveMeta } from '../composables/useEffectiveMeta';
 
 const router = useRouter();
 const { catalog, sourceNames, hasCorpus, corpusSummary, loading, removeSource, clearAll } = useTranscriptionData();
@@ -12,6 +13,7 @@ const {
     phase, importedNow, result, errorMessage, busy, percent, statusLine, start, cancel, reset
 } = useCorpusImport();
 
+const metaOf = useEffectiveMeta();
 const dragging = ref(false);
 const skipWorkingCopies = ref(true);
 const filter = ref('');
@@ -47,13 +49,12 @@ const rows = computed(() => {
     return sourceNames.value
         .map(name => {
             const rec = catalog.value[name];
-            const m = rec.meta || {};
             const neumes = Object.values(rec.counts || {}).reduce((a, b) => a + b, 0);
             return {
                 name,
-                place: [m.herkunftsort, m.herkunftsinstitution].filter(Boolean).join(', '),
-                library: [m.bibliotheksort, m.bibliothek, m.bibliothekssignatur].filter(Boolean).join(', '),
-                date: m.datierung || '',
+                place: [metaOf(name, 'herkunftsort'), metaOf(name, 'herkunftsinstitution')].filter(Boolean).join(', '),
+                library: [metaOf(name, 'bibliotheksort'), metaOf(name, 'bibliothek'), metaOf(name, 'bibliothekssignatur')].filter(Boolean).join(', '),
+                date: metaOf(name, 'datierung'),
                 documents: (rec.documents || []).length,
                 neumes,
                 patterns: Object.keys(rec.counts || {}).length,

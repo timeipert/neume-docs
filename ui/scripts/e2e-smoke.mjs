@@ -78,6 +78,7 @@ try {
 
     await page.locator('.cell[data-column="dir:*ud"]').getByRole('button', { name: /Choose for|Change/ }).click();
     await page.waitForSelector('.picker');
+    await page.waitForTimeout(300); // let the dialog finish appearing
     const variants = await page.locator('.picker .variant').count();
     assert.ok(variants >= 1, 'the library offers variants for *ud');
     const letters = await page.locator('.picker .variant code').allInnerTexts();
@@ -89,6 +90,7 @@ try {
 
     await page.locator('.cell[data-column="special:L"]').getByRole('button', { name: /Choose for|Change/ }).click();
     await page.waitForSelector('.picker');
+    await page.waitForTimeout(300); // let the dialog finish appearing
     const groups = page.locator('.picker .sig-group');
     assert.ok(await groups.count() >= 4, 'the L library offers several constellations');
     for (let i = 0; i < 3; i++) await groups.nth(i).locator('.variant').first().click();
@@ -154,6 +156,91 @@ try {
     assert.ok(await page.locator('.snippet-cell .snippet-card').count() > 0, 'the chosen patterns appear as snippets');
     await shot('comparison-standard');
     step('comparison table: standard columns, filled from the manuscript\'s selection');
+
+    // 7. The manuscript metadata table ---------------------------------------
+    await page.goto(`${base}/#/metadata`);
+    await page.waitForSelector('.grid-scroller td');
+
+    /** The cell of a manuscript (by row index in view order) in a column (by header label). */
+    const cellAt = async (row, label) => page.locator('.grid-scroller').evaluateHandle((root, [r, l]) => {
+        const heads = [...root.querySelectorAll('th.head')].map(h => h.querySelector('.label').textContent.trim());
+        return root.querySelector(`td[data-r="${r}"][data-c="${heads.indexOf(l)}"]`);
+    }, [row, label]);
+    const textAt = async (row, label) => (await cellAt(row, label)).evaluate(el => el.querySelector('.text')?.textContent.trim());
+    const clickAt = async (row, label) => (await cellAt(row, label)).asElement().click();
+
+    const sigla = await page.locator('.grid-scroller td[data-c="0"] .text').allInnerTexts();
+    assert.ok(sigla.length >= 4, 'the table lists the loaded manuscripts');
+    step(`metadata table lists ${sigla.length} manuscripts`);
+
+    const original = await textAt(0, 'Place of origin');
+    await clickAt(0, 'Place of origin');
+    await page.keyboard.type('Test place');
+    await page.keyboard.press('Enter');
+    assert.equal(await textAt(0, 'Place of origin'), 'Test place');
+    assert.ok(await (await cellAt(0, 'Place of origin')).evaluate(el => el.classList.contains('edited')), 'edited cells are marked');
+    await page.keyboard.press('Control+z');
+    assert.equal(await textAt(0, 'Place of origin'), original);
+    step('typing edits a cell, marks it, and Ctrl+Z undoes it');
+
+    await clickAt(0, 'Library city');
+    await page.evaluate(() => {
+        const dt = new DataTransfer();
+        dt.setData('text/plain', 'Alpha\tBeta\nGamma\tDelta');
+        document.querySelector('.grid-scroller').dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    });
+    assert.equal(await textAt(0, 'Library city'), 'Alpha');
+    assert.equal(await textAt(1, 'Library'), 'Delta');
+    step('pasting a block from Excel fills several cells');
+
+    await clickAt(0, 'Source type');
+    await page.keyboard.type('Gradual');
+    await page.keyboard.press('Enter');
+    await (await cellAt(0, 'Source type')).asElement().click();
+    await page.keyboard.press('Shift+ArrowDown');
+    await page.keyboard.press('Shift+ArrowDown');
+    await page.keyboard.press('Control+d');
+    assert.equal(await textAt(2, 'Source type'), 'Gradual');
+    step('Ctrl+D fills down');
+
+    await clickAt(1, 'IIIF manifest');
+    await page.keyboard.type('https://example.org/iiif/manifest.json');
+    await page.keyboard.press('Enter');
+    const links = await page.evaluate(() => JSON.parse(localStorage.getItem('iiifLinks') || '{}'));
+    assert.equal(links[sigla[1]], 'https://example.org/iiif/manifest.json');
+    step('the manifest column sets the manuscript\'s IIIF link');
+
+    await page.getByRole('button', { name: /Find & replace/ }).click();
+    await page.locator('#rep-find').fill('Gradual');
+    await page.locator('.dialog input[placeholder^="Leave empty"]').fill('Graduale');
+    await page.locator('.dialog select').selectOption('all');
+    await page.getByRole('button', { name: /^Replace/ }).click();
+    assert.equal(await textAt(2, 'Source type'), 'Graduale');
+    step('find & replace works over the whole table, as one step');
+    await page.keyboard.press('Escape');
+
+    const [download] = await Promise.all([
+        page.waitForEvent('download'),
+        (async () => { await page.getByRole('button', { name: /Export/ }).click(); await page.getByRole('button', { name: 'Download CSV', exact: true }).click(); })()
+    ]);
+    const { readFileSync } = await import('node:fs');
+    const csv = readFileSync(await download.path(), 'utf8');
+    assert.ok(csv.startsWith('\uFEFFSiglum,'), 'the CSV starts with a byte order mark and the Siglum column');
+    assert.ok(csv.includes('Graduale'));
+    step('the table downloads as CSV');
+
+    const csvIn = `Siglum,Shelfmark\n${sigla[3]},Imported shelfmark\n`;
+    await page.locator('.tools input[type=file]').setInputFiles({ name: 'meta.csv', mimeType: 'text/csv', buffer: Buffer.from(csvIn) });
+    await page.waitForSelector('.dialog');
+    await page.locator('.dialog footer .ne-btn--primary').click();
+    await page.waitForSelector('.dialog', { state: 'detached' });
+    assert.equal(await textAt(3, 'Shelfmark'), 'Imported shelfmark');
+    step('a CSV is imported by siglum');
+
+    await page.reload();
+    await page.waitForSelector('.grid-scroller td');
+    assert.equal(await textAt(3, 'Shelfmark'), 'Imported shelfmark');
+    step('edits survive a reload');
 
     if (problems.length) throw new Error(`console errors:\n  ${problems.join('\n  ')}`);
     console.log('\nAll checks passed.');

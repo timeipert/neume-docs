@@ -20,6 +20,7 @@
 import JSZip from 'jszip';
 import { analyzeDocument } from './analysis.js';
 import { normalizeFolio } from './folio.js';
+import { parseIiifUrls, imageBase, folioImagesOf } from './iiif.js';
 
 /** Document ids ending like this are working copies, not transcriptions. */
 export const DEFAULT_SKIPPED_SUFFIXES = ['TR', 'GS'];
@@ -95,12 +96,29 @@ async function expandZips(files, depth = 0) {
     return out;
 }
 
-/** Fields of a source's meta.json that are worth keeping in the index. */
-const SOURCE_FIELDS = [
-    'id', 'quellensigle', 'herkunftsregion', 'herkunftsort', 'herkunftsinstitution',
-    'ordenstradition', 'quellentyp', 'bibliotheksort', 'bibliothek', 'bibliothekssignatur',
-    'kommentar', 'datierung', 'jahrhundert', 'status', 'manifest', 'foliooffset'
-];
+/** Fields too long to keep in the index (a manuscript description runs to many kB). */
+const SOURCE_FIELDS_LEFT_OUT = new Set(['beschreibung']);
+
+/**
+ * Every field of a source's metadata that holds a plain value, so a column that
+ * only some exports have (cantus_siglum, foliooffset, …) is not lost. Values
+ * Monodi-Zero keeps under `custom` are included.
+ */
+function pickSourceFields(meta) {
+    const out = {};
+    const take = (obj) => {
+        for (const [key, value] of Object.entries(obj || {})) {
+            if (SOURCE_FIELDS_LEFT_OUT.has(key) || key in out) continue;
+            if (value === null || value === undefined || value === '') continue;
+            if (typeof value === 'object') continue;
+            out[key] = typeof value === 'string' ? value : String(value);
+        }
+    };
+    take(meta);
+    take(meta && meta.custom);
+    delete out.custom;
+    return out;
+}
 
 const DOCUMENT_FIELDS = [
     'id', 'dokumenten_id', 'gattung1', 'gattung2', 'festtag', 'feier', 'textinitium',
@@ -151,7 +169,8 @@ function skipped(documentId, suffixes) {
 class SourceAccumulator {
     constructor(name, meta = {}) {
         this.name = name;
-        this.meta = pick(normaliseSourceMeta(meta), SOURCE_FIELDS);
+        this.meta = pickSourceFields(normaliseSourceMeta(meta));
+        this.images = new Map(); // folio -> IIIF image base address
         this.documents = [];
         this.patterns = Object.create(null);
         this.folios = new Set();
@@ -159,8 +178,18 @@ class SourceAccumulator {
         this.skippedDocuments = 0;
     }
 
+    /** The page images a document names — also on working copies, which often are the ones that carry them. */
+    collectImages(docMeta) {
+        const extra = docMeta.additionalData || docMeta.custom || {};
+        const urls = parseIiifUrls(extra.iiifs ?? docMeta.iiifs).map(imageBase);
+        for (const [folio, base] of folioImagesOf(docMeta.foliostart, urls)) {
+            if (!this.images.has(folio)) this.images.set(folio, base);
+        }
+    }
+
     addDocument(docMeta, root, suffixes) {
         const documentId = docMeta.dokumenten_id || docMeta.id || '';
+        this.collectImages(docMeta);
         if (skipped(documentId, suffixes)) {
             this.skippedDocuments++;
             return;
@@ -192,6 +221,7 @@ class SourceAccumulator {
             patterns: this.patterns,
             counts,
             folios: [...this.folios].filter(Boolean).sort(compareFoliosSimple),
+            images: [...this.images].sort((a, b) => compareFoliosSimple(a[0], b[0])),
             clefs: this.clefs,
             skippedDocuments: this.skippedDocuments
         };

@@ -203,6 +203,61 @@ describe('layouts and keys as Monodi-Zero reads them', () => {
     });
 });
 
+describe('everything in the metadata that can be used', () => {
+    const W = 'https://iiif-ls6.informatik.uni-wuerzburg.de/iiif/3/Geesebook2%2Ffolio_';
+
+    it('keeps every plain field of a source, including ones only some exports have', async () => {
+        const files = [
+            file('P/A/meta.json', { quellensigle: 'A', cantus_siglum: 'A-Xx', foliooffset: '2', beschreibung: 'long', nested: { a: 1 }, empty: '' }),
+            file('P/A/d/data.json', doc())
+        ];
+        const { sources } = await read(files);
+        expect(sources[0].meta).toMatchObject({ quellensigle: 'A', cantus_siglum: 'A-Xx', foliooffset: '2' });
+        expect(sources[0].meta.beschreibung).toBeUndefined();
+        expect(sources[0].meta.nested).toBeUndefined();
+        expect(sources[0].meta.empty).toBeUndefined();
+    });
+
+    it('flattens the custom fields Monodi-Zero keeps', async () => {
+        const ws = { sources: [{ id: 's', quellensigle: 'W 1', custom: { jahrhundert: '12.', foliooffset: '1' } }], documents: [{ id: 'd', quelle_id: 's', dokumenten_id: 'W 1-1r-1', foliostart: '1r' }], notes: { d: doc() } };
+        const { sources } = await read([file('w.monodijson', ws)]);
+        expect(sources[0].meta).toMatchObject({ jahrhundert: '12.', foliooffset: '1' });
+        expect(sources[0].meta.custom).toBeUndefined();
+    });
+
+    it('collects the page images the documents name, working copies included', async () => {
+        const files = [
+            file('P/N/meta.json', { quellensigle: 'N' }),
+            file('P/N/a/meta.json', { dokumenten_id: 'N-1', foliostart: '0019', additionalData: { iiifs: `["${W}0019.jpg"]` } }),
+            file('P/N/a/data.json', doc()),
+            // a working copy: skipped for the neumes, but its images count
+            file('P/N/b/meta.json', { dokumenten_id: 'N-2TR', foliostart: '0054v', additionalData: { iiifs: `["${W}0054v.jpg","${W}0055.jpg"]` } }),
+            file('P/N/b/data.json', doc())
+        ];
+        const { sources } = await read(files);
+        expect(sources[0].documents).toHaveLength(1);
+        expect(sources[0].images).toEqual([['19r', `${W}0019.jpg`], ['54v', `${W}0054v.jpg`], ['55r', `${W}0055.jpg`]]);
+    });
+
+    it('reads the images of a workspace document', async () => {
+        const ws = { sources: [{ id: 's', quellensigle: 'W 2' }], documents: [{ id: 'd', quelle_id: 's', dokumenten_id: 'W 2-1', foliostart: '3v', custom: { iiifs: '[\\"https://x.org/iiif/p3v/full/full/0/default.jpg\\"]' } }], notes: { d: doc() } };
+        const { sources } = await read([file('w.monodijson', ws)]);
+        expect(sources[0].images).toEqual([['3v', 'https://x.org/iiif/p3v']]);
+    });
+
+    it('keeps the first image when two documents name the same folio', async () => {
+        const files = [
+            file('P/D/meta.json', { quellensigle: 'D' }),
+            file('P/D/a/meta.json', { dokumenten_id: 'D-1', foliostart: '5r', additionalData: { iiifs: '["https://x/one"]' } }),
+            file('P/D/a/data.json', doc()),
+            file('P/D/b/meta.json', { dokumenten_id: 'D-2', foliostart: '5r', additionalData: { iiifs: '["https://x/two"]' } }),
+            file('P/D/b/data.json', doc())
+        ];
+        const { sources } = await read(files);
+        expect(sources[0].images).toHaveLength(1);
+    });
+});
+
 describe('a Monodi-Zero workspace (.monodijson)', () => {
     const workspace = () => ({
         schemaVersion: 1,

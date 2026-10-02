@@ -5,6 +5,7 @@ import { usePersonalTablesStore } from '../stores/personalTables';
 import { useSettingsStore } from '../stores/settings';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { usePatternCatalog } from '../composables/usePatternCatalog';
+import { useEffectiveMeta } from '../composables/useEffectiveMeta';
 import {
     STANDARD_DIRECTIONS,
     MAX_SPECIAL_SIGNATURES,
@@ -30,6 +31,7 @@ const tableStore = usePersonalTablesStore();
 const settings = useSettingsStore();
 const { glyphs, catalog, loading } = useTranscriptionData();
 const { freq, allCodes } = usePatternCatalog();
+const metaOf = useEffectiveMeta();
 
 const source = computed(() => String(route.params.source || ''));
 const record = computed(() => catalog.value[source.value] || null);
@@ -189,8 +191,8 @@ function annotate() {
 }
 
 const meta = computed(() => {
-    const m = (record.value && record.value.meta) || {};
-    return [m.herkunftsort, m.datierung, [m.bibliothek, m.bibliothekssignatur].filter(Boolean).join(' ')]
+    const s = source.value;
+    return [metaOf(s, 'herkunftsort'), metaOf(s, 'datierung'), [metaOf(s, 'bibliothek'), metaOf(s, 'bibliothekssignatur')].filter(Boolean).join(' ')]
         .filter(Boolean).join(' · ');
 });
 

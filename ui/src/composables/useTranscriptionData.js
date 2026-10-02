@@ -169,15 +169,22 @@ async function refresh() {
             if (!next[name]) forgetSource(name);
         }
 
+        const removed = Object.keys(catalog.value).filter(name => !next[name]);
         catalog.value = next;
         error.value = null;
 
-        if (Object.keys(manifests.value).length > 0) {
-            try {
-                useIiifStore().importFromDataManifests(manifests.value);
-            } catch (e) {
-                console.warn('Could not auto-import IIIF manifests:', e);
+        const iiif = useIiifStore();
+        try {
+            // Manifest addresses recorded on the sources
+            if (Object.keys(manifests.value).length > 0) iiif.importFromDataManifests(manifests.value);
+            // Page images named in the documents' metadata, for sources without a manifest
+            for (const [name, record] of Object.entries(next)) {
+                if (record.images && record.images.length) iiif.setFolioImages(name, record.images);
+                else iiif.clearFolioImages(name);
             }
+            for (const name of removed) iiif.clearFolioImages(name);
+        } catch (e) {
+            console.warn('Could not register the IIIF images of the corpus:', e);
         }
     } catch (e) {
         console.error(e);

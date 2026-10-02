@@ -13,6 +13,12 @@ It is the successor of the earlier *Neume Viewer* (CM-Transcription-Equivalents)
 
 Files are read in a Web Worker and stored in IndexedDB. The entire CM (112 sources, ~6,000 documents, ~950,000 neumes, 1.8 GB) loads in about 15 seconds and survives a reload. Nothing leaves the browser.
 
+### Manuscript metadata (new)
+
+*Metadata* shows all manuscripts as a spreadsheet: every field the corpus has for a source, the IIIF manifest, and columns of your own. Edit by typing, paste from Excel, fill down (`Ctrl+D`), find and replace, import and export CSV, undo. Your edits are stored on top of the corpus, which is never changed.
+
+It also uses the IIIF the corpus carries. Few sources have a manifest, but many documents name the IIIF image they were transcribed from; the editor turns those into the manuscript's pages, so a manuscript shows its images in the annotation workspace without a manifest.
+
 ### The neume table (new)
 
 The neume table orders and fills the columns of a table of neumes:

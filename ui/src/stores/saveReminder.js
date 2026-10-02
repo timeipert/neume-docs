@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { useAnnotationsStore } from './annotations'
 import { usePersonalTablesStore } from './personalTables'
 import { useDirectSnippetsStore } from './directSnippets'
+import { useManuscriptMetaStore } from './manuscriptMeta'
 
 /**
  * Tracks work done since the last local export and decides when to nudge.
@@ -61,6 +62,7 @@ export const useSaveReminderStore = defineStore('saveReminder', () => {
     const annotStore = useAnnotationsStore()
     const tablesStore = usePersonalTablesStore()
     const directStore = useDirectSnippetsStore()
+    const metaStore = useManuscriptMetaStore()
 
     // Count meaningful edits. Settings are cheap to recreate, so only the data
     // stores drive the nudge.
@@ -68,6 +70,7 @@ export const useSaveReminderStore = defineStore('saveReminder', () => {
         [
             () => annotStore.$state,
             () => tablesStore.$state,
+            () => metaStore.$state,
             () => directStore.collections
         ],
         () => {

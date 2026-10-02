@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { usePersonalTablesStore } from '../stores/personalTables';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { usePatternCatalog } from '../composables/usePatternCatalog';
+import { useEffectiveMeta } from '../composables/useEffectiveMeta';
 import { buildColumns, standardCellStates, tierOf } from '../utils/neumeTable';
 import StateWrapper from '../components/StateWrapper.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
@@ -14,6 +15,7 @@ const router = useRouter();
 const tableStore = usePersonalTablesStore();
 const { catalog, sourceNames, hasCorpus, loading, error } = useTranscriptionData();
 const { freq } = usePatternCatalog();
+const metaOf = useEffectiveMeta();
 
 const filter = ref('');
 const show = ref('all');
@@ -35,7 +37,6 @@ const all = computed(() => {
 
     return [...names].map(name => {
         const rec = catalog.value[name];
-        const m = (rec && rec.meta) || {};
         const rows = tableStore.rowsFor(name);
         const cells = standardCellStates(rows, standardColumns.value);
         const done = cells.filter(c => c.filled).length;
@@ -43,7 +44,7 @@ const all = computed(() => {
         return {
             name,
             inCorpus: !!rec,
-            place: [m.herkunftsort, m.datierung].filter(Boolean).join(' · '),
+            place: [metaOf(name, 'herkunftsort'), metaOf(name, 'datierung')].filter(Boolean).join(' · '),
             neumes: rec ? Object.values(rec.counts || {}).reduce((a, b) => a + b, 0) : 0,
             cells,
             done,

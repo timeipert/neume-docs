@@ -23,10 +23,12 @@ export default defineConfig({
         text: 'Features & Usage',
         items: [
           { text: 'Manuscript Metadata', link: '/docs/manuscript-metadata' },
+          { text: 'IIIF Sources & MMMO', link: '/docs/iiif-sources' },
           { text: 'The Neume Table', link: '/docs/neume-table' },
-          { text: 'Equivalents Management', link: '/docs/equivalents' },
+          { text: 'Pattern Editor & Ref IDs', link: '/docs/equivalents' },
           { text: 'Manuscript Annotation', link: '/docs/annotation' },
-          { text: 'Settings & Data Backup', link: '/docs/settings-and-data' },
+          { text: 'Workspace & Backup', link: '/docs/workspace' },
+          { text: 'Settings', link: '/docs/settings' },
           { text: 'Public Documentation', link: '/docs/public-view' }
         ]
       }

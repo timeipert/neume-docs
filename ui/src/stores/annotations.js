@@ -69,6 +69,53 @@ export const useAnnotationsStore = defineStore('annotations', () => {
     }, { deep: true })
 
     // --- Legacy Actions (Updated to include Region Items) ---
+    const copy = (value) => JSON.parse(JSON.stringify(value))
+
+    /**
+     * Everything stored for one page of a manuscript (snippets, line regions with
+     * their items, manual lines), as a detached copy. Taken before a deletion so
+     * that Undo can put the page back exactly as it was.
+     */
+    function snapshotPage(source, folio) {
+        const prefix = `${source}_${folio}_`
+        const pageKey = `${source}_${folio}`
+        const legacy = {}
+        for (const [key, list] of Object.entries(annotations.value)) {
+            if (key.startsWith(prefix)) legacy[key] = copy(list)
+        }
+        const pageRegions = copy(regions.value[pageKey] || [])
+        const items = {}
+        for (const r of pageRegions) items[r.id] = copy(regionItems.value[r.id] || [])
+        return { source, folio, legacy, regions: pageRegions, items, manualLines: [...(manualLines.value[pageKey] || [])] }
+    }
+
+    /** Put a page back as a snapshot had it; whatever was added to the page since is removed. */
+    function restorePage(snap) {
+        const pageKey = `${snap.source}_${snap.folio}`
+        const prefix = `${snap.source}_${snap.folio}_`
+
+        const nextAnnotations = {}
+        for (const [key, list] of Object.entries(annotations.value)) {
+            if (!key.startsWith(prefix)) nextAnnotations[key] = list
+        }
+        annotations.value = { ...nextAnnotations, ...copy(snap.legacy) }
+
+        const nextItems = { ...regionItems.value }
+        for (const r of regions.value[pageKey] || []) delete nextItems[r.id]
+        for (const [id, list] of Object.entries(snap.items)) nextItems[id] = copy(list)
+        regionItems.value = nextItems
+        regions.value = { ...regions.value, [pageKey]: copy(snap.regions) }
+        manualLines.value = { ...manualLines.value, [pageKey]: [...snap.manualLines] }
+    }
+
+    /** Forget every snippet, line region and manual line, in every manuscript. */
+    function clearAll() {
+        annotations.value = {}
+        regions.value = {}
+        regionItems.value = {}
+        manualLines.value = {}
+    }
+
     function getAnnotations(source, folio, pattern) {
         const key = `${source}_${folio}_${pattern}`
         const legacy = annotations.value[key] || []
@@ -459,6 +506,9 @@ export const useAnnotationsStore = defineStore('annotations', () => {
         annotations,
         regions,
         regionItems,
+        clearAll,
+        snapshotPage,
+        restorePage,
         getAnnotations,
         addAnnotation,
         removeAnnotation,

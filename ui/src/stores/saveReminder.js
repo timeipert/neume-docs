@@ -122,6 +122,16 @@ export const useSaveReminderStore = defineStore('saveReminder', () => {
         persist()
     }
 
+    /** Back to how it starts on a first visit. */
+    function reset() {
+        changeCount.value = 0
+        lastExportAt.value = null
+        snoozeUntil.value = 0
+        disabled.value = false
+        now.value = Date.now()
+        persist()
+    }
+
     function disableReminder() {
         disabled.value = true
         persist()
@@ -137,6 +147,6 @@ export const useSaveReminderStore = defineStore('saveReminder', () => {
     return {
         changeCount, lastExportAt, snoozeUntil, disabled,
         hasUnsavedWork, neverExported, shouldRemind, sinceExportLabel,
-        markExported, snooze, disableReminder, enableReminder
+        markExported, snooze, disableReminder, enableReminder, reset
     }
 })

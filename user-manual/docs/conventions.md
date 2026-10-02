@@ -14,6 +14,7 @@ A **Reference ID** (or Ref ID) is a stable identifier that you assign to a speci
 Often, a single Ref ID will have slight graphical variations. The tool supports **Variants** using alphabetical suffixes.
 - For example, if Ref ID `10` has two distinct visual forms, you might classify them as `10a` and `10b`.
 - The tool can extract these suffixes automatically if they are included in your linked transcription data, or you can manually assign them during annotation.
+- The letters offered while annotating (and the signs and code variants of the notation itself) are defined in the **Patterns** page, in the *Signs* and *Snippet variants* panels.
 
 ## Global vs. Local Identifiers
 Because manuscript notation can be idiosyncratic, the tool supports a two-tiered identification system:

@@ -1,18 +1,12 @@
-# Equivalents Management
+# Pattern Editor & Ref IDs
 
-The **Transcription Equivalents** view is where you organize and map abstract transcription patterns to your standardized Reference IDs for each specific manuscript.
+The **pattern editor** is where you give the patterns of one manuscript your standardized Reference IDs, look at where they occur (the gallery), and write the public notes for the manuscript.
 
-## Selecting a Manuscript
-
-The Equivalents view opens with a master list of all **Manuscript Sources** extracted from your transcription datasets. 
-
-1. Browse or search for the specific manuscript you want to manage.
-2. Check the status column to see if a manuscript has been "annotated" (has assigned patterns) or is "Not Started".
-3. Click on a manuscript row or its "Edit" button to open the Pattern Editor for that specific source.
+Open it from the neume table of a manuscript with **Annotate snippets →**. **Back to the neume table** returns to the table.
 
 ## The Pattern Editor
 
-Once inside a manuscript's editor, the interface is split into two panels:
+The editor is split into two panels:
 
 ### 1. Left Panel: Available Patterns
 This panel lists every unique musical pattern found in the transcription data for this specific manuscript.
@@ -30,7 +24,7 @@ This table shows the patterns you have selected to manage for this manuscript.
 
 ## Setting Reference IDs
 
-By default, the ID you type into the "ID" column applies **only to the current manuscript**. This allows you to handle manuscript-specific graphical variations easily.
+By default, the ID you type into the "ID" column applies **only to the current manuscript**. Metadata of the manuscript (origin, date, your own fields) is not edited here but in the [Metadata table](./manuscript-metadata). This allows you to handle manuscript-specific graphical variations easily.
 
 ### The Global ID Button (★)
 If you determine that a pattern should use a specific Ref ID across *all* manuscripts in your project, enter the ID and click the **★ (Star)** icon next to the input field. 

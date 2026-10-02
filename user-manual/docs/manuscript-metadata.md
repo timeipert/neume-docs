@@ -35,11 +35,19 @@ It behaves like Excel:
 - **Import** reads a CSV or tab-separated file. The first row names the columns, one of them must be *Siglum*; rows are matched by siglum. You see how many cells will change before anything does.
 - **Export** copies the table to the clipboard, ready to paste into Excel, or downloads CSV (comma or semicolon) or TSV. Export, edit in Excel, import again is a quick way to work through a long list.
 
+## Your own columns
+
+*Columns → Add a column of your own* adds a column. Open its menu (the ⋯ on the heading) and choose **Edit this column…** to rename it, describe it or change what kind of values it holds (text, date or century, location). A *date* column is read as a year range so the public pages can filter it on a timeline; the dialog tells you how many of its values cannot be read as a date. **Delete this column** removes it with its values; **Undo** in the message that follows brings both back.
+
+This table is the only place where manuscript metadata is edited. Other pages link here.
+
 ## IIIF
 
 The **IIIF manifest** column holds each manuscript's manifest address. Type or paste one — a whole column of addresses can be pasted at once. The manifest loads when the manuscript's images are first needed, and the address is checked only for looking like a web address.
 
-Most sources in the CM carry no manifest. But many *documents* name the image they were transcribed from (a IIIF Image API address, in the document's `iiifs` field). The editor reads these on import: for each folio a document starts on, that image becomes the page. The manuscript then shows its pages in **Annotate → Manuscripts** without a manifest. *Page images* tells you how many pages that gives; *Images from* says whether a manuscript uses its manifest or the corpus's addresses. A manifest you set always takes over.
+Most sources in the CM carry no manifest. But many *documents* name the image they were transcribed from (a IIIF Image API address, in the document's `iiifs` field). The editor reads these on import: for each folio a document starts on, that image becomes the page. The manuscript then shows its pages in **Annotate → Page images** without a manifest. *Page images* tells you how many pages that gives; *Images from* says whether a manuscript uses its manifest or the corpus's addresses. A manifest you set always takes over.
+
+All the IIIF resources of your manuscripts, several per manuscript if you like, are in a table of their own, with suggestions from the MMMO catalogue: see [IIIF Sources & MMMO Suggestions](./iiif-sources).
 
 Working copies (document IDs ending in `TR` or `GS`) are left out of the neume counts, but their image addresses are used — they often carry them.
 

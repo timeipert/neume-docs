@@ -1,0 +1,61 @@
+import { describe, it, expect } from 'vitest';
+import { freshStores } from '../utils/workspaceTestKit';
+import { SETTING_GROUPS, SHARED_SETTING_KEYS, settingDefaults } from './settings';
+
+describe('settings: whole-store operations', () => {
+    it('snapshots every setting as a detached copy', async () => {
+        const { settings } = await freshStores();
+        settings.setGlobalId('*dd', 'Type A');
+        const snap = settings.snapshot();
+        expect(Object.keys(snap).sort()).toEqual(Object.keys(settingDefaults()).sort());
+        settings.setGlobalId('*ud', 'Type B');
+        expect(snap.globalDisplayIds).toEqual({ '*dd': 'Type A' });
+    });
+
+    it('resets all, or one group, to the defaults', async () => {
+        const { settings } = await freshStores();
+        settings.displayMode = 'arrow';
+        settings.setGlobalId('*dd', 'Type A');
+        settings.reset(SETTING_GROUPS.library);
+        expect(settings.globalDisplayIds).toEqual({});
+        expect(settings.displayMode).toBe('arrow');
+        settings.reset();
+        expect(settings.displayMode).toBe('svg');
+    });
+
+    it('counts how many settings of a group differ from the default', async () => {
+        const { settings } = await freshStores();
+        expect(settings.changedCount(SETTING_GROUPS.preferences)).toBe(0);
+        settings.displayMode = 'text';
+        settings.frequencyBasis = 'loaded';
+        expect(settings.changedCount(SETTING_GROUPS.preferences)).toBe(2);
+    });
+
+    it('with replace, settings the data does not mention go back to the default', async () => {
+        const { settings } = await freshStores();
+        settings.displayMode = 'text';
+        settings.autoFillIds = false;
+        settings.apply({ displayMode: 'arrow' }, { replace: true });
+        expect(settings.displayMode).toBe('arrow');
+        expect(settings.autoFillIds).toBe(true);
+    });
+
+    it('a colleague\'s file does not rename my backup', async () => {
+        expect(SHARED_SETTING_KEYS).not.toContain('backupLabel');
+        const { settings } = await freshStores();
+        settings.backupLabel = 'Mine';
+        settings.apply({ backupLabel: 'Theirs', displayMode: 'text' }, { keys: SHARED_SETTING_KEYS });
+        expect(settings.backupLabel).toBe('Mine');
+        expect(settings.displayMode).toBe('text');
+    });
+
+    it('is saved to localStorage and read back by a new store', async () => {
+        const { settings } = await freshStores();
+        settings.displayMode = 'text';
+        settings.addCustomSign({ key: 'V', label: 'Virga' });
+        await new Promise(r => setTimeout(r, 0));
+        const saved = JSON.parse(localStorage.getItem('globalSettings'));
+        expect(saved.displayMode).toBe('text');
+        expect(saved.customSigns[0].key).toBe('V');
+    });
+});

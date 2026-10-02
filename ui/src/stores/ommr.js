@@ -211,7 +211,16 @@ export const useOmmrStore = defineStore('ommr', () => {
         }
     }
 
+    /** Drop every loaded OMMR dataset and local image. */
+    function clearAll() {
+        for (const source of Object.keys(loadedDatasets.value)) clearLocalImages(source);
+        for (const source of Object.keys(localImages.value)) clearLocalImages(source);
+        loadedDatasets.value = {};
+        activeSource.value = null;
+    }
+
     return {
+        clearAll,
         loadedDatasets,
         activeSource,
         isProcessing,

@@ -144,6 +144,21 @@ export async function clearStore(storeName) {
     }
 }
 
+/** How many entries a store holds (0 when the database is unavailable). */
+export async function countStore(storeName) {
+    try {
+        const db = await initDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(storeName, 'readonly');
+            const req = tx.objectStore(storeName).count();
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => resolve(0);
+        });
+    } catch {
+        return 0;
+    }
+}
+
 export async function getHandle(key) {
     const db = await initDB();
     return new Promise((resolve, reject) => {

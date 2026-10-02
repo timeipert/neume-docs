@@ -43,7 +43,7 @@ function continueToApp() {
         
         <div v-else class="unsupported-section">
             <p>Your browser does not support the File System Access API (e.g., Firefox or Safari). We cannot bind a local folder for automatic saving.</p>
-            <p>Your data will be saved to your browser's local storage instead. <strong>Please remember to manually export your data regularly via the Settings page!</strong></p>
+            <p>Your data will be saved to your browser's local storage instead. <strong>Please remember to manually export your data regularly on the Workspace page!</strong></p>
             
             <div class="actions">
                 <button @click="handleBypass" class="btn-primary btn-large">Continue</button>

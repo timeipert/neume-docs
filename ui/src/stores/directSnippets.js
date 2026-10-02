@@ -142,6 +142,10 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
             sum + c.snippets.reduce((s2, s) => s2 + dataUrlBytes(s.image), 0), 0)
     )
 
+    function clearAll() {
+        collections.value = []
+    }
+
     /** Replace all state (used by import). */
     function replaceAll(next) {
         collections.value = Array.isArray(next) ? next : []
@@ -167,6 +171,6 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
         getCollection, createCollection, updateCollection, removeCollection,
         addPattern, updatePattern, removePattern,
         addSnippet, updateSnippet, removeSnippet,
-        collectionBytes, replaceAll, mergeCollections
+        collectionBytes, replaceAll, mergeCollections, clearAll
     }
 })

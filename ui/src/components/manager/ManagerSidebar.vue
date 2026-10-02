@@ -1,4 +1,5 @@
 <script setup>
+import { useToast } from '../../composables/useToast';
 import { ref, watch, computed, reactive } from 'vue';
 import { useTranscriptionData } from '../../composables/useTranscriptionData';
 import { useImageManifest } from '../../composables/useImageManifest';
@@ -10,6 +11,7 @@ const props = defineProps(['selectedSource', 'selectedFolio']);
 const emits = defineEmits(['select']);
 
 const iiifStore = useIiifStore();
+const toast = useToast();
 const annotStore = useAnnotationsStore();
 
 const { sourceFolios, loading: dataLoading } = useTranscriptionData();
@@ -119,7 +121,7 @@ async function submitIiif() {
         iiifSource.value = '';
         iiifUrl.value = '';
     } catch (e) {
-        alert("Error loading IIIF Manifest: " + e.message);
+        toast.show(`The IIIF manifest could not be loaded: ${e.message}`, { tone: 'error' });
     } finally {
         isSubmittingIiif.value = false;
     }

@@ -1,4 +1,5 @@
 <script setup>
+import { useUndoableDelete } from '../../composables/useUndoableDelete';
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAnnotationsStore } from '../../stores/annotations';
@@ -18,6 +19,7 @@ const emit = defineEmits(['close', 'select']);
 const router = useRouter();
 
 const annotStore = useAnnotationsStore();
+const { deleteOnPage } = useUndoableDelete();
 const iiifStore = useIiifStore();
 const tableStore = usePersonalTablesStore();
 const { hasImage, getImageUrl, getStandardSource, getStandardFolio, loaded: manifestLoaded } = useImageManifest();
@@ -295,10 +297,8 @@ function startAnnotating(pageObj) {
 }
 
 function removeAnnot(id, source, folio) {
-    if (confirm("Delete annotation?")) {
-        const std = getStandardSource(source, folio);
-        annotStore.removeAnnotation(std, folio, props.pattern, id);
-    }
+    const std = getStandardSource(source, folio);
+    deleteOnPage(std, folio, 'Snippet deleted.', () => annotStore.removeAnnotation(std, folio, props.pattern, id));
 }
 
 function goToRegion(item) {

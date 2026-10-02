@@ -1,4 +1,5 @@
 <script setup>
+import { useToast } from '../composables/useToast';
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue';
 import { useDirectSnippetsStore } from '../stores/directSnippets';
 import { useSettingsStore } from '../stores/settings';
@@ -8,6 +9,7 @@ import PatternDisplay from '../components/PatternDisplay.vue';
 import PatternCode from '../components/PatternCode.vue';
 
 const store = useDirectSnippetsStore();
+const toast = useToast();
 const settings = useSettingsStore();
 const { glyphs } = useTranscriptionData();
 
@@ -89,10 +91,13 @@ function createCollection() {
 }
 
 function deleteCollection(c) {
-    if (confirm(`Delete the custom manuscript "${c.source}" and its ${c.snippets.length} snippet(s)? This cannot be undone.`)) {
-        store.removeCollection(c.id);
-        if (activeId.value === c.id) activeId.value = '';
-    }
+    // Kept aside for Undo, with its images: a deleted collection is not lost until the message goes away.
+    const kept = JSON.parse(JSON.stringify(c));
+    store.removeCollection(c.id);
+    if (activeId.value === c.id) activeId.value = '';
+    toast.show(`“${kept.source}” deleted (${kept.snippets.length} snippet${kept.snippets.length === 1 ? '' : 's'}).`, {
+        action: { label: 'Undo', run: () => store.mergeCollections([kept]) }
+    });
 }
 
 // --- Patterns ---

@@ -6,9 +6,9 @@ The ultimate goal of the Neumen-Editor tool is to publish your findings. The too
 
 The public view relies on a single JSON file that contains all your hard work: definitions, global IDs, local overrides, line regions, and polygon coordinates.
 
-1. Navigate to the **Settings** or **Export** area of the application.
-2. Look for the option to **Export Public Data** or generate `data.json`.
-3. This process compiles your local database into a web-optimized format.
+1. Open the **Workspace** page and find the **Publish** panel.
+2. Choose **Download static site**.
+3. This compiles the manuscripts you marked as *Published* into HTML and Markdown pages with their image snippets.
 
 ## The Public Interface
 

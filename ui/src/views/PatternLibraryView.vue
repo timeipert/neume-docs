@@ -7,11 +7,13 @@
  * local scan can be added by hand. Per pattern it shows the code, the Ref-ID
  * label, image examples from the annotations, and an MEI template editor.
  *
- * The variant vocabulary itself (custom signs, code variants) lives in the
- * settings store and is edited through the same VariantEditorModal the polygon
- * editor uses — this page only gives it a pattern-centric home.
+ * This page is also where the vocabulary is set up: the project's signs, the
+ * variant buttons offered while annotating, and preferred IDs. They are stored in
+ * the settings store but edited only here. Code variants are made per pattern, in
+ * the list, through the same VariantEditorModal the polygon editor uses.
  */
 import { ref, computed, onMounted } from 'vue';
+import { useRoute } from 'vue-router';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useSettingsStore } from '../stores/settings';
 import { usePatternIndex } from '../composables/usePatternIndex';
@@ -27,9 +29,19 @@ import PatternHierarchyTree from '../components/patterns/PatternHierarchyTree.vu
 import PatternMeiEditor from '../components/patterns/PatternMeiEditor.vue';
 import PatternExamples from '../components/patterns/PatternExamples.vue';
 import StateWrapper from '../components/StateWrapper.vue';
+import PageHeader from '../components/ui/PageHeader.vue';
+import Disclosure from '../components/ui/Disclosure.vue';
+import SignVocabulary from '../components/patterns/SignVocabulary.vue';
+import SnippetVariants from '../components/patterns/SnippetVariants.vue';
+import PreferredIds from '../components/patterns/PreferredIds.vue';
+import { useToast } from '../composables/useToast';
 
 const library = usePatternLibraryStore();
 const settings = useSettingsStore();
+const toast = useToast();
+const route = useRoute();
+// ?setup=signs|snippet-variants|ids opens that set-up panel (links from other pages).
+const setupOpen = computed(() => String(route.query.setup || ''));
 const {
     sources, loadAllSources, index, allCodes, getInfo, refIdFor, signKeys, glyphs, loading
 } = usePatternIndex();
@@ -67,7 +79,6 @@ const filteredCodes = computed(() => {
 });
 
 const treeRef = ref(null);
-const showSnippetVariants = ref(false);
 
 // --- Detail expansion ---
 const expanded = ref(new Set());
@@ -122,11 +133,12 @@ function addManual() {
 }
 
 function removeManual(code) {
-    if (!confirm(`Remove the manually added pattern "${code}"?`)) return;
+    const entry = library.getEntry(code);
     library.removeEntry(code);
     const next = new Set(expanded.value);
     next.delete(code);
     expanded.value = next;
+    toast.show(`Pattern ${code} removed.`, { action: { label: 'Undo', run: () => library.updateEntry(code, entry) } });
 }
 
 const newCodePreview = computed(() => {
@@ -168,66 +180,23 @@ function editVariant(code) {
 function deleteVariant(code) {
     const found = variantEntryFor(code);
     if (!found) return;
-    if (!confirm(`Remove the code variant "${code}"?`)) return;
     settings.removeCodeVariant(found.base, found.variant.id);
+    toast.show(`Code variant ${code} removed.`, { action: { label: 'Undo', run: () => settings.addCodeVariant(found.base, found.variant) } });
 }
 
 const hasSigns = computed(() => settings.customSigns.length > 0);
 
-// --- Snippet variants (classifier letters offered while annotating) ---
-// Only *configured* rows are editable. While nothing is configured the store
-// serves the built-in a–g, which must not appear here as if it were saved
-// state — otherwise removing a row would do nothing and re-adding one of the
-// letters would look like a duplicate.
-const snippetVariantRows = computed(() =>
-    settings.hasSnippetVariantConfig() ? settings.getSnippetVariants().filter(v => v.key) : []
-);
-
-const usesDefaultVariants = computed(() => !settings.hasSnippetVariantConfig());
-
-/** Copy the built-in a–g into the configuration, as a starting point to edit. */
-function adoptDefaultVariants() {
-    settings.setSnippetVariants(
-        settings.getSnippetVariants().filter(v => v.key).map(v => ({ key: v.key, label: v.label }))
-    );
-}
-
-/** Drop the configuration again, so the built-in a–g apply. */
-function resetSnippetVariants() {
-    if (!confirm('Discard the configuration and offer a–g again?')) return;
-    settings.setSnippetVariants([]);
-}
-const newVariantKey = ref('');
-const newVariantLabel = ref('');
-
-function commitSnippetVariants(list) {
-    settings.setSnippetVariants(list);
-}
-
-function updateSnippetVariant(i, field, value) {
-    const list = snippetVariantRows.value.map(v => ({ ...v }));
-    list[i][field] = value;
-    commitSnippetVariants(list);
-}
-
-function removeSnippetVariant(i) {
-    const list = snippetVariantRows.value.map(v => ({ ...v }));
-    list.splice(i, 1);
-    commitSnippetVariants(list);
-}
-
-function addSnippetVariant() {
-    const key = newVariantKey.value.trim();
-    if (!key) return;
-    if (snippetVariantRows.value.some(v => v.key === key)) {
-        alert(`Variant "${key}" is already configured.`);
-        return;
-    }
-    commitSnippetVariants([...snippetVariantRows.value.map(v => ({ ...v })),
-        { key, label: newVariantLabel.value.trim() || key }]);
-    newVariantKey.value = '';
-    newVariantLabel.value = '';
-}
+const setupSummary = computed(() => ({
+    signs: settings.customSigns.length
+        ? `${settings.customSigns.length} sign${settings.customSigns.length === 1 ? '' : 's'}: ${settings.customSigns.map(s => s.key).join(' ')}`
+        : 'No signs yet',
+    snippetVariants: settings.hasSnippetVariantConfig()
+        ? `${settings.snippetVariants.length} variant${settings.snippetVariants.length === 1 ? '' : 's'}`
+        : 'Built-in a–g',
+    ids: Object.keys(settings.globalDisplayIds).length
+        ? `${Object.keys(settings.globalDisplayIds).length} set${settings.autoFillIds ? '' : ' (not filled in automatically)'}`
+        : 'None yet'
+}));
 
 const stats = computed(() => ({
     total: allCodes.value.length,
@@ -240,111 +209,30 @@ const stats = computed(() => ({
 <template>
 <StateWrapper :loading="loading" loadingText="Loading pattern data...">
 <div class="library-view">
-    <header class="lib-header">
-        <div class="header-main">
-            <h2>Pattern Library</h2>
-            <p class="subtitle">
-                Every notation shape the editor knows — the whole Corpus Monodicum, your loaded corpus, the
-                annotations and the code variants — and extendable with shapes that exist only on scans.
-            </p>
-        </div>
-        <div class="header-stats">
-            <div class="stat"><strong>{{ stats.total }}</strong><span>patterns</span></div>
-            <div class="stat"><strong>{{ stats.variants }}</strong><span>variants</span></div>
-            <div class="stat"><strong>{{ stats.manual }}</strong><span>manual</span></div>
-            <div class="stat"><strong>{{ stats.withMei }}</strong><span>with MEI</span></div>
-        </div>
-    </header>
-
-    <!-- Sign vocabulary lives in Settings; this is the pointer to it -->
-    <section class="card signs-card">
-        <div class="signs-row">
-            <div class="signs-text">
-                <strong>Sign vocabulary</strong>
-                <span class="signs-desc">
-                    Code variants come from project-wide signs that mark single notes
-                    (e.g. <span class="code-font">*uudd</span> → <span class="code-font">*uuVdd</span>).
-                </span>
+    <PageHeader title="Pattern library" eyebrow="Vocabulary">
+        <template #subtitle>
+            <p>Every notation shape the editor knows: the whole Corpus Monodicum, your loaded corpus, the annotations and your code variants. Shapes that exist only on scans can be added by hand.</p>
+        </template>
+        <template #actions>
+            <div class="header-stats">
+                <div class="stat"><strong>{{ stats.total }}</strong><span>patterns</span></div>
+                <div class="stat"><strong>{{ stats.variants }}</strong><span>variants</span></div>
+                <div class="stat"><strong>{{ stats.manual }}</strong><span>manual</span></div>
+                <div class="stat"><strong>{{ stats.withMei }}</strong><span>with MEI</span></div>
             </div>
-            <div class="signs-list">
-                <span v-for="s in settings.customSigns" :key="s.key" class="sign-chip" :title="s.description">
-                    <strong>{{ s.key }}</strong> {{ s.label }}
-                </span>
-                <span v-if="!hasSigns" class="no-signs">No signs defined yet</span>
-            </div>
-            <router-link class="btn-link" to="/settings">Manage in Settings →</router-link>
-        </div>
-        <label class="discriminate">
-            <input type="checkbox" v-model="settings.discriminateSigns" />
-            Tell code variants apart in overviews and IDs
-            <span class="hint">(off = every variant counts towards its base pattern)</span>
-        </label>
-    </section>
+        </template>
+    </PageHeader>
 
-    <!-- Snippet variants: the buttons offered while annotating -->
-    <section class="card">
-        <button type="button" class="card-toggle" @click="showSnippetVariants = !showSnippetVariants">
-            <span class="caret" :class="{ open: showSnippetVariants }">▸</span>
-            <span>
-                <strong>Snippet variants</strong>
-                <span class="card-desc">
-                    The buttons offered while annotating, for shapes with the <em>same</em> code but a
-                    different graphical execution.
-                    <template v-if="!settings.hasSnippetVariantConfig()">Currently the default a–g.</template>
-                </span>
-            </span>
-        </button>
-
-        <div v-if="showSnippetVariants" class="card-body">
-            <table class="sv-table">
-                <thead>
-                    <tr><th class="sv-key">Key</th><th>Label</th><th class="sv-actions"></th></tr>
-                </thead>
-                <tbody>
-                    <tr class="base-row">
-                        <td class="sv-key"><code>—</code></td>
-                        <td>Base</td>
-                        <td class="sv-actions"></td>
-                    </tr>
-                    <tr v-if="usesDefaultVariants" class="default-row">
-                        <td class="sv-key"><code>a–g</code></td>
-                        <td>Default (not configured)</td>
-                        <td class="sv-actions">
-                            <button type="button" class="btn-sm" @click="adoptDefaultVariants">Adopt</button>
-                        </td>
-                    </tr>
-                    <tr v-for="(v, i) in snippetVariantRows" :key="v.key">
-                        <td class="sv-key"><code>{{ v.key }}</code></td>
-                        <td>
-                            <input class="field-input" :value="v.label"
-                                   @input="updateSnippetVariant(i, 'label', $event.target.value)" />
-                        </td>
-                        <td class="sv-actions">
-                            <button type="button" class="btn-sm danger" @click="removeSnippetVariant(i)">Remove</button>
-                        </td>
-                    </tr>
-                    <tr class="new-row">
-                        <td class="sv-key">
-                            <input class="field-input mono" v-model="newVariantKey" placeholder="b" @keyup.enter="addSnippetVariant" />
-                        </td>
-                        <td>
-                            <input class="field-input" v-model="newVariantLabel" placeholder="Label" @keyup.enter="addSnippetVariant" />
-                        </td>
-                        <td class="sv-actions">
-                            <button type="button" class="btn-sm" @click="addSnippetVariant">Add</button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            <p class="sv-hint">
-                The keys are stored on the annotations. Existing annotations keep their letter,
-                even if it is no longer listed here.
-                <button v-if="!usesDefaultVariants" type="button" class="btn-link-inline" @click="resetSnippetVariants">
-                    Offer a–g again
-                </button>
-            </p>
-        </div>
-    </section>
+    <!-- Set-up: everything that defines the vocabulary is edited here, nowhere else. -->
+    <Disclosure title="Signs" :summary="setupSummary.signs" :open="setupOpen === 'signs'">
+        <SignVocabulary />
+    </Disclosure>
+    <Disclosure title="Snippet variants" :summary="setupSummary.snippetVariants" :open="setupOpen === 'snippet-variants'">
+        <SnippetVariants />
+    </Disclosure>
+    <Disclosure title="Preferred IDs" :summary="setupSummary.ids" :open="setupOpen === 'ids'">
+        <PreferredIds />
+    </Disclosure>
 
     <!-- Add a scan-only pattern -->
     <section class="card">
@@ -499,10 +387,6 @@ const stats = computed(() => ({
     gap: var(--space-4);
 }
 
-.lib-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
-.lib-header h2 { margin: 0 0 4px; }
-.subtitle { margin: 0; color: var(--color-text-muted); font-size: 0.88rem; max-width: 64ch; line-height: 1.55; }
-
 .header-stats { display: flex; gap: 10px; }
 .stat {
     display: flex;
@@ -523,59 +407,6 @@ const stats = computed(() => ({
     border-radius: var(--radius-lg);
     padding: var(--space-4);
 }
-
-.signs-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
-.signs-text { display: flex; flex-direction: column; gap: 2px; }
-.signs-desc { font-size: 0.78rem; color: var(--color-text-muted); max-width: 48ch; }
-.code-font { font-family: monospace; background: var(--color-surface-muted); padding: 0 4px; border-radius: 3px; }
-.signs-list { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; }
-.sign-chip {
-    font-size: 0.75rem;
-    background: var(--color-primary-light);
-    color: var(--color-primary-dark);
-    border-radius: 10px;
-    padding: 2px 10px;
-}
-.sign-chip strong { font-family: monospace; }
-.no-signs { font-size: 0.78rem; color: var(--color-text-light); font-style: italic; }
-.btn-link { font-size: 0.78rem; color: var(--color-primary); text-decoration: none; white-space: nowrap; }
-.btn-link:hover { text-decoration: underline; }
-.discriminate { display: flex; align-items: center; gap: 6px; margin-top: 12px; font-size: 0.8rem; color: var(--color-text-muted); }
-.discriminate .hint { font-size: 0.74rem; color: var(--color-text-light); }
-
-.card-toggle {
-    width: 100%;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    background: transparent;
-    border: none;
-    text-align: left;
-    cursor: pointer;
-    padding: 0;
-    font-size: 0.9rem;
-}
-.card-desc { display: block; font-size: 0.78rem; color: var(--color-text-muted); font-weight: 400; margin-top: 2px; }
-.card-body { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--color-border); }
-.caret { display: inline-block; transition: transform 0.15s ease; opacity: 0.6; font-size: 0.8em; padding-top: 2px; }
-.caret.open { transform: rotate(90deg); }
-
-.sv-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; max-width: 620px; }
-.sv-table th {
-    text-align: left; padding: 5px 8px; font-size: 0.68rem; text-transform: uppercase;
-    letter-spacing: 0.04em; color: var(--color-text-light); border-bottom: 1px solid var(--color-border);
-}
-.sv-table td { padding: 5px 8px; border-bottom: 1px solid var(--color-surface-muted); }
-.sv-table .base-row { color: var(--color-text-muted); }
-.sv-table .new-row td { background: var(--color-surface-muted); }
-.sv-table .default-row { color: var(--color-text-muted); font-style: italic; }
-.btn-link-inline {
-    background: none; border: none; padding: 0; margin-left: 6px;
-    color: var(--color-primary); font-size: inherit; cursor: pointer; text-decoration: underline;
-}
-.sv-key { width: 110px; font-family: monospace; }
-.sv-actions { width: 120px; text-align: right; }
-.sv-hint { font-size: 0.75rem; color: var(--color-text-muted); margin: 10px 0 0; line-height: 1.55; }
 
 .add-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .add-fields { display: flex; gap: 8px; flex: 1; min-width: 320px; }

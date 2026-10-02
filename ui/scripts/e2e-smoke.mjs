@@ -212,8 +212,8 @@ try {
 
     await page.getByRole('button', { name: /Find & replace/ }).click();
     await page.locator('#rep-find').fill('Gradual');
-    await page.locator('.dialog input[placeholder^="Leave empty"]').fill('Graduale');
-    await page.locator('.dialog select').selectOption('all');
+    await page.locator('.md-dialog input[placeholder^="Leave empty"]').fill('Graduale');
+    await page.locator('.md-dialog select').selectOption('all');
     await page.getByRole('button', { name: /^Replace/ }).click();
     assert.equal(await textAt(2, 'Source type'), 'Graduale');
     step('find & replace works over the whole table, as one step');
@@ -231,9 +231,9 @@ try {
 
     const csvIn = `Siglum,Shelfmark\n${sigla[3]},Imported shelfmark\n`;
     await page.locator('.tools input[type=file]').setInputFiles({ name: 'meta.csv', mimeType: 'text/csv', buffer: Buffer.from(csvIn) });
-    await page.waitForSelector('.dialog');
-    await page.locator('.dialog footer .ne-btn--primary').click();
-    await page.waitForSelector('.dialog', { state: 'detached' });
+    await page.waitForSelector('.md-dialog');
+    await page.locator('.md-dialog .md-foot .ne-btn--primary').click();
+    await page.waitForSelector('.md-dialog', { state: 'detached' });
     assert.equal(await textAt(3, 'Shelfmark'), 'Imported shelfmark');
     step('a CSV is imported by siglum');
 
@@ -241,6 +241,133 @@ try {
     await page.waitForSelector('.grid-scroller td');
     assert.equal(await textAt(3, 'Shelfmark'), 'Imported shelfmark');
     step('edits survive a reload');
+
+    // 8. Your own metadata column can be renamed in the table itself ---------
+    await page.getByRole('button', { name: /Columns/ }).click();
+    await page.locator('.add-column input').fill('Notation type');
+    await page.locator('.add-column .ne-btn--primary').click();
+    await page.keyboard.press('Escape');
+    await page.mouse.click(5, 400); // close the columns menu
+    const ownHead = page.locator('th.head', { hasText: 'Notation type' });
+    await ownHead.hover();
+    await ownHead.locator('.col-menu').click({ force: true });
+    await page.getByRole('button', { name: /Edit this column/ }).click();
+    await page.waitForSelector('.md-dialog');
+    await page.locator('.md-dialog input.ne-input').first().fill('Notation family');
+    await page.locator('.md-dialog .md-foot .ne-btn--primary').click();
+    await page.waitForSelector('th.head:has-text("Notation family")');
+    step('an own column is renamed from its menu, in the table');
+
+    // 9. Pattern library: where signs, variants and preferred IDs are set up --
+    await page.goto(`${base}/#/patterns?setup=signs`);
+    await page.waitForSelector('#sign-key');
+    await page.locator('#sign-key').fill('v');
+    await page.locator('#sign-label').fill('Virga');
+    await page.getByRole('button', { name: 'Add sign' }).click();
+    assert.equal(await page.locator('.signs-table tbody tr').count(), 1, 'the sign was added');
+    await page.getByRole('button', { name: /Preferred IDs/ }).click();
+    await page.locator('input[aria-label="Pattern"]').fill('*dd');
+    await page.locator('input[aria-label="Preferred ID"]').fill('Type A');
+    await page.locator('.pids .ne-btn', { hasText: 'Add' }).click();
+    assert.equal(await page.locator('.pids tbody tr').count(), 1, 'the preferred ID was added');
+    step('signs and preferred IDs are set up in the pattern library');
+
+    await page.goto(`${base}/#/settings`);
+    await page.waitForSelector('.panel');
+    assert.equal(await page.locator('.panel').count(), 2, 'Settings holds only the two global preferences');
+    step('Settings is down to the global preferences');
+
+    await page.goto(`${base}/#/equivalents`);
+    await page.waitForURL(/#\/table$/);
+    step('the old Equivalents list leads to the neume tables');
+
+    // Every page still opens without errors, and the table editor leads to the annotation view and back.
+    for (const route of ['/', '/corpus', '/metadata', '/metadata/iiif', '/table', '/compare', '/patterns', '/polygons', '/custom-manuscripts', '/ommr', '/settings', '/workspace']) {
+        const before = problems.length;
+        await page.goto(`${base}/#${route}`);
+        await page.waitForTimeout(500);
+        assert.equal(problems.length, before, `no errors on ${route}: ${problems.slice(before).join(' | ')}`);
+    }
+    step('every page opens without errors');
+
+    await page.goto(`${base}/#/table`);
+    await page.waitForSelector('.ms');
+    await page.locator('.ms').first().click();
+    await page.getByRole('button', { name: /Annotate snippets/ }).click();
+    await page.waitForURL(/#\/annotations\//);
+    await page.getByRole('button', { name: 'Back to the neume table' }).click();
+    await page.waitForURL(/#\/table\/.+/);
+    step('Annotate snippets leads to the annotation view, which leads back to the table');
+
+    // The table of IIIF sources, and adding a manuscript that is not in the corpus.
+    await page.goto(`${base}/#/metadata/iiif`);
+    await page.waitForSelector('#table');
+    await page.locator('input[aria-label="Manuscript"]').fill('Eichstätt 84');
+    await page.locator('input[aria-label="Address"]').fill('https://example.org/iiif/eu84/manifest.json');
+    await page.getByRole('button', { name: 'Add', exact: true }).click();
+    await page.waitForSelector('[data-table="iiif"] tr.in-use');
+    const iiifLinks = await page.evaluate(() => JSON.parse(localStorage.getItem('iiifLinks') || '{}'));
+    assert.equal(iiifLinks['Eichstätt 84'], 'https://example.org/iiif/eu84/manifest.json');
+    step('a row added to the IIIF table is put to use');
+
+    await page.getByRole('button', { name: 'Add a manuscript…' }).click();
+    await page.locator('#am-siglum').fill('Test 1');
+    await page.locator('#am-city').fill('Testville');
+    await page.getByRole('button', { name: 'Add manuscript' }).click();
+    await page.waitForURL(/#\/metadata\?q=/);
+    await page.waitForSelector('.grid-scroller td[data-c="0"] .text:has-text("Test 1")');
+    step('a manuscript outside the corpus is added and appears in the metadata table');
+
+    // 10. Workspace management ------------------------------------------------
+    await page.goto(`${base}/#/workspace`);
+    await page.waitForSelector('[data-area="tables"]');
+    const holds = async (area) => (await page.locator(`[data-area="${area}"] .holds`).innerText()).trim();
+    assert.match(await holds('tables'), /table/);
+    assert.match(await holds('metadata'), /edited cell/);
+    assert.match(await holds('library'), /custom sign/);
+    assert.match(await holds('images'), /IIIF table row/);
+    step('the workspace page counts what each part holds');
+
+    // Delete one part, then take it back with Undo.
+    await page.locator('[data-area="metadata"]').getByRole('button', { name: /Delete/ }).click();
+    await page.getByRole('button', { name: 'Delete', exact: true }).click();
+    await page.waitForSelector('.toast:has-text("Deleted: manuscript metadata")');
+    assert.match(await holds('metadata'), /Nothing yet/);
+    await page.locator('.toast:has-text("Deleted: manuscript metadata") .toast-action').click();
+    await page.waitForFunction(() => /edited cell/.test(document.querySelector('[data-area="metadata"] .holds')?.textContent || ''));
+    step('one part is deleted and brought back with Undo');
+
+    // Restore points were made on the way.
+    assert.ok(await page.locator('#restore tbody tr').count() >= 1, 'a restore point was kept');
+
+    // Delete all work needs a typed word.
+    await page.getByRole('button', { name: 'Delete all work…' }).click();
+    const confirmButton = page.locator('.md-dialog .md-foot .ne-btn--danger-solid');
+    assert.ok(await confirmButton.isDisabled(), 'the button waits for the typed word');
+    await page.locator('#cd-confirm-input').fill('delete');
+    await confirmButton.click();
+    await page.waitForSelector('.toast:has-text("All your work was deleted")');
+    assert.match(await holds('tables'), /Nothing yet/);
+    assert.match(await holds('library'), /Nothing yet/);
+    step('delete all work asks for a typed word, then empties every part');
+
+    // Restore from the list.
+    await page.locator('#restore tbody tr').filter({ hasText: 'Before deleting all work' }).getByRole('button', { name: /Restore/ }).click();
+    await page.locator('.md-dialog .md-foot .ne-btn--primary').click();
+    await page.waitForFunction(() => /table/.test(document.querySelector('[data-area="tables"] .holds')?.textContent || ''));
+    assert.match(await holds('library'), /custom sign/);
+    step('a restore point puts everything back');
+
+    // Reset the app: back to a first visit.
+    await page.getByRole('button', { name: 'Reset the app…' }).click();
+    await page.locator('#cd-confirm-input').fill('reset');
+    await page.locator('.md-dialog .md-foot .ne-btn--danger-solid').click();
+    await page.waitForSelector('.toast:has-text("The app was reset")');
+    assert.match(await holds('tables'), /Nothing yet/);
+    await page.goto(`${base}/#/corpus`);
+    await page.waitForSelector('.drop-card');
+    assert.equal(await page.locator('.loaded').count(), 0, 'the corpus is gone');
+    step('reset the app: work, preferences and corpus are gone');
 
     if (problems.length) throw new Error(`console errors:\n  ${problems.join('\n  ')}`);
     console.log('\nAll checks passed.');

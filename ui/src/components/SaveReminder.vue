@@ -1,12 +1,13 @@
 <script setup>
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useSaveReminderStore } from '../stores/saveReminder';
 import { useWorkspaceStorage } from '../composables/useWorkspaceStorage';
 import { useDataManagement } from '../composables/useDataManagement';
 
 const router = useRouter();
+const route = useRoute();
 const reminder = useSaveReminderStore();
 const {
     changeCount, hasUnsavedWork, shouldRemind, neverExported, sinceExportLabel
@@ -15,7 +16,8 @@ const { snooze, disableReminder } = reminder;
 
 // Read through explicit computeds in the template: a bare destructured ref used
 // directly in `v-if` is easy to get wrong (a Ref object is always truthy).
-const showToast = computed(() => shouldRemind.value);
+// On the Workspace page, where backups are made, the nudge would only be in the way.
+const showToast = computed(() => shouldRemind.value && route.path !== '/workspace');
 const changeCountText = computed(() => changeCount.value);
 const sinceText = computed(() => sinceExportLabel.value);
 const neverExportedFlag = computed(() => neverExported.value);
@@ -59,7 +61,7 @@ function doExport() {
 }
 
 function goToBackup() {
-    router.push('/settings');
+    router.push('/workspace');
 }
 </script>
 
@@ -87,9 +89,9 @@ function goToBackup() {
                     ({{ sinceText }}). Your folder autosaves, but a JSON backup is a safer second copy.
                 </p>
                 <div class="toast-actions">
-                    <button class="btn-primary" @click="doExport">Export backup now</button>
-                    <button class="btn-quiet" @click="snooze">Later</button>
-                    <button class="btn-quiet subtle" @click="disableReminder">Don't remind me</button>
+                    <button class="ne-btn ne-btn--primary ne-btn--sm" @click="doExport">Export backup now</button>
+                    <button class="ne-btn ne-btn--ghost ne-btn--sm" @click="snooze">Later</button>
+                    <button class="ne-btn ne-btn--ghost ne-btn--sm subtle" @click="disableReminder">Don't remind me</button>
                 </div>
             </div>
         </div>
@@ -131,11 +133,7 @@ function goToBackup() {
 .toast-body strong { display: block; margin-bottom: 4px; font-size: 14px; color: var(--color-text); }
 .toast-body p { margin: 0 0 12px; font-size: 12px; line-height: 1.5; color: var(--color-text-muted); }
 .toast-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.btn-primary { background: var(--color-primary); color: white; border: none; padding: 7px 13px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; }
-.btn-primary:hover { background: var(--color-primary-hover); }
-.btn-quiet { background: none; border: none; color: var(--color-text-muted); cursor: pointer; font-size: 12px; font-weight: 600; padding: 7px 6px; }
-.btn-quiet:hover { color: var(--color-text); text-decoration: underline; }
-.btn-quiet.subtle { margin-left: auto; opacity: .75; font-weight: 500; }
+.toast-actions .subtle { margin-left: auto; opacity: .75; }
 
 .slide-up-enter-active, .slide-up-leave-active { transition: all .25s ease; }
 .slide-up-enter-from, .slide-up-leave-to { opacity: 0; transform: translateY(16px); }

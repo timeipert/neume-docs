@@ -1,6 +1,70 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 
+/** Fresh default values for every persisted setting (new objects on every call). */
+export const settingDefaults = () => ({
+    displayMode: 'svg',
+    autoFillIds: true,
+    globalDisplayIds: {},
+    snippetSize: 60,
+    snippetPadding: 0.3,
+    backupLabel: 'My Backup',
+    sourceAlignments: {},
+    customSigns: [],
+    codeVariants: {},
+    discriminateSigns: true,
+    sourceMetaFields: [],
+    sourceMeta: {},
+    snippetVariants: [],
+    frequencyBasis: 'cm'
+})
+
+/**
+ * The settings, grouped by what a person would call them. The workspace page
+ * clears and counts them by group, and the pattern library / metadata table own
+ * the groups that are edited there.
+ */
+export const SETTING_GROUPS = {
+    // Display and table options: edited on the Settings page.
+    preferences: ['displayMode', 'autoFillIds', 'snippetSize', 'snippetPadding', 'frequencyBasis', 'backupLabel'],
+    // Signs, code variants, preferred IDs, snippet variants: edited in the pattern library.
+    library: ['globalDisplayIds', 'customSigns', 'codeVariants', 'discriminateSigns', 'snippetVariants'],
+    // Hand-made folio pins and offsets: edited next to the page images.
+    alignments: ['sourceAlignments'],
+    // The user's own metadata columns and their values: edited in the metadata table.
+    metadata: ['sourceMetaFields', 'sourceMeta']
+}
+
+/** The settings that travel in backups and configuration files (everything but the backup label). */
+export const SHARED_SETTING_KEYS = [
+    ...SETTING_GROUPS.preferences.filter(k => k !== 'backupLabel'),
+    ...SETTING_GROUPS.library,
+    ...SETTING_GROUPS.alignments,
+    ...SETTING_GROUPS.metadata
+]
+
+const KINDS = {
+    displayMode: ['svg', 'arrow', 'text'],
+    frequencyBasis: ['cm', 'loaded'],
+    globalDisplayIds: 'object', sourceAlignments: 'object', codeVariants: 'object', sourceMeta: 'object',
+    customSigns: 'array', sourceMetaFields: 'array', snippetVariants: 'array',
+    autoFillIds: 'boolean', discriminateSigns: 'boolean',
+    snippetSize: 'number', snippetPadding: 'number',
+    backupLabel: 'string'
+}
+
+/** Whether a value read from a file or storage is usable for a setting. */
+function acceptable(key, value) {
+    const kind = KINDS[key]
+    if (value === undefined || value === null) return false
+    if (Array.isArray(kind)) return kind.includes(value)
+    if (kind === 'array') return Array.isArray(value)
+    if (kind === 'object') return typeof value === 'object' && !Array.isArray(value)
+    if (kind === 'number') return typeof value === 'number' && value > 0
+    if (kind === 'string') return typeof value === 'string' && value !== ''
+    return typeof value === kind
+}
+
 export const useSettingsStore = defineStore('settings', () => {
     // State
     const displayMode = ref('svg') // 'svg', 'arrow', 'text'
@@ -35,49 +99,64 @@ export const useSettingsStore = defineStore('settings', () => {
     // Each: { key, label }
     const snippetVariants = ref([])
 
+    // --- Whole-store operations (backups, restore points, "reset") ---
+    const fields = {
+        displayMode, autoFillIds, globalDisplayIds, snippetSize, snippetPadding, backupLabel,
+        sourceAlignments, customSigns, codeVariants, discriminateSigns, sourceMetaFields,
+        sourceMeta, snippetVariants, frequencyBasis
+    }
+
+    /** A plain, detached copy of the given settings (all of them by default). */
+    function snapshot(keys = Object.keys(fields)) {
+        const out = {}
+        for (const key of keys) out[key] = JSON.parse(JSON.stringify(fields[key].value))
+        return out
+    }
+
+    /**
+     * Take settings from a file or snapshot. Values that are the wrong kind are
+     * ignored, so an old or hand-edited file cannot break the app. With `replace`,
+     * a setting the data does not mention goes back to its default.
+     */
+    function apply(data, { replace = false, keys = Object.keys(fields) } = {}) {
+        const defaults = settingDefaults()
+        for (const key of keys) {
+            const value = data ? data[key] : undefined
+            if (acceptable(key, value)) fields[key].value = value
+            else if (replace) fields[key].value = defaults[key]
+        }
+    }
+
+    /** Put settings back to their defaults (all of them, or only the given keys). */
+    function reset(keys = Object.keys(fields)) {
+        const defaults = settingDefaults()
+        for (const key of keys) fields[key].value = defaults[key]
+    }
+
+    /** How many settings of a group differ from their defaults. */
+    function changedCount(keys) {
+        const defaults = settingDefaults()
+        return keys.filter(k => JSON.stringify(fields[k].value) !== JSON.stringify(defaults[k])).length
+    }
+
     // Load from LocalStorage
-    const stored = localStorage.getItem('globalSettings')
-    if (stored) {
+    const loadFromStorage = () => {
+        const stored = localStorage.getItem('globalSettings')
+        if (!stored) return
         try {
-            const parsed = JSON.parse(stored)
-            // Restore individually to handle missing keys in old versions
-            if (parsed.displayMode) displayMode.value = parsed.displayMode
-            if (parsed.autoFillIds !== undefined) autoFillIds.value = parsed.autoFillIds
-            if (parsed.globalDisplayIds) globalDisplayIds.value = parsed.globalDisplayIds
-            if (parsed.snippetSize) snippetSize.value = parsed.snippetSize
-            if (parsed.snippetPadding) snippetPadding.value = parsed.snippetPadding
-            if (parsed.backupLabel) backupLabel.value = parsed.backupLabel
-            if (parsed.sourceAlignments) sourceAlignments.value = parsed.sourceAlignments
-            if (Array.isArray(parsed.customSigns)) customSigns.value = parsed.customSigns
-            if (parsed.codeVariants) codeVariants.value = parsed.codeVariants
-            if (parsed.discriminateSigns !== undefined) discriminateSigns.value = parsed.discriminateSigns
-            if (Array.isArray(parsed.sourceMetaFields)) sourceMetaFields.value = parsed.sourceMetaFields
-            if (parsed.sourceMeta) sourceMeta.value = parsed.sourceMeta
-            if (Array.isArray(parsed.snippetVariants)) snippetVariants.value = parsed.snippetVariants
-            if (parsed.frequencyBasis === 'cm' || parsed.frequencyBasis === 'loaded') frequencyBasis.value = parsed.frequencyBasis
+            apply(JSON.parse(stored))
         } catch (e) {
             console.error("Error loading settings", e)
         }
     }
 
+    loadFromStorage()
+
     // Persist to LocalStorage
-    watch([displayMode, autoFillIds, globalDisplayIds, snippetSize, snippetPadding, backupLabel, sourceAlignments, customSigns, codeVariants, discriminateSigns, sourceMetaFields, sourceMeta, snippetVariants, frequencyBasis], () => {
-        localStorage.setItem('globalSettings', JSON.stringify({
-            displayMode: displayMode.value,
-            autoFillIds: autoFillIds.value,
-            globalDisplayIds: globalDisplayIds.value,
-            snippetSize: snippetSize.value,
-            snippetPadding: snippetPadding.value,
-            backupLabel: backupLabel.value,
-            sourceAlignments: sourceAlignments.value,
-            customSigns: customSigns.value,
-            codeVariants: codeVariants.value,
-            discriminateSigns: discriminateSigns.value,
-            sourceMetaFields: sourceMetaFields.value,
-            sourceMeta: sourceMeta.value,
-            snippetVariants: snippetVariants.value,
-            frequencyBasis: frequencyBasis.value
-        }))
+    watch(Object.values(fields), () => {
+        const plain = {}
+        for (const [key, field] of Object.entries(fields)) plain[key] = field.value
+        localStorage.setItem('globalSettings', JSON.stringify(plain))
     }, { deep: true })
 
     // Actions
@@ -274,6 +353,10 @@ export const useSettingsStore = defineStore('settings', () => {
     }
 
     return {
+        snapshot,
+        apply,
+        reset,
+        changedCount,
         displayMode,
         autoFillIds,
         globalDisplayIds,

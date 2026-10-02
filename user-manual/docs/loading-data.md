@@ -29,4 +29,8 @@ For every syllable with notes, the neumes are read as **pattern codes** (see [Co
 
 ## Removing data
 
-On the Corpus page you can remove single sources or the whole corpus. Your neume tables, annotations and settings are kept.
+On the Corpus page you can remove single sources or the whole corpus. Your neume tables, annotations and settings are kept. (To delete your own work as well, or to start over completely, use the [Workspace](./workspace) page.)
+
+## OMMR4all
+
+The Corpus page also leads to the **OMMR4all import**, which reads the recognised neumes and staff lines of an OMMR4all project and links them to your manuscripts' images.

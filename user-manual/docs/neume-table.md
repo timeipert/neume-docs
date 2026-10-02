@@ -11,7 +11,7 @@ Columns are ordered by two criteria:
 
 A neume's frequency is counted over every way of writing it: brackets (ligatures) and special signs are ignored. `*ud` therefore counts `*ud`, `[*u]d`, `*[ud]` and also `*udL`.
 
-By default "the CM" is the whole Corpus Monodicum, from a snapshot built into the editor, so the order does not change with what you have loaded. *Settings → Neume Table* lets you count the loaded corpus instead.
+By default "the CM" is the whole Corpus Monodicum, from a snapshot built into the editor, so the order does not change with what you have loaded. *Settings → Ordering of the neume table* lets you count the loaded corpus instead.
 
 ## The standard table
 

@@ -1,8 +1,8 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import GlobalAnalysisView from '../views/GlobalAnalysisView.vue'
-import TranscriptionEquivalentsView from '../views/TranscriptionEquivalentsView.vue'
 import ManuscriptAnnotationsView from '../views/ManuscriptAnnotationsView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import WorkspaceView from '../views/WorkspaceView.vue'
 import PatternLibraryView from '../views/PatternLibraryView.vue'
 import PolygonManagerView from '../views/PolygonManagerView.vue'
 import RegionEditorView from '../views/RegionEditorView.vue'
@@ -15,6 +15,7 @@ import PublicCustomManuscriptView from '../views/PublicCustomManuscriptView.vue'
 import SetupView from '../views/SetupView.vue'
 import CorpusView from '../views/CorpusView.vue'
 import ManuscriptMetadataView from '../views/ManuscriptMetadataView.vue'
+import IiifSourcesView from '../views/IiifSourcesView.vue'
 import NeumeTableListView from '../views/NeumeTableListView.vue'
 import NeumeTableView from '../views/NeumeTableView.vue'
 
@@ -51,6 +52,12 @@ const router = createRouter({
       meta: { title: 'Manuscript metadata', requiresWorkspace: true }
     },
     {
+      path: '/metadata/iiif',
+      name: 'iiif_sources',
+      component: IiifSourcesView,
+      meta: { title: 'IIIF sources', requiresWorkspace: true }
+    },
+    {
       path: '/table',
       name: 'tables',
       component: NeumeTableListView,
@@ -74,12 +81,8 @@ const router = createRouter({
       component: PatternLibraryView,
       meta: { title: 'Pattern-Bibliothek', requiresWorkspace: true }
     },
-    {
-      path: '/equivalents',
-      name: 'equivalents',
-      component: TranscriptionEquivalentsView,
-      meta: { title: 'Transcription Equivalents', requiresWorkspace: true }
-    },
+    // The old list of pattern tables: the neume tables replaced it.
+    { path: '/equivalents', redirect: '/table' },
     {
       path: '/annotations/:id?',
       name: 'annotations',
@@ -97,6 +100,12 @@ const router = createRouter({
       name: 'custom_manuscripts',
       component: CustomManuscriptsView,
       meta: { title: 'Custom Manuscripts', requiresWorkspace: true }
+    },
+    {
+      path: '/workspace',
+      name: 'workspace',
+      component: WorkspaceView,
+      meta: { title: 'Workspace', requiresWorkspace: true }
     },
     {
       path: '/settings',

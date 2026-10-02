@@ -55,6 +55,13 @@ export const useIiifStore = defineStore('iiif', () => {
         await clearStore('images'); // region crops were keyed to the old service URL
     }
 
+    /** Forget every manifest link, and what was parsed from them. */
+    function clearLinks() {
+        links.value = {};
+        parsedData.value = {};
+        manifestStatus.value = {};
+    }
+
     function removeManifest(source) {
         delete links.value[source];
         delete parsedData.value[source];
@@ -314,6 +321,7 @@ export const useIiifStore = defineStore('iiif', () => {
         addManifest,
         setLink,
         removeManifest,
+        clearLinks,
         refreshManifest,
         importFromDataManifests,
         ensureLoaded,

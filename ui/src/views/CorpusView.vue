@@ -5,6 +5,7 @@ import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { useCorpusImport } from '../composables/useCorpusImport';
 import { collectFromFileList, collectFromDrop } from '../services/corpus/corpusImport';
 import PageHeader from '../components/ui/PageHeader.vue';
+import ActionDialog from '../components/workspace/ActionDialog.vue';
 import { useEffectiveMeta } from '../composables/useEffectiveMeta';
 
 const router = useRouter();
@@ -33,15 +34,32 @@ async function onDrop(event) {
     await begin(items);
 }
 
-async function remove(name) {
-    if (!window.confirm(`Remove "${name}" from the loaded corpus? Your tables and annotations for it are kept.`)) return;
-    await removeSource(name);
+const request = ref(null);
+
+function askRemove(name) {
+    request.value = {
+        title: `Remove ${name}`,
+        paragraphs: [
+            `This removes “${name}” from the loaded corpus. Your tables, annotations and metadata edits for it are kept.`,
+            'Loading the same files again brings it back.'
+        ],
+        confirmLabel: 'Remove',
+        run: async () => { await removeSource(name); return null; },
+        success: `${name} was removed from the corpus.`
+    };
 }
 
-async function removeAll() {
-    if (!window.confirm('Remove the whole loaded corpus? Your tables and annotations are kept; you can import the data again at any time.')) return;
-    await clearAll();
-    reset();
+function askRemoveAll() {
+    request.value = {
+        title: 'Remove the whole loaded corpus',
+        paragraphs: [
+            'This removes every loaded source. Your tables, annotations and metadata edits are kept.',
+            'Loading the files again on this page brings the corpus back.'
+        ],
+        confirmLabel: 'Remove all',
+        run: async () => { await clearAll(); reset(); return null; },
+        success: 'The corpus was removed.'
+    };
 }
 
 const rows = computed(() => {
@@ -113,6 +131,14 @@ const fmt = (n) => n.toLocaleString('en-US');
         </template>
     </section>
 
+    <section class="other-sources" aria-label="Other sources">
+        <div>
+            <strong>OMMR4all</strong>
+            <span>Have a project from OMMR4all? Load its recognised neumes and staff lines, and link them to your manuscripts.</span>
+        </div>
+        <button class="ne-btn" @click="router.push('/ommr')">Open the OMMR4all import &rarr;</button>
+    </section>
+
     <section v-if="phase === 'done' && result" class="note ok" role="status">
         <strong>
             {{ result.aborted ? 'Stopped.' : 'Done.' }}
@@ -166,7 +192,7 @@ const fmt = (n) => n.toLocaleString('en-US');
         <div class="list-head">
             <h2>Loaded sources</h2>
             <input v-model="filter" type="search" placeholder="Filter…" aria-label="Filter loaded sources" />
-            <button class="ne-btn ne-btn--sm ne-btn--danger" @click="removeAll">Remove all</button>
+            <button class="ne-btn ne-btn--sm ne-btn--danger" @click="askRemoveAll">Remove all…</button>
         </div>
 
         <table class="sources">
@@ -188,12 +214,13 @@ const fmt = (n) => n.toLocaleString('en-US');
                     <td class="num">{{ fmt(r.neumes) }}</td>
                     <td class="num">{{ fmt(r.patterns) }}</td>
                     <td>{{ r.importedAt }}</td>
-                    <td class="actions"><button class="icon danger" :aria-label="`Remove ${r.name}`" title="Remove from the loaded corpus" @click="remove(r.name)">✕</button></td>
+                    <td class="actions"><button class="icon danger" :aria-label="`Remove ${r.name}`" title="Remove from the loaded corpus" @click="askRemove(r.name)">✕</button></td>
                 </tr>
                 <tr v-if="rows.length === 0"><td colspan="8" class="empty">No source matches “{{ filter }}”.</td></tr>
             </tbody>
         </table>
     </section>
+    <ActionDialog :request="request" @close="request = null" />
 </div>
 </template>
 
@@ -223,6 +250,10 @@ const fmt = (n) => n.toLocaleString('en-US');
 @keyframes slide { from { margin-left: 0; } to { margin-left: 65%; } }
 .spinner { width: 28px; height: 28px; border: 3px solid var(--color-border); border-top-color: var(--color-primary); border-radius: 50%; animation: spin 0.9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.other-sources { margin-top: var(--space-3); display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); flex-wrap: wrap; padding: var(--space-3) var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
+.other-sources strong { display: block; }
+.other-sources span { font-size: 0.88rem; color: var(--color-text-muted); }
 
 .note { margin-top: var(--space-4); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); border: 1px solid; }
 .note.ok { background: var(--color-success-light); border-color: var(--color-success-muted); }

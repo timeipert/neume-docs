@@ -11,7 +11,7 @@ For each manuscript, fill in the standard table and add what else the manuscript
 - Choose, for every column of the standard table, how the manuscript writes that neume.
 - Choose up to three constellations for each of the special signs L, O, Q and the comma.
 - Add further patterns by code in the expanded documentation, and assign **Ref IDs**.
-- *See [The Neume Table](./neume-table) and [Equivalents Management](./equivalents).*
+- *See [The Neume Table](./neume-table) and [Pattern Editor & Ref IDs](./equivalents).*
 
 ## 2. Manuscript Annotation
 Once your base patterns are defined, you move to the visual phase: linking those patterns to physical ink on the scans.

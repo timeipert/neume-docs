@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { useManuscriptTable } from '../composables/useManuscriptTable';
 import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
@@ -8,23 +8,32 @@ import { useIiifStore } from '../stores/iiif';
 import {
     matchesFilter, compareCells, planMap, planReplace, planImport, parseDelimited, formatDelimited, CLEAN_UP
 } from '../utils/gridOps';
-import { META_TYPES } from '../utils/sourceMeta';
+import { META_TYPES, parseCentury } from '../utils/sourceMeta';
 import DataGrid from '../components/grid/DataGrid.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SegmentedControl from '../components/ui/SegmentedControl.vue';
 import StateWrapper from '../components/StateWrapper.vue';
+import ModalDialog from '../components/ui/ModalDialog.vue';
+import MetadataTabs from '../components/metadata/MetadataTabs.vue';
+import AddManuscriptDialog from '../components/metadata/AddManuscriptDialog.vue';
+import { useToast } from '../composables/useToast';
+import { useSettingsStore } from '../stores/settings';
 
 const router = useRouter();
+const route = useRoute();
 const { catalog, hasCorpus, loading, error } = useTranscriptionData();
 const table = useManuscriptTable();
 const meta = useManuscriptMetaStore();
 const iiif = useIiifStore();
+const settings = useSettingsStore();
+const toast = useToast();
 
 const GROUP_LABELS = { id: '', catalogue: 'Corpus catalogue', iiif: 'IIIF', project: 'Your fields', corpus: 'Corpus' };
 
 // ---- what is shown --------------------------------------------------------
 
-const search = ref('');
+// Other pages link here with ?q=<siglum> to land on one manuscript.
+const search = ref(typeof route.query.q === 'string' ? route.query.q : '');
 const quick = ref('all');
 const showFilters = ref(false);
 const filters = ref({});
@@ -143,12 +152,9 @@ function redo() {
 
 // ---- messages -----------------------------------------------------------------------
 
-const notice = ref('');
-let noticeTimer = null;
-function say(text) {
-    notice.value = text;
-    clearTimeout(noticeTimer);
-    noticeTimer = setTimeout(() => { notice.value = ''; }, 3800);
+/** One confirmation, shown the same way on every page (see useToast). */
+function say(text, action = null) {
+    toast.show(text, { action });
 }
 
 // ---- the selection and the formula bar -----------------------------------------------
@@ -265,6 +271,10 @@ function doReplace() {
 // ---- columns ---------------------------------------------------------------------------
 
 const columnsOpen = ref(false);
+const addingManuscript = ref(false);
+function onManuscriptAdded(siglum) {
+    search.value = siglum;
+}
 const newColumn = ref({ label: '', type: 'text' });
 
 function addColumn() {
@@ -320,8 +330,42 @@ function menuCopyToFilter() {
 function menuDelete() {
     const col = columnMenu.value.col;
     columnMenu.value = null;
-    if (!window.confirm(`Delete the column “${col.label}” and the values in it?`)) return;
+    // The column and its values are kept aside, so deleting needs no question: Undo puts both back.
+    const before = settings.snapshot(['sourceMetaFields', 'sourceMeta']);
     table.removeProjectColumn(col);
+    say(`Column “${col.label}” deleted.`, { label: 'Undo', run: () => settings.apply(before, { keys: ['sourceMetaFields', 'sourceMeta'] }) });
+}
+
+// ---- editing one of the project's own columns ---------------------------------------
+
+const editing = ref(null); // { key, label, description, type, values, unparsed }
+
+function menuEdit() {
+    const col = columnMenu.value.col;
+    columnMenu.value = null;
+    const field = settings.sourceMetaFields.find(f => f.key === col.field);
+    if (!field) return;
+    const values = settings.sourceMetaValuesFor(field.key);
+    editing.value = {
+        key: field.key,
+        label: field.label,
+        description: field.description || '',
+        type: field.type || 'text',
+        values: values.length,
+        // For a date column: how many values cannot be read as a date range (still shown, but outside the timeline filter).
+        valueList: values
+    };
+}
+
+const editingUnparsed = computed(() => (editing.value && editing.value.type === 'century'
+    ? editing.value.valueList.filter(v => parseCentury(v) === null).length
+    : 0));
+
+function saveEdit() {
+    const e = editing.value;
+    if (!e || !e.label.trim()) return;
+    settings.updateSourceMetaField(e.key, { label: e.label.trim(), description: e.description.trim(), type: e.type });
+    editing.value = null;
 }
 
 function onResize(key, width, final) {
@@ -447,9 +491,13 @@ const fmt = (n) => n.toLocaleString('en-US');
 <template>
 <div class="meta-view">
     <div class="head">
-        <PageHeader title="Manuscript metadata">
+        <MetadataTabs />
+        <PageHeader title="Manuscript metadata" eyebrow="Metadata">
             <template #subtitle>
                 <p>Edit all manuscripts like a spreadsheet. Your changes stay in your workspace; the corpus stays as it was imported.</p>
+            </template>
+            <template #actions>
+                <button class="ne-btn" title="Add a manuscript that is not in the corpus, with suggestions from the MMMO catalogue" @click="addingManuscript = true">Add a manuscript…</button>
             </template>
         </PageHeader>
     </div>
@@ -608,79 +656,98 @@ const fmt = (n) => n.toLocaleString('en-US');
         <button v-if="columnMenu.col.group === 'catalogue' || columnMenu.col.key === 'iiif:manifest'" @click="menuRevert">Put back to what the corpus says</button>
         <button v-if="columnMenu.col.group === 'catalogue'" @click="menuCopyToFilter" title="Makes a column of your own with the same values, usable as a filter on the public pages">Copy to a filter column of my own</button>
         <button v-if="!columnMenu.col.frozen" @click="menuHide">Hide this column</button>
-        <button v-if="columnMenu.col.removable" class="danger" @click="menuDelete">Delete this column…</button>
+        <button v-if="columnMenu.col.removable" @click="menuEdit">Edit this column…</button>
+        <button v-if="columnMenu.col.removable" class="danger" @click="menuDelete">Delete this column</button>
     </div>
+
+    <AddManuscriptDialog :open="addingManuscript" @close="addingManuscript = false" @added="onManuscriptAdded" />
 
     <!-- find and replace -->
-    <div v-if="replaceOpen" class="overlay" @click.self="replaceOpen = false">
-        <section class="dialog" role="dialog" aria-modal="true" aria-label="Find and replace">
-            <header><h2>Find &amp; replace</h2><button class="ne-btn ne-btn--ghost" aria-label="Close" @click="replaceOpen = false">✕</button></header>
-            <div class="dialog-body">
-                <label class="field">Find
-                    <input id="rep-find" v-model="rep.find" placeholder="Text to find" @keydown.enter="doReplace" />
-                </label>
-                <label class="field">Replace with
-                    <input v-model="rep.replace" placeholder="Leave empty to remove the text" @keydown.enter="doReplace" />
-                </label>
-                <label class="field">Where
-                    <select v-model="rep.scope">
-                        <option value="selection">{{ repScopeLabel.selection }}</option>
-                        <option value="column">{{ repScopeLabel.column }}</option>
-                        <option value="all">{{ repScopeLabel.all }}</option>
-                    </select>
-                </label>
-                <div class="opts">
-                    <label><input type="checkbox" v-model="rep.matchCase" /> Match case</label>
-                    <label><input type="checkbox" v-model="rep.wholeCell" /> Whole cell only</label>
-                    <label><input type="checkbox" v-model="rep.regex" /> Pattern (regular expression)</label>
-                </div>
-                <p v-if="repPlan.error" class="bad">{{ repPlan.error }}</p>
-                <p v-else-if="rep.find" class="found"><strong>{{ repPlan.changes.length }}</strong> cell{{ repPlan.changes.length === 1 ? '' : 's' }} will change</p>
-                <ul v-if="repPreview.length" class="preview">
-                    <li v-for="(p, i) in repPreview" :key="i"><span class="where">{{ p.where }}</span><span class="from">{{ p.before }}</span><span class="arrow">→</span><span class="to">{{ p.after }}</span></li>
-                </ul>
-                <p class="note">Read-only columns are never changed. You can undo the whole replacement in one step.</p>
+    <ModalDialog :open="replaceOpen" title="Find & replace" @close="replaceOpen = false">
+        <div class="dialog-body">
+            <label class="field">Find
+                <input id="rep-find" class="ne-input" v-model="rep.find" placeholder="Text to find" @keydown.enter="doReplace" />
+            </label>
+            <label class="field">Replace with
+                <input class="ne-input" v-model="rep.replace" placeholder="Leave empty to remove the text" @keydown.enter="doReplace" />
+            </label>
+            <label class="field">Where
+                <select class="ne-input" v-model="rep.scope">
+                    <option value="selection">{{ repScopeLabel.selection }}</option>
+                    <option value="column">{{ repScopeLabel.column }}</option>
+                    <option value="all">{{ repScopeLabel.all }}</option>
+                </select>
+            </label>
+            <div class="opts">
+                <label><input type="checkbox" v-model="rep.matchCase" /> Match case</label>
+                <label><input type="checkbox" v-model="rep.wholeCell" /> Whole cell only</label>
+                <label><input type="checkbox" v-model="rep.regex" /> Pattern (regular expression)</label>
             </div>
-            <footer>
-                <button class="ne-btn" @click="replaceOpen = false">Cancel</button>
-                <button class="ne-btn ne-btn--primary" :disabled="!repPlan.changes.length" @click="doReplace">Replace {{ repPlan.changes.length || '' }}</button>
-            </footer>
-        </section>
-    </div>
+            <p v-if="repPlan.error" class="bad">{{ repPlan.error }}</p>
+            <p v-else-if="rep.find" class="found"><strong>{{ repPlan.changes.length }}</strong> cell{{ repPlan.changes.length === 1 ? '' : 's' }} will change</p>
+            <ul v-if="repPreview.length" class="preview">
+                <li v-for="(p, i) in repPreview" :key="i"><span class="where">{{ p.where }}</span><span class="from">{{ p.before }}</span><span class="arrow">→</span><span class="to">{{ p.after }}</span></li>
+            </ul>
+            <p class="note">Read-only columns are never changed. You can undo the whole replacement in one step.</p>
+        </div>
+        <template #footer>
+            <button class="ne-btn" @click="replaceOpen = false">Cancel</button>
+            <button class="ne-btn ne-btn--primary" :disabled="!repPlan.changes.length" @click="doReplace">Replace {{ repPlan.changes.length || '' }}</button>
+        </template>
+    </ModalDialog>
 
     <!-- import -->
-    <div v-if="importing" class="overlay" @click.self="importing = null">
-        <section class="dialog" role="dialog" aria-modal="true" aria-label="Import a table">
-            <header><h2>Import {{ importing.fileName }}</h2><button class="ne-btn ne-btn--ghost" aria-label="Close" @click="importing = null">✕</button></header>
-            <div class="dialog-body">
-                <p v-if="importing.plan.error" class="bad">{{ importing.plan.error }}</p>
-                <template v-else>
-                    <p class="found">
-                        <strong>{{ importing.plan.matchedRows }}</strong> manuscript{{ importing.plan.matchedRows === 1 ? '' : 's' }} found,
-                        <strong>{{ importing.plan.changes.length }}</strong> cell{{ importing.plan.changes.length === 1 ? '' : 's' }} will change.
-                    </p>
-                    <p v-if="importing.plan.unmatchedRows.length" class="note">
-                        Not in the table, left out ({{ importing.plan.unmatchedRows.length }}): {{ importing.plan.unmatchedRows.slice(0, 8).join(', ') }}<template v-if="importing.plan.unmatchedRows.length > 8">, …</template>
-                    </p>
-                    <p v-if="importing.plan.unknownColumns.length" class="note">
-                        No column of that name, left out: {{ importing.plan.unknownColumns.join(', ') }}
-                    </p>
-                    <p v-if="importing.plan.readonlyColumns.length" class="note">
-                        Calculated columns are never changed: {{ importing.plan.readonlyColumns.join(', ') }}
-                    </p>
-                    <p class="note">The first row must name the columns, and one of them must be “Siglum”. Cells you leave empty in the file empty the cell. You can undo the whole import in one step.</p>
-                </template>
-            </div>
-            <footer>
-                <button class="ne-btn" @click="importing = null">Cancel</button>
-                <button v-if="!importing.plan.error" class="ne-btn ne-btn--primary" :disabled="!importing.plan.changes.length" @click="applyImport">Import {{ importing.plan.changes.length || '' }}</button>
-            </footer>
-        </section>
-    </div>
+    <ModalDialog :open="!!importing" :title="importing ? `Import ${importing.fileName}` : ''" @close="importing = null">
+        <div v-if="importing" class="dialog-body">
+            <p v-if="importing.plan.error" class="bad">{{ importing.plan.error }}</p>
+            <template v-else>
+                <p class="found">
+                    <strong>{{ importing.plan.matchedRows }}</strong> manuscript{{ importing.plan.matchedRows === 1 ? '' : 's' }} found,
+                    <strong>{{ importing.plan.changes.length }}</strong> cell{{ importing.plan.changes.length === 1 ? '' : 's' }} will change.
+                </p>
+                <p v-if="importing.plan.unmatchedRows.length" class="note">
+                    Not in the table, left out ({{ importing.plan.unmatchedRows.length }}): {{ importing.plan.unmatchedRows.slice(0, 8).join(', ') }}<template v-if="importing.plan.unmatchedRows.length > 8">, …</template>
+                </p>
+                <p v-if="importing.plan.unknownColumns.length" class="note">
+                    No column of that name, left out: {{ importing.plan.unknownColumns.join(', ') }}
+                </p>
+                <p v-if="importing.plan.readonlyColumns.length" class="note">
+                    Calculated columns are never changed: {{ importing.plan.readonlyColumns.join(', ') }}
+                </p>
+                <p class="note">The first row must name the columns, and one of them must be “Siglum”. Cells you leave empty in the file empty the cell. You can undo the whole import in one step.</p>
+            </template>
+        </div>
+        <template #footer>
+            <button class="ne-btn" @click="importing = null">Cancel</button>
+            <button v-if="importing && !importing.plan.error" class="ne-btn ne-btn--primary" :disabled="!importing.plan.changes.length" @click="applyImport">Import {{ importing.plan.changes.length || '' }}</button>
+        </template>
+    </ModalDialog>
 
-    <Transition name="toast">
-        <div v-if="notice" class="toast" role="status" aria-live="polite">{{ notice }}</div>
-    </Transition>
+    <!-- edit one of your own columns -->
+    <ModalDialog :open="!!editing" title="Edit column" width="30rem" @close="editing = null">
+        <div v-if="editing" class="dialog-body">
+            <label class="field">Name
+                <input class="ne-input" v-model="editing.label" @keydown.enter="saveEdit" />
+            </label>
+            <label class="field">Description <span class="optional">(optional)</span>
+                <input class="ne-input" v-model="editing.description" placeholder="Shown when you hover over the column heading" @keydown.enter="saveEdit" />
+            </label>
+            <label class="field">Kind
+                <select class="ne-input" v-model="editing.type">
+                    <option v-for="t in META_TYPES" :key="t.key" :value="t.key">{{ t.label }}</option>
+                </select>
+            </label>
+            <p class="note">{{ (META_TYPES.find(t => t.key === editing.type) || {}).hint }}</p>
+            <p v-if="editingUnparsed" class="ne-note ne-note--warn">
+                {{ editingUnparsed }} of the {{ editing.values }} value{{ editing.values === 1 ? '' : 's' }} cannot be read as a date or century.
+                They stay in the table but are left out of the timeline filter.
+            </p>
+        </div>
+        <template #footer>
+            <button class="ne-btn" @click="editing = null">Cancel</button>
+            <button class="ne-btn ne-btn--primary" :disabled="!editing || !editing.label.trim()" @click="saveEdit">Save</button>
+        </template>
+    </ModalDialog>
 </div>
 </template>
 
@@ -746,15 +813,11 @@ kbd { font-family: inherit; font-size: 0.72rem; background: var(--color-surface-
 .add-row input { flex: 1; min-width: 0; padding: 0.3em 0.6em; border: 1px solid var(--color-border-hover); border-radius: var(--radius-sm); font-size: 0.84rem; }
 .add-row select { padding: 0.3em; border: 1px solid var(--color-border-hover); border-radius: var(--radius-sm); font-size: 0.82rem; max-width: 110px; }
 
-/* dialogs */
-.overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); display: flex; align-items: center; justify-content: center; z-index: 400; padding: var(--space-4); }
-.dialog { background: var(--color-surface); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); width: min(560px, 100%); max-height: 88vh; display: flex; flex-direction: column; }
-.dialog header { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) var(--space-4) var(--space-2); }
-.dialog h2 { margin: 0; font-size: 1.1rem; }
-.dialog-body { padding: 0 var(--space-4) var(--space-3); overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3); }
-.dialog footer { display: flex; justify-content: flex-end; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--color-border); }
+/* dialog contents (the frame is ModalDialog) */
+.dialog-body { display: flex; flex-direction: column; gap: var(--space-3); }
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; font-weight: 600; color: var(--color-text-muted); }
-.field input, .field select { padding: 0.45em 0.7em; border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); font-size: 0.92rem; font-weight: 400; color: var(--color-text); }
+.field .ne-input { font-weight: 400; color: var(--color-text); }
+.field .optional { font-weight: 400; color: var(--color-text-light); }
 .opts { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: 0.85rem; }
 .opts label { display: inline-flex; align-items: center; gap: 6px; }
 .found { margin: 0; font-size: 0.9rem; }
@@ -765,11 +828,6 @@ kbd { font-family: inherit; font-size: 0.72rem; background: var(--color-surface-
 .preview .where { color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preview .from { color: var(--color-danger); text-decoration: line-through; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .preview .to { color: var(--color-success-dark); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-/* toast */
-.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 52px; z-index: 500; max-width: min(92vw, 560px); padding: var(--space-2) var(--space-4); border-radius: var(--radius-lg); background: #0f172a; color: #f1f5f9; box-shadow: var(--shadow-lg); font-size: 0.88rem; }
-.toast-enter-active, .toast-leave-active { transition: opacity 0.2s, transform 0.2s; }
-.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
 
 @media (max-width: 720px) { .meta-view { padding: 0 var(--space-3) var(--space-2); } .hints { display: none; } }
 </style>

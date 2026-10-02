@@ -4,9 +4,11 @@ import { useSettingsStore } from '../stores/settings';
 import { useAnnotationsStore } from '../stores/annotations';
 import { usePersonalTablesStore } from '../stores/personalTables';
 import { useIiifStore } from '../stores/iiif';
+import { useIiifRegistryStore } from '../stores/iiifRegistry';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
 import { useDirectSnippetsStore } from '../stores/directSnippets';
+import { captureWorkspace, applyWorkspace } from '../utils/workspaceSnapshot';
 
 const SCHEMA_VERSION = 1;
 const HANDLE_KEY = 'workspaceDirHandle';
@@ -38,10 +40,22 @@ export function useWorkspaceStorage() {
     const annotStore = useAnnotationsStore();
     const tablesStore = usePersonalTablesStore();
     const iiifStore = useIiifStore();
+    const registryStore = useIiifRegistryStore();
     const directStore = useDirectSnippetsStore();
     const libraryStore = usePatternLibraryStore();
     const metaStore = useManuscriptMetaStore();
 
+
+    const stores = () => ({
+        settings,
+        annotations: annotStore,
+        tables: tablesStore,
+        iiif: iiifStore,
+        registry: registryStore,
+        library: libraryStore,
+        meta: metaStore,
+        direct: directStore
+    });
 
     // Retrieve full app state as an object compatible with data management schema
     function serializeState() {
@@ -49,75 +63,23 @@ export function useWorkspaceStorage() {
             schemaVersion: SCHEMA_VERSION,
             savedAt: new Date().toISOString(),
             label: settings.backupLabel || 'Workspace',
-            data: {
-                personalTables: tablesStore.tables,
-                annotations: annotStore.annotations,
-                regions: annotStore.regions,
-                regionItems: annotStore.regionItems,
-                manualLines: annotStore.manualLines,
-                settings: {
-                    globalDisplayIds: settings.globalDisplayIds,
-                    autoFillIds: settings.autoFillIds,
-                    displayMode: settings.displayMode,
-                    snippetSize: settings.snippetSize,
-                    snippetPadding: settings.snippetPadding,
-                    backupLabel: settings.backupLabel,
-                    sourceAlignments: settings.sourceAlignments,
-                    customSigns: settings.customSigns,
-                    codeVariants: settings.codeVariants,
-                    discriminateSigns: settings.discriminateSigns,
-                    sourceMetaFields: settings.sourceMetaFields,
-                    sourceMeta: settings.sourceMeta
-                },
-                iiifLinks: iiifStore.links,
-                patternLibrary: libraryStore.serialize(),
-                manuscriptMeta: metaStore.serialize(),
-                // Only written once the collections have actually loaded, so an
-                // autosave firing during startup cannot blank them in the folder copy.
-                ...(directStore.loaded ? { directSnippets: directStore.collections } : {})
-            }
+            data: captureWorkspace(stores(), { copy: false })
         };
     }
 
     // Hydrate stores from the loaded state
     function hydrateState(payload) {
         if (!payload) return;
-        
+
         // Backwards compatibility for older workspace files
         if (payload.version && payload.content && !payload.schemaVersion) {
             payload.schemaVersion = payload.version;
             payload.data = payload.content;
         }
-        
+
         if (!payload.data) return;
         isHydrating = true; // Prevent autosave from triggering during load
-        const d = payload.data;
-        
-        if (d.personalTables) tablesStore.tables = d.personalTables;
-        if (d.annotations) annotStore.annotations = d.annotations;
-        if (d.regions) annotStore.regions = d.regions;
-        if (d.regionItems) annotStore.regionItems = d.regionItems;
-        if (d.manualLines) annotStore.manualLines = d.manualLines;
-        if (d.iiifLinks) iiifStore.links = d.iiifLinks;
-        if (d.patternLibrary) libraryStore.hydrate(d.patternLibrary);
-        if (d.manuscriptMeta) metaStore.hydrate(d.manuscriptMeta);
-        
-        if (d.settings) {
-            if (d.settings.globalDisplayIds) settings.globalDisplayIds = d.settings.globalDisplayIds;
-            if (d.settings.autoFillIds !== undefined) settings.autoFillIds = d.settings.autoFillIds;
-            if (d.settings.displayMode) settings.displayMode = d.settings.displayMode;
-            if (d.settings.snippetSize) settings.snippetSize = d.settings.snippetSize;
-            if (d.settings.snippetPadding) settings.snippetPadding = d.settings.snippetPadding;
-            if (d.settings.backupLabel) settings.backupLabel = d.settings.backupLabel;
-            if (d.settings.sourceAlignments) settings.sourceAlignments = d.settings.sourceAlignments;
-            if (Array.isArray(d.settings.customSigns)) settings.customSigns = d.settings.customSigns;
-            if (d.settings.codeVariants) settings.codeVariants = d.settings.codeVariants;
-            if (d.settings.discriminateSigns !== undefined) settings.discriminateSigns = d.settings.discriminateSigns;
-            if (Array.isArray(d.settings.sourceMetaFields)) settings.sourceMetaFields = d.settings.sourceMetaFields;
-            if (d.settings.sourceMeta) settings.sourceMeta = d.settings.sourceMeta;
-        }
-
-        if (Array.isArray(d.directSnippets)) directStore.replaceAll(d.directSnippets);
+        applyWorkspace(stores(), payload.data);
 
         if (payload.savedAt) {
             lastSavedAt.value = new Date(payload.savedAt).toLocaleTimeString();
@@ -219,6 +181,23 @@ export function useWorkspaceStorage() {
         }
     }
 
+    /**
+     * Stop saving to the project folder and forget it. Nothing in the folder is
+     * touched: its workspace.json stays as it was, and can be picked again later.
+     */
+    async function disconnectFolder() {
+        if (saveTimeout) clearTimeout(saveTimeout);
+        saveTimeout = null;
+        directoryHandle = null;
+        folderName.value = '';
+        // Without this the router would send the user back to the setup page.
+        bypassStorage();
+        status.value = 'idle';
+        lastError.value = null;
+        lastSavedAt.value = null;
+        try { await deleteHandle(HANDLE_KEY); } catch (e) { console.error('Could not forget the project folder', e); }
+    }
+
     function triggerAutosave() {
         if (isHydrating || !directoryHandle) return;
         if (saveTimeout) clearTimeout(saveTimeout);
@@ -238,6 +217,7 @@ export function useWorkspaceStorage() {
                 () => annotStore.$state,
                 () => tablesStore.$state,
                 () => iiifStore.$state,
+                () => registryStore.entries,
                 () => metaStore.$state,
                 () => directStore.collections
             ],
@@ -288,6 +268,7 @@ export function useWorkspaceStorage() {
         initPromise,
         bypassStorage,
         chooseFolder,
+        disconnectFolder,
         saveWorkspace,
         reGrantPermission
     };

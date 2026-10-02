@@ -33,6 +33,20 @@ The same three-level logic drives the comparison table (*Public → Neume Table*
 
 Pattern equivalents with Reference IDs and variants, IIIF manuscript annotation (line regions and polygon snippets), the pattern library with MEI templates, custom manuscripts without IIIF, OMMR4all import, public manuscript pages, static site export, workspace folder autosave.
 
+## The MMMO catalogue
+
+To suggest IIIF manifests and catalogue data for manuscripts it has not seen, the editor can use the catalogue of the [MMMO Database](https://musmed.eu). It is third-party data, so it is collected per installation and kept out of git (`ui/src/data/mmmo/`):
+
+```bash
+npm run crawl:mmmo        # polite and resumable: honours robots.txt and its 10 s crawl-delay
+```
+
+Without it the editor works as before and says that no catalogue is available. Check the MMMO's terms before sharing the collected file or an app that contains it. See `user-manual/docs/iiif-sources.md`.
+
+## Interface
+
+Each function has one place: signs and preferred IDs are set up in the pattern library, own metadata columns in the metadata table, backups and deleting on the Workspace page, and Settings keeps only the two global preferences. The conventions every page follows (page structure, buttons, how deleting works, naming) are in [UI-CONVENTIONS.md](UI-CONVENTIONS.md).
+
 ## Running it
 
 Requires Node.js 20+ (22 recommended).
@@ -74,7 +88,11 @@ ui/                          the Vue 3 app
   src/services/corpus/       reading and storing a corpus (reader, analysis, IndexedDB, worker)
   src/utils/neumeTable.js    ordering, standard table, special signs, columns — pure functions, tested
   src/composables/           useTranscriptionData (the loaded corpus), usePatternCatalog (library + frequencies)
-  src/views/                 CorpusView, NeumeTableListView, NeumeTableView, PublicNeumeTableView, …
+  src/views/                 CorpusView, NeumeTableListView, NeumeTableView, PublicNeumeTableView, WorkspaceView, …
+  src/components/ui/         the shared building blocks: Panel, PageShell, ModalDialog, ConfirmDialog, toasts, …
+  src/components/workspace/  the panels of the Workspace page
+  src/services/mmmo/         matching a manuscript against the MMMO catalogue (pure, tested)
+  src/utils/workspace*.js    what "the workspace" is: capture/restore, its parts, restore points (pure, tested)
   src/data/cmReference.json  frequency of every pattern in the whole CM (counts only, no transcriptions)
   scripts/                   build-cm-reference, build-glyphs
 user-manual/                 the VitePress manual (npm run build:manual)
@@ -89,10 +107,10 @@ glyphs/                      the built-in neume glyphs (npm run build:glyphs)
 npm run build:reference -- /path/to/Corpus-Monodicum-project
 ```
 
-*Settings → Neume Table* switches the count to the loaded corpus instead.
+*Settings → Ordering of the neume table* switches the count to the loaded corpus instead.
 
 ## Data and privacy
 
-Everything is stored in the browser (IndexedDB for the corpus, localStorage and an optional project folder for your tables and annotations). Because the browser owns the storage, make regular backups (*Settings → Share / Backup*).
+Everything is stored in the browser (IndexedDB for the corpus, localStorage and an optional project folder for your tables and annotations). Because the browser owns the storage, make regular backups, or connect a project folder (both on the *Workspace* page). Every deletion there keeps a restore point first, so it can be undone.
 
 The tool was part-wise created with the help of Large Language Models.

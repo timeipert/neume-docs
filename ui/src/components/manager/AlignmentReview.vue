@@ -3,6 +3,7 @@ import { computed, ref, onMounted } from 'vue';
 import { useImageManifest } from '../../composables/useImageManifest';
 import { useSettingsStore } from '../../stores/settings';
 import { useIiifStore } from '../../stores/iiif';
+import ModalDialog from '../ui/ModalDialog.vue';
 
 const props = defineProps({ source: { type: String, required: true } });
 const emit = defineEmits(['close']);
@@ -77,14 +78,27 @@ function resetAll() {
     settings.removeSourceAlignment(iiifKey.value);
     touch();
 }
+
+// Older workspaces may hold an offset and "jump" rules for this manuscript. They are
+// still applied, so they are shown here, where a surprising page can be explained.
+const legacy = computed(() => {
+    const a = settings.alignmentFor(iiifKey.value);
+    return a && (a.offset || (a.adjustments && a.adjustments.length))
+        ? { offset: a.offset || 0, jumps: (a.adjustments || []).length }
+        : null;
+});
+
+function removeLegacy() {
+    settings.mergeAlignment(iiifKey.value, { offset: 0, adjustments: [] });
+    touch();
+}
 </script>
 
 <template>
-<div class="modal-backdrop" @click.self="emit('close')">
+<ModalDialog :open="true" :title="`Align pages: ${iiifKey}`" width="56rem" @close="emit('close')">
     <div class="align-modal">
         <div class="align-head">
             <div>
-                <h3>Align pages — {{ iiifKey }}</h3>
                 <p v-if="report" class="align-sub">
                     Resolved {{ report.matched }} of {{ report.total - report.dividerCount }} pages
                     ({{ report.withDataCount }} carry transcription data)
@@ -94,7 +108,6 @@ function resetAll() {
                 </p>
                 <p v-else class="align-sub">No IIIF manifest is loaded for this source yet.</p>
             </div>
-            <button class="close" @click="emit('close')">&times;</button>
         </div>
 
         <div v-if="report" class="align-controls">
@@ -105,8 +118,10 @@ function resetAll() {
             </div>
             <label class="control-check"><input type="checkbox" v-model="showUnmatchedOnly"> Only unmatched</label>
             <div class="control-spacer"></div>
+            <span v-if="legacy" class="pill" :title="`An older rule shifts the pages by ${legacy.offset} and has ${legacy.jumps} jump(s)`">older offset rule</span>
+            <button v-if="legacy" class="ne-btn ne-btn--sm" @click="removeLegacy">Remove it</button>
             <span v-if="pinCount" class="pill">{{ pinCount }} manually set</span>
-            <button class="btn-sm btn-secondary" @click="resetAll" :disabled="!pinCount">Reset all</button>
+            <button class="ne-btn ne-btn--sm" @click="resetAll" :disabled="!pinCount && !legacy">Reset all</button>
         </div>
 
         <div v-if="report" class="align-body">
@@ -159,28 +174,15 @@ function resetAll() {
             </datalist>
         </div>
     </div>
-</div>
+</ModalDialog>
 </template>
 
 <style scoped>
-.modal-backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.5);
-    display: flex; align-items: center; justify-content: center; z-index: 1000;
-}
-.align-modal {
-    background: var(--color-bg, #fff); width: 820px; max-width: 96vw; max-height: 90vh;
-    border-radius: 10px; display: flex; flex-direction: column; overflow: hidden;
-}
-.align-head {
-    display: flex; justify-content: space-between; align-items: flex-start;
-    padding: 16px 20px; border-bottom: 1px solid var(--color-border, #ddd);
-}
-.align-head h3 { margin: 0; }
-.align-sub { margin: 4px 0 0; font-size: 0.85rem; color: var(--color-text-muted, #666); max-width: 640px; }
-.close { font-size: 1.6rem; line-height: 1; background: none; border: none; cursor: pointer; color: var(--color-text-muted, #888); }
+.align-head { margin-bottom: var(--space-3); }
+.align-sub { margin: 0; font-size: 0.88rem; color: var(--color-text-muted); max-width: 70ch; }
 .align-controls {
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-    padding: 10px 20px; border-bottom: 1px solid var(--color-border, #eee);
+    padding: 0 0 var(--space-3); border-bottom: 1px solid var(--color-border);
 }
 .control-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; }
 .control-label { color: var(--color-text-muted, #666); }
@@ -188,7 +190,7 @@ function resetAll() {
 .control-check { display: inline-flex; align-items: center; gap: 4px; font-size: 0.85rem; }
 .control-spacer { flex: 1; }
 .pill { font-size: 0.78rem; background: var(--color-border, #eee); border-radius: 10px; padding: 2px 8px; }
-.align-body { overflow: auto; padding: 0 20px 16px; }
+.align-body { overflow: auto; }
 .align-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
 .align-table th { text-align: left; padding: 8px 6px; position: sticky; top: 0; background: var(--color-bg, #fff); border-bottom: 1px solid var(--color-border, #ddd); z-index: 1; }
 .align-table td { padding: 6px; border-bottom: 1px solid var(--color-border, #f0f0f0); vertical-align: middle; }

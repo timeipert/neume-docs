@@ -2,7 +2,8 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { usePersonalTablesStore } from '../stores/personalTables';
 import { useSettingsStore } from '../stores/settings';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute, useRouter, RouterLink } from 'vue-router';
+import { useToast } from '../composables/useToast';
 import PatternDisplay from '../components/PatternDisplay.vue';
 import GalleryModal from '../components/gallery/GalleryModal.vue';
 import StateWrapper from '../components/StateWrapper.vue';
@@ -16,6 +17,7 @@ import { comparePatternIds } from '../utils/sorting';
 
 
 const store = usePersonalTablesStore();
+const toast = useToast();
 const settings = useSettingsStore();
 const route = useRoute();
 const router = useRouter();
@@ -43,12 +45,16 @@ watch(dataLoading, async (val) => {
     }
 }, { immediate: true });
 
+function closeEditor() {
+    router.push(table.value?.source ? `/table/${encodeURIComponent(table.value.source)}` : '/table');
+}
+
 function initTable() {
     const existing = store.getTable(tableId);
     if (!existing) {
         if (!dataLoading.value) { // Only redirect if data is ready but table not found
-            alert("Table not found");
-            router.push('/equivalents');
+            toast.show('That table does not exist (any more).', { tone: 'error' });
+            router.replace('/table');
         }
         return;
     }
@@ -162,7 +168,7 @@ async function doPdf() {
     try {
         await generatePdf(table.value, rawData.value, glyphs.value);
     } catch(e) {
-        alert("PDF Error");
+        toast.show(`The PDF could not be made: ${e?.message || 'unknown error'}`, { tone: 'error' });
     } finally {
         isProducingPdf.value = false;
     }
@@ -172,10 +178,12 @@ const promoteStatus = ref({});
 function promoteToGlobal(pattern, id) {
     if (!id) return;
     const current = settings.getGlobalId(pattern);
-    if (current && current !== id) {
-        if (!confirm(`Overwrite global ID?`)) return;
-    }
     settings.setGlobalId(pattern, id);
+    if (current && current !== id) {
+        toast.show(`The preferred ID of ${pattern} is now “${id}” (it was “${current}”).`, {
+            action: { label: 'Undo', run: () => settings.setGlobalId(pattern, current) }
+        });
+    }
     promoteStatus.value[pattern] = true;
     setTimeout(() => promoteStatus.value[pattern] = false, 1500);
 }
@@ -244,7 +252,7 @@ watch([() => route.query.gallery, dataLoading], ([gallery, isLoading]) => {
             <button @click="doPdf" class="btn-secondary" :disabled="isProducingPdf">
                 {{ isProducingPdf ? 'Exporting...' : 'Export PDF' }}
             </button>
-            <button @click="router.push('/equivalents')">Close</button>
+            <button @click="closeEditor">Back to the neume table</button>
         </div>
     </div>
 
@@ -341,34 +349,15 @@ watch([() => route.query.gallery, dataLoading], ([gallery, isLoading]) => {
                     </div>
                 </div>
 
-                <!-- Source metadata: edited here, where the manuscript is, rather
-                     than only in the project-wide Settings grid. -->
+                <!-- Metadata is edited in one place: the Metadata table. -->
                 <div class="card notes-card">
                     <div class="card-header">
                         <h3>Metadata</h3>
                         <p class="card-desc">
-                            Attributes shown publicly and used to filter the manuscript directory.
-                            <router-link to="/settings">Define which attributes exist</router-link> in Settings.
+                            Origin, date, library and your own fields are edited in the
+                            <RouterLink :to="{ path: '/metadata', query: { q: table.source } }">Metadata table</RouterLink>,
+                            together with all other manuscripts.
                         </p>
-                    </div>
-                    <div class="card-body">
-                        <div v-if="settings.sourceMetaFields.length === 0" class="meta-empty-hint">
-                            No attributes defined yet.
-                            <router-link to="/settings">Add some in Settings</router-link>
-                            (e.g. Century, Region, Notation type).
-                        </div>
-                        <div v-else class="meta-grid">
-                            <label v-for="f in settings.sourceMetaFields" :key="f.key" class="meta-field">
-                                <span :title="f.description">{{ f.label }}</span>
-                                <input :value="settings.getSourceMetaValue(table.source, f.key)"
-                                       :placeholder="f.description || f.label"
-                                       :list="`msmeta-${f.key}`"
-                                       @input="settings.setSourceMetaValue(table.source, f.key, $event.target.value)" />
-                                <datalist :id="`msmeta-${f.key}`">
-                                    <option v-for="v in settings.sourceMetaValuesFor(f.key)" :key="v" :value="v" />
-                                </datalist>
-                            </label>
-                        </div>
                     </div>
                 </div>
 
@@ -481,10 +470,6 @@ watch([() => route.query.gallery, dataLoading], ([gallery, isLoading]) => {
     overflow: hidden;
 }
 
-.meta-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
-.meta-field { display: flex; flex-direction: column; gap: 5px; font-size: 12px; font-weight: 700; color: var(--color-text-muted); }
-.meta-field input { padding: 8px 10px; border: 1px solid var(--color-border); border-radius: 6px; font-size: 13px; font-weight: 400; color: var(--color-text); }
-.meta-empty-hint { font-size: 13px; color: var(--color-text-muted); }
 .card-header { padding: 24px 24px 16px 24px; border-bottom: 1px solid var(--color-surface-muted); }
 .card-header h3 { margin: 0; color: var(--color-text); font-size: 1.25rem; font-weight: 700; }
 .card-desc { margin: 6px 0 0 0; color: var(--color-text-muted); font-size: 0.95rem; }

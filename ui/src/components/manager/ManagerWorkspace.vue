@@ -1,4 +1,6 @@
 <script setup>
+import { useUndoableDelete } from '../../composables/useUndoableDelete';
+import { useToast } from '../../composables/useToast';
 import { ref, computed, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useManagerWorkspace } from '../../composables/useManagerWorkspace';
@@ -15,6 +17,8 @@ import VariantEditorModal from '../VariantEditorModal.vue';
 const props = defineProps(['source', 'folio', 'initialRegionId', 'highlightPattern', 'returnTo', 'returnId']);
 const router = useRouter();
 const settings = useSettingsStore();
+const toast = useToast();
+const { deleteOnPage } = useUndoableDelete();
 
 const workspace = useManagerWorkspace(props);
 
@@ -50,9 +54,10 @@ function selectVariantCode(code) {
 }
 
 function deleteVariant({ base, id }) {
-    if (confirm("Delete this code-variant definition? Existing snippets already saved with it are not changed.")) {
-        settings.removeCodeVariant(base, id);
-    }
+    // Snippets already saved with this variant keep it; only the definition goes.
+    const variant = settings.getCodeVariants(base).find(v => v.id === id);
+    settings.removeCodeVariant(base, id);
+    toast.show('Code variant deleted.', { action: variant ? { label: 'Undo', run: () => settings.addCodeVariant(base, variant) } : null });
 }
 
 function handleAddManualLine(num) {
@@ -60,9 +65,9 @@ function handleAddManualLine(num) {
 }
 
 function handleRemoveManualLine(num) {
-    if (confirm(`Remove manually added line ${num}?`)) {
+    deleteOnPage(stdSource.value, stdFolio.value, `Line ${num} removed.`, () => {
         annotStore.removeManualLine(stdSource.value, stdFolio.value, num);
-    }
+    });
 }
 
 // Deep Link Watcher
@@ -135,12 +140,12 @@ const pendingItemPoints = ref(null);
 const selectedSnippet = ref(null);
 
 function deleteRegion(r) {
-    if (confirm(`Delete region "${r.name}" and all its contents?`)) {
+    deleteOnPage(stdSource.value, stdFolio.value, `Region “${r.name}” and its snippets deleted.`, () => {
         annotStore.removeRegion(stdSource.value, stdFolio.value, r.id);
         if (activeRegion.value && activeRegion.value.id === r.id) {
             activeRegion.value = null;
         }
-    }
+    });
 }
 
 function selectRegion(r) {
@@ -152,7 +157,7 @@ function selectRegion(r) {
 
 function onAnnotateItem(points) {
     if (!activePattern.value) {
-        alert("Please select a pattern first.");
+        toast.show('Choose a pattern first, then draw the snippet.', { tone: 'error' });
         return;
     }
     pendingItemPoints.value = points;
@@ -181,13 +186,13 @@ function finalizeItem(linkData = {}) {
 }
 
 function deleteItem(item) {
-    if (confirm("Delete this item?")) {
+    deleteOnPage(stdSource.value, stdFolio.value, 'Snippet deleted.', () => {
         if (activeRegion.value.isLegacy) {
             annotStore.removeAnnotation(stdSource.value, stdFolio.value, item.pattern, item.id);
         } else {
             annotStore.removeItemFromRegion(activeRegion.value.id, item.id);
         }
-    }
+    });
 }
 
 function openSnippet(item) {

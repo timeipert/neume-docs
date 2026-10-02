@@ -1,7 +1,8 @@
-import { useSettingsStore } from '../stores/settings';
+import { useSettingsStore, SHARED_SETTING_KEYS } from '../stores/settings';
 import { useAnnotationsStore } from '../stores/annotations';
 import { usePersonalTablesStore } from '../stores/personalTables';
 import { useIiifStore } from '../stores/iiif';
+import { useIiifRegistryStore } from '../stores/iiifRegistry';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
 import { useOmmrStore } from '../stores/ommr';
@@ -16,10 +17,12 @@ export function useDataManagement() {
     const annotStore = useAnnotationsStore();
     const tablesStore = usePersonalTablesStore();
     const iiifStore = useIiifStore();
+    const registryStore = useIiifRegistryStore();
     const ommrStore = useOmmrStore();
     const directStore = useDirectSnippetsStore();
     const libraryStore = usePatternLibraryStore();
     const metaStore = useManuscriptMetaStore();
+    const reminder = useSaveReminderStore();
 
     function getLocalFullState() {
         return {
@@ -49,21 +52,10 @@ export function useDataManagement() {
             directSnippets: directStore.collections,
             data: {
                 ...filteredData,
-                settings: includeSettings ? {
-                    globalDisplayIds: settings.globalDisplayIds,
-                    autoFillIds: settings.autoFillIds,
-                    displayMode: settings.displayMode,
-                    sourceAlignments: settings.sourceAlignments,
-                    snippetSize: settings.snippetSize,
-                    snippetPadding: settings.snippetPadding,
-                    customSigns: settings.customSigns,
-                    codeVariants: settings.codeVariants,
-                    discriminateSigns: settings.discriminateSigns,
-                    sourceMetaFields: settings.sourceMetaFields,
-                    sourceMeta: settings.sourceMeta
-                } : undefined,
+                settings: includeSettings ? settings.snapshot(SHARED_SETTING_KEYS) : undefined,
                 patternLibrary: includeSettings ? libraryStore.serialize() : undefined,
-                manuscriptMeta: includeSettings ? metaStore.serialize() : undefined
+                manuscriptMeta: includeSettings ? metaStore.serialize() : undefined,
+                iiifRegistry: includeSettings ? registryStore.serialize() : undefined
             }
         };
 
@@ -79,6 +71,8 @@ export function useDataManagement() {
         a.click();
 
         URL.revokeObjectURL(url);
+        // Keeps the "unsaved changes" nudge in step with what was last exported.
+        reminder.markExported();
 
     }
 
@@ -121,21 +115,10 @@ export function useDataManagement() {
             type: 'cm-transcription-config',
             exportedAt: new Date().toISOString(),
             label: settings.backupLabel || 'Config',
-            settings: {
-                globalDisplayIds: settings.globalDisplayIds,
-                autoFillIds: settings.autoFillIds,
-                displayMode: settings.displayMode,
-                sourceAlignments: settings.sourceAlignments,
-                snippetSize: settings.snippetSize,
-                snippetPadding: settings.snippetPadding,
-                customSigns: settings.customSigns,
-                codeVariants: settings.codeVariants,
-                discriminateSigns: settings.discriminateSigns,
-                sourceMetaFields: settings.sourceMetaFields,
-                sourceMeta: settings.sourceMeta
-            },
+            settings: settings.snapshot(SHARED_SETTING_KEYS),
             patternLibrary: libraryStore.serialize(),
-            manuscriptMeta: metaStore.serialize()
+            manuscriptMeta: metaStore.serialize(),
+            iiifRegistry: registryStore.serialize()
         };
 
         const json = JSON.stringify(payload, null, 2);
@@ -155,22 +138,15 @@ export function useDataManagement() {
     function importConfiguration(configPayload) {
         if (!configPayload) return;
         const s = configPayload.settings || configPayload.data?.settings || configPayload;
-        if (s.globalDisplayIds) settings.globalDisplayIds = s.globalDisplayIds;
-        if (s.autoFillIds !== undefined) settings.autoFillIds = s.autoFillIds;
-        if (s.displayMode) settings.displayMode = s.displayMode;
-        if (s.sourceAlignments) settings.sourceAlignments = s.sourceAlignments;
-        if (s.snippetSize) settings.snippetSize = s.snippetSize;
-        if (s.snippetPadding) settings.snippetPadding = s.snippetPadding;
-        if (Array.isArray(s.customSigns)) settings.customSigns = s.customSigns;
-        if (s.codeVariants) settings.codeVariants = s.codeVariants;
-        if (s.discriminateSigns !== undefined) settings.discriminateSigns = s.discriminateSigns;
-        if (Array.isArray(s.sourceMetaFields)) settings.sourceMetaFields = s.sourceMetaFields;
-        if (s.sourceMeta) settings.sourceMeta = s.sourceMeta;
+        // The backup label is this person's own; a colleague's file does not rename it.
+        settings.apply(s, { keys: SHARED_SETTING_KEYS });
 
         // The pattern library travels with the configuration (labels, notes, MEI
         // templates are workspace-wide, not per manuscript).
         const lib = configPayload.patternLibrary || configPayload.data?.patternLibrary;
         if (lib) libraryStore.hydrate(lib);
+        const registry = configPayload.iiifRegistry || configPayload.data?.iiifRegistry;
+        if (registry) registryStore.mergeIn(registry);
         const meta = configPayload.manuscriptMeta || configPayload.data?.manuscriptMeta;
         if (meta) metaStore.mergeIn(meta);
     }
@@ -325,6 +301,9 @@ export function useDataManagement() {
         if (importSettings && parsedJson.data?.patternLibrary) {
             libraryStore.hydrate(parsedJson.data.patternLibrary);
         }
+        if (importSettings && parsedJson.data?.iiifRegistry) {
+            registryStore.mergeIn(parsedJson.data.iiifRegistry);
+        }
         if (importSettings && parsedJson.data?.manuscriptMeta) {
             metaStore.mergeIn(parsedJson.data.manuscriptMeta);
         }
@@ -379,15 +358,6 @@ export function useDataManagement() {
         }
     }
 
-    function clearAllData() {
-        tablesStore.tables = [];
-        annotStore.annotations = {};
-        annotStore.regions = {};
-        annotStore.regionItems = {};
-        annotStore.manualLines = {};
-        iiifStore.links = {};
-    }
-
     return { 
         exportData, 
         exportManuscripts, 
@@ -396,7 +366,7 @@ export function useDataManagement() {
         analyzeImportFiles, 
         executeImport, 
         deleteManuscriptData,
-        clearAllData,
+        extractSourcesFromContent,
         getLocalFullState
     };
 }

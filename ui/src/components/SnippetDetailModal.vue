@@ -165,8 +165,8 @@ function goToEditor() {
                             @click="updateVariant(v.key)"
                         >{{ v.label }}<span v-if="v.legacy" class="legacy-mark">*</span></button>
                     </div>
-                    <router-link v-if="!settings.hasSnippetVariantConfig()" class="variant-config-link" to="/patterns">
-                        Varianten konfigurieren →
+                    <router-link v-if="!settings.hasSnippetVariantConfig()" class="variant-config-link" :to="{ path: '/patterns', query: { setup: 'snippet-variants' } }">
+                        Configure variants →
                     </router-link>
                 </div>
                 

@@ -35,3 +35,6 @@ Thumbs.db
 
 # Scratch
 ui/scripts/_*.mjs
+
+# Third-party reference data collected by scripts/crawl-mmmo.mjs; see the README before committing it
+/ui/src/data/mmmo/

@@ -100,6 +100,13 @@ export const useManuscriptMetaStore = defineStore('manuscriptMeta', () => {
         overrides.value = next
     }
 
+    /** Drop every edit and put the table's layout back to its default. */
+    function clear() {
+        overrides.value = {}
+        hiddenColumns.value = null
+        widths.value = {}
+    }
+
     function hydrate(payload) {
         if (!payload) return
         if (payload.overrides && typeof payload.overrides === 'object') overrides.value = payload.overrides
@@ -110,6 +117,6 @@ export const useManuscriptMetaStore = defineStore('manuscriptMeta', () => {
     return {
         overrides, hiddenColumns, widths,
         has, get, set, revert, revertColumn, editedCount,
-        setHidden, setWidth, serialize, hydrate, mergeIn
+        setHidden, setWidth, serialize, hydrate, mergeIn, clear
     }
 })

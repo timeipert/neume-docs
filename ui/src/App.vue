@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import SaveReminder from './components/SaveReminder.vue';
+import ToastHost from './components/ui/ToastHost.vue';
 
 import { watch, onMounted, onBeforeUnmount } from 'vue';
 
@@ -21,12 +22,10 @@ const navGroups = [
         key: 'annotate',
         label: 'Annotate',
         title: 'Link neumes to the manuscript images',
-        match: ['/equivalents', '/polygons', '/annotations', '/custom-manuscripts', '/ommr'],
+        match: ['/polygons', '/annotations', '/custom-manuscripts'],
         children: [
-            { to: '/equivalents', label: 'Equivalents', hint: 'Pattern tables and reference IDs per manuscript', section: 'IIIF images' },
-            { to: '/polygons', label: 'Manuscripts', hint: 'Browse folios and annotate line regions', section: 'IIIF images' },
-            { to: '/custom-manuscripts', label: 'Custom manuscripts', hint: 'Paste or upload your own snippets — no IIIF', section: 'Your own images' },
-            { to: '/ommr', label: 'OMMR4all import', hint: 'Load an OMMR4all export', section: 'Other sources' }
+            { to: '/polygons', label: 'Page images', hint: 'Browse the folios of a manuscript and mark line regions', section: 'IIIF images' },
+            { to: '/custom-manuscripts', label: 'Custom manuscripts', hint: 'Paste or upload your own snippets — no IIIF', section: 'Your own images' }
         ]
     }
 ];
@@ -74,8 +73,8 @@ onBeforeUnmount(() => {
         <span v-else>✕</span>
       </button>
       <div id="nav-links" class="nav-links" :class="{ 'menu-open': isMenuOpen }">
-        <RouterLink to="/corpus" active-class="active" @click="isMenuOpen = false">Corpus</RouterLink>
-        <RouterLink to="/metadata" active-class="active" @click="isMenuOpen = false">Metadata</RouterLink>
+        <RouterLink to="/corpus" :class="{ active: route.path === '/corpus' || route.path.startsWith('/ommr') }" @click="isMenuOpen = false">Corpus</RouterLink>
+        <RouterLink to="/metadata" :class="{ active: route.path.startsWith('/metadata') }" @click="isMenuOpen = false">Metadata</RouterLink>
         <RouterLink to="/table" :class="{ active: route.path.startsWith('/table') }" @click="isMenuOpen = false">Neume Tables</RouterLink>
         <RouterLink to="/compare" active-class="active" @click="isMenuOpen = false">Compare</RouterLink>
         <RouterLink to="/patterns" active-class="active" @click="isMenuOpen = false">Patterns</RouterLink>
@@ -107,6 +106,7 @@ onBeforeUnmount(() => {
 
         <span class="nav-sep" aria-hidden="true"></span>
 
+        <RouterLink to="/workspace" active-class="active" @click="isMenuOpen = false">Workspace</RouterLink>
         <RouterLink to="/settings" active-class="active" @click="isMenuOpen = false">Settings</RouterLink>
         <span class="nav-sep" aria-hidden="true"></span>
         <SaveReminder />
@@ -121,6 +121,8 @@ onBeforeUnmount(() => {
 
     <!-- Always visible, including on /public and /setup which have no top-nav:
          this app is one piece of the wider Corpus Monodicum infrastructure. -->
+    <ToastHost />
+
     <footer class="cm-footer">
       Part of the Corpus Monodicum infrastructure —
       <a href="https://monodi.app" target="_blank" rel="noopener">monodi.app</a>
@@ -145,8 +147,8 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid rgba(255,255,255,0.06);
   display: flex;
   align-items: center;
-  padding: 0 var(--space-5);
-  gap: var(--space-5);
+  padding: 0 var(--space-4);
+  gap: var(--space-4);
   justify-content: space-between;
   position: relative;
   z-index: 100;
@@ -190,7 +192,8 @@ onBeforeUnmount(() => {
   text-decoration: none;
   font-size: 0.9rem;
   font-weight: 500;
-  padding: var(--space-2) var(--space-3);
+  white-space: nowrap;
+  padding: var(--space-2) 0.5rem;
   border-radius: var(--radius-md);
   transition: color 0.15s ease, background 0.15s ease;
 }
@@ -228,7 +231,7 @@ onBeforeUnmount(() => {
   background: transparent; border: none; cursor: pointer;
   color: var(--color-text-light);
   font-size: 0.9rem; font-weight: 500; font-family: inherit;
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) 0.5rem;
   border-radius: var(--radius-md);
   transition: color 0.15s ease, background 0.15s ease;
 }
@@ -324,7 +327,8 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-@media (max-width: 900px) {
+/* The full bar needs about 1230px; below that the menu folds into a column. */
+@media (max-width: 1240px) {
   .hamburger-btn {
     display: block;
   }

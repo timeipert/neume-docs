@@ -96,6 +96,10 @@ export const usePatternLibraryStore = defineStore('patternLibrary', () => {
         return { patterns: patterns.value }
     }
 
+    function clear() {
+        patterns.value = {}
+    }
+
     function hydrate(payload) {
         if (payload?.patterns) patterns.value = payload.patterns
     }
@@ -113,6 +117,7 @@ export const usePatternLibraryStore = defineStore('patternLibrary', () => {
         setMeiTemplate,
         hasMeiTemplate,
         serialize,
-        hydrate
+        hydrate,
+        clear
     }
 })

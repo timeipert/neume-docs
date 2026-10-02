@@ -12,7 +12,7 @@ import PatternDisplay from '../components/PatternDisplay.vue';
 import OmmrSnippet from '../components/OmmrSnippet.vue';
 import OmmrLineStrip from '../components/OmmrLineStrip.vue';
 import OmmrPageModal from '../components/OmmrPageModal.vue';
-import ManuscriptCleanupModal from '../components/ManuscriptCleanupModal.vue';
+import ManuscriptDataDialog from '../components/workspace/ManuscriptDataDialog.vue';
 
 const ommrStore = useOmmrStore();
 const annotStore = useAnnotationsStore();
@@ -1574,7 +1574,7 @@ onMounted(() => {
                 </div>
                 <div class="field-row" style="margin-top: 8px;">
                     <button class="btn-xs btn-danger-outline" style="width: 100%; justify-content: center; padding: 6px;" @click="showCleanupModal = true">
-                        🗑 Manage / Delete Annotations for {{ ommrStore.activeSource }}
+                        Delete data of {{ ommrStore.activeSource }}…
                     </button>
                 </div>
             </section>
@@ -1775,12 +1775,11 @@ onMounted(() => {
         </div>
     </div>
 
-    <!-- Manuscript Cleanup Modal -->
-    <ManuscriptCleanupModal
-        :isOpen="showCleanupModal"
-        :source="ommrStore.activeSource"
+    <!-- Delete (part of) the work on the active manuscript -->
+    <ManuscriptDataDialog
+        :open="showCleanupModal"
+        :source="ommrStore.activeSource || ''"
         @close="showCleanupModal = false"
-        @deleted="flash"
     />
 </div>
 </template>

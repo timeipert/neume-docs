@@ -26,6 +26,11 @@ export const usePersonalTablesStore = defineStore('personalTables', () => {
         localStorage.setItem('personalTables', JSON.stringify(data))
     }, { deep: true })
 
+    function clearAll() {
+        tables.value = []
+        starredItems.value = new Set()
+    }
+
     function toggleStarred(id) {
         if (starredItems.value.has(id)) {
             starredItems.value.delete(id)
@@ -162,6 +167,7 @@ export const usePersonalTablesStore = defineStore('personalTables', () => {
     return { 
         tables, 
         starredItems, 
+        clearAll,
         toggleStarred, 
         createTable, 
         getTable, 

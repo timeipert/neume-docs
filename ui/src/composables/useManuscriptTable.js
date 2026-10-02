@@ -84,6 +84,10 @@ export function useManuscriptTable() {
         for (const rec of Object.values(catalog.value)) {
             for (const key of Object.keys(rec.meta || {})) if (!NOT_A_CATALOGUE_COLUMN.has(key)) seen.add(key);
         }
+        // Fields the user has filled in for a manuscript that is not in the corpus have a column too.
+        for (const fields of Object.values(meta.overrides)) {
+            for (const key of Object.keys(fields)) if (!NOT_A_CATALOGUE_COLUMN.has(key)) seen.add(key);
+        }
         const known = Object.keys(FIELD_LABELS).filter(k => seen.has(k));
         const others = [...seen].filter(k => !(k in FIELD_LABELS)).sort();
         return [...known, ...others];

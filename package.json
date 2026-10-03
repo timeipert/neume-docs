@@ -9,6 +9,7 @@
     "test": "npm --prefix ui test",
     "build:reference": "node ui/scripts/build-cm-reference.mjs",
     "crawl:mmmo": "node ui/scripts/crawl-mmmo.mjs",
+    "crawl:mmmo:all": "ui/scripts/crawl-mmmo-all-day.sh",
     "build:glyphs": "node ui/scripts/build-glyphs.mjs",
     "build:manual": "npm --prefix user-manual run build && rm -rf ui/public/manual && cp -r user-manual/.vitepress/dist ui/public/manual",
     "e2e": "npm --prefix ui run e2e --"

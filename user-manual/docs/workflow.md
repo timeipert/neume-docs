@@ -1,17 +1,18 @@
 # Core Workflow
 
-The typical research process in the Neumen-Editor follows these four steps. For detailed instructions on each step, follow the links to the dedicated feature pages.
+The typical research process in neume-docs follows these four steps. For detailed instructions on each step, follow the links to the dedicated feature pages.
 
 ## 0. Load Data
 The editor starts without data. Load a Monodi-Zero workspace or a Corpus Monodicum project on the **Corpus** page.
 - *See [Loading Data](./loading-data).*
 
-## 1. The Neume Table
-For each manuscript, fill in the standard table and add what else the manuscript needs.
-- Choose, for every column of the standard table, how the manuscript writes that neume.
-- Choose up to three constellations for each of the special signs L, O, Q and the comma.
-- Add further patterns by code in the expanded documentation, and assign **Ref IDs**.
-- *See [The Neume Table](./neume-table) and [Pattern Editor & Ref IDs](./equivalents).*
+## 1. A project and its Neume Table
+Make a **project** for a range of folios in a manuscript — one scribe's pages, say — and let it lead you through four tabs.
+- *Columns*: choose which ways of writing each neume belong to the standard table (up to three constellations for each of the special signs L, O, Q and the comma).
+- *Standard table*: open each cell to find the neume and add its snippet.
+- *Extended table*: add further patterns by code, also ones the pattern library does not have yet.
+- *All manuscripts*: the projects side by side.
+- *See [Projects](./projects), [The Neume Table](./neume-table) and [Pattern Editor & Ref IDs](./equivalents).*
 
 ## 2. Manuscript Annotation
 Once your base patterns are defined, you move to the visual phase: linking those patterns to physical ink on the scans.

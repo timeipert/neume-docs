@@ -206,7 +206,11 @@ export const useAnnotationsStore = defineStore('annotations', () => {
         const key = `${source}_${folio}`
         if (!regions.value[key]) regions.value[key] = []
 
-        const id = 'r_' + Date.now()
+        // From the clock, like snippet ids: never the same as a region already there.
+        const taken = new Set(Object.values(regions.value).flat().map(r => r.id))
+        let stamp = Date.now()
+        while (taken.has('r_' + stamp)) stamp++
+        const id = 'r_' + stamp
         regions.value[key].push({
             id,
             name,
@@ -244,8 +248,13 @@ export const useAnnotationsStore = defineStore('annotations', () => {
 
     function addItemToRegion(regionId, pattern, points, metadata = {}) {
         if (!regionItems.value[regionId]) regionItems.value[regionId] = []
+        // Made from the clock, so two snippets added within a millisecond (pasting, importing)
+        // would share an id, and an id is how a snippet is told apart when annotations are exchanged.
+        const taken = new Set(regionItems.value[regionId].map(i => i.id))
+        let id = Date.now()
+        while (taken.has(id)) id++
         regionItems.value[regionId].push({
-            id: Date.now(),
+            id,
             pattern,
             points,
             ...metadata

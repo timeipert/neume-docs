@@ -26,9 +26,9 @@ function submitLine() {
 <template>
 <div class="header">
     <div class="left">
-        <button v-if="returnTo === 'annotations'" 
-                @click="$emit('backToGallery')" 
-                class="btn-secondary mr-10">&larr; Back to Gallery</button>
+        <button v-if="returnTo === 'annotations' || returnTo === 'project'"
+                @click="$emit('backToGallery')"
+                class="btn-secondary mr-10">&larr; {{ returnTo === 'project' ? 'Back to the project table' : 'Back to Gallery' }}</button>
         <button v-if="activeRegion" @click="$emit('backToRegions')" class="btn-secondary">&larr; Back to Line Regions</button>
         <button v-if="activeRegion && !activeRegion.isLegacy" @click="$emit('editRegion', activeRegion)" class="btn-secondary" title="Edit line boundaries and name">✎ Edit Line</button>
         <h2>

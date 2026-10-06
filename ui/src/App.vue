@@ -3,29 +3,39 @@ import { computed, ref } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import SaveReminder from './components/SaveReminder.vue';
 import ToastHost from './components/ui/ToastHost.vue';
+import MonodiExchangeDialog from './components/workspace/MonodiExchangeDialog.vue';
+import LinkAssistantDialog from './components/workspace/LinkAssistantDialog.vue';
+import { useProjectPublishing } from './composables/useProjectPublishing';
 
 import { watch, onMounted, onBeforeUnmount } from 'vue';
+
+useProjectPublishing();
 
 const route = useRoute();
 const isPublic = computed(() => route.path.startsWith('/public'));
 const isSetup = computed(() => route.path === '/setup');
+// The page editor, when a project's cell sent you there, still belongs to that project.
+const isProjectPage = computed(() => route.path.startsWith('/projects') || route.query.return_to === 'project');
 const isMenuOpen = ref(false);
 
 /**
- * The ways of linking a manuscript's neumes to its images, in one menu. `match`
- * lists the route prefixes that light the group up — broader than the child
- * links, because sub-editors (the region editor, one manuscript's annotations)
- * live under the same workflow.
+ * Menus that gather pages of one kind. `match` lists the route prefixes that light
+ * the group up — broader than the child links, because sub-editors (the page editor,
+ * the import) live under the same group.
  */
 const navGroups = [
     {
-        key: 'annotate',
-        label: 'Annotate',
-        title: 'Link neumes to the manuscript images',
-        match: ['/polygons', '/annotations', '/custom-manuscripts'],
+        key: 'data',
+        label: 'Data',
+        title: 'The corpus and what is known about its manuscripts',
+        match: ['/corpus', '/ommr', '/metadata', '/overview', '/polygons', '/custom-manuscripts'],
         children: [
-            { to: '/polygons', label: 'Page images', hint: 'Browse the folios of a manuscript and mark line regions', section: 'IIIF images' },
-            { to: '/custom-manuscripts', label: 'Custom manuscripts', hint: 'Paste or upload your own snippets — no IIIF', section: 'Your own images' }
+            { to: '/corpus', label: 'Corpus', hint: 'Load a Monodi-Zero workspace or a Corpus Monodicum project', section: 'Your data' },
+            { to: '/metadata', label: 'Metadata', hint: 'Every manuscript as a table: catalogue data and your own columns', section: 'Your data' },
+            { to: '/overview', label: 'Overview', hint: 'Statistics of the loaded corpus', section: 'Your data' },
+            { to: '/metadata/iiif', label: 'IIIF sources', hint: 'Which manifest belongs to which manuscript', section: 'Images' },
+            { to: '/polygons', label: 'Page images', hint: 'Browse the folios of any manuscript and mark line regions', section: 'Images' },
+            { to: '/custom-manuscripts', label: 'Custom manuscripts', hint: 'The screenshot collections behind your projects — and publish them', section: 'Images' }
         ]
     }
 ];
@@ -33,6 +43,7 @@ const navGroups = [
 const openGroup = ref('');
 
 function isGroupActive(g) {
+    if (route.query.return_to === 'project') return false;
     return g.match.some(p => route.path.startsWith(p));
 }
 
@@ -62,27 +73,24 @@ onBeforeUnmount(() => {
 <template>
   <div class="app-shell">
     <nav v-if="!isPublic && !isSetup" class="top-nav">
-      <RouterLink to="/" class="nav-brand" aria-label="Neumen-Editor home">
+      <RouterLink to="/projects" class="nav-brand" aria-label="neume-docs home">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="20" height="20"><ellipse cx="8" cy="8" rx="4.2" ry="3.2" transform="rotate(-18 8 8)" fill="currentColor"/><ellipse cx="16" cy="16" rx="4.2" ry="3.2" transform="rotate(-18 16 16)" fill="currentColor"/></svg>
         </span>
-        <span class="brand-text">Neumen-Editor</span>
+        <span class="brand-text">neume-docs</span>
       </RouterLink>
       <button class="hamburger-btn" @click="isMenuOpen = !isMenuOpen" :aria-expanded="isMenuOpen" aria-controls="nav-links" aria-label="Toggle navigation">
         <span v-if="!isMenuOpen">☰</span>
         <span v-else>✕</span>
       </button>
       <div id="nav-links" class="nav-links" :class="{ 'menu-open': isMenuOpen }">
-        <RouterLink to="/corpus" :class="{ active: route.path === '/corpus' || route.path.startsWith('/ommr') }" @click="isMenuOpen = false">Corpus</RouterLink>
-        <RouterLink to="/metadata" :class="{ active: route.path.startsWith('/metadata') }" @click="isMenuOpen = false">Metadata</RouterLink>
-        <RouterLink to="/table" :class="{ active: route.path.startsWith('/table') }" @click="isMenuOpen = false">Neume Tables</RouterLink>
-        <RouterLink to="/compare" active-class="active" @click="isMenuOpen = false">Compare</RouterLink>
+        <!-- Work happens in projects; the page editor and the custom manuscripts are reached from a project's cells. -->
+        <RouterLink to="/projects" :class="{ active: isProjectPage }" @click="isMenuOpen = false">Projects</RouterLink>
         <RouterLink to="/patterns" active-class="active" @click="isMenuOpen = false">Patterns</RouterLink>
-        <RouterLink to="/" exact-active-class="active" @click="isMenuOpen = false">Overview</RouterLink>
 
         <span class="nav-sep" aria-hidden="true"></span>
 
-        <!-- Annotation workflows; their pages live in the submenu. -->
+        <!-- The pages that feed the projects; their pages live in the submenu. -->
         <div v-for="g in navGroups" :key="g.key" class="nav-group"
              :class="{ open: openGroup === g.key, active: isGroupActive(g) }">
           <button class="group-btn" :title="g.title"
@@ -122,6 +130,8 @@ onBeforeUnmount(() => {
     <!-- Always visible, including on /public and /setup which have no top-nav:
          this app is one piece of the wider Corpus Monodicum infrastructure. -->
     <ToastHost />
+    <MonodiExchangeDialog />
+    <LinkAssistantDialog />
 
     <footer class="cm-footer">
       Part of the Corpus Monodicum infrastructure —

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { extractPattern, analyzeDocument, noteSuffix, pitchToMidi } from './analysis';
+import { extractPattern, analyzeDocument, noteSuffix, pitchToMidi, firstNoteUuid } from './analysis';
 import { normalizeFolio, applyFolioQuirk } from './folio';
 
 const note = (base, octave, extra = {}) => ({
@@ -197,5 +197,42 @@ describe('analyzeDocument', () => {
     it('falls back to line 1 when the start line is missing or not a number', () => {
         expect(run(root(syllable('a', [group(note('G', 4))])), { zeilenstart: '' }).out[0].info[2]).toBe('1');
         expect(run(root(syllable('a', [group(note('G', 4))])), { zeilenstart: '3a' }).out[0].info[2]).toBe('1');
+    });
+});
+
+describe('uuids for Monodi-Zero', () => {
+    const run = (tree, ctx = {}) => {
+        const out = [];
+        const stats = analyzeDocument(tree, { source: 'Aa 13', documentId: 'D1', foliostart: '10v', zeilenstart: '1', ...ctx },
+            (pattern, info, noteUuid) => out.push({ pattern, info, noteUuid }));
+        return { out, stats };
+    };
+    const lc = (uuid) => ({ kind: 'LineChange', uuid, focus: false });
+
+    it('points at a neume by its first note', () => {
+        expect(firstNoteUuid([group(note('G', 4), note('A', 4)), group(note('F', 4))])).toBe('G4');
+        expect(firstNoteUuid([])).toBe('');
+        expect(firstNoteUuid([group({ base: 'G', octave: 4 })])).toBe('');
+    });
+
+    it('reports the first note\'s uuid beside each occurrence, leaving the occurrence itself alone', () => {
+        const { out } = run(root(syllable('a', [group(note('G', 4), note('A', 4)), group(note('F', 4))])));
+        expect(out[0].pattern).toBe('[*u]d');
+        expect(out[0].noteUuid).toBe('G4');
+        expect(out[0].info).toHaveLength(5); // its join('|') is the sysId of snippet links
+    });
+
+    it('records the LineChange that ends each line, per folio', () => {
+        const { stats } = run(root(
+            syllable('a', [group(note('G', 4))]), lc('end-1'),
+            syllable('b', [group(note('A', 4))]), lc('end-2'),
+            folio('11r'),
+            syllable('c', [group(note('B', 4))]), lc('end-of-11r-1'),
+            syllable('d', [group(note('C', 5))])
+        ));
+        expect(stats.lineUuids).toEqual({
+            '10v': { '1': 'end-1', '2': 'end-2' },
+            '11r': { '1': 'end-of-11r-1' }
+        });
     });
 });

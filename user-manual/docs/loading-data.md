@@ -1,6 +1,6 @@
 # Loading Data
 
-The Neumen-Editor starts **empty**: it ships with no manuscripts. Everything you see is built from what you load on the **Corpus** page.
+neume-docs starts **empty**: it ships with no manuscripts. Everything you see is built from what you load on the **Corpus** page.
 
 ## What you can load
 

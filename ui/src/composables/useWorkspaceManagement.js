@@ -7,6 +7,7 @@ import { useIiifRegistryStore } from '../stores/iiifRegistry';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
 import { useDirectSnippetsStore } from '../stores/directSnippets';
+import { useProjectsStore } from '../stores/projects';
 import { useOmmrStore } from '../stores/ommr';
 import { useSaveReminderStore } from '../stores/saveReminder';
 import { useWorkspaceStorage } from './useWorkspaceStorage';
@@ -51,6 +52,7 @@ export function useWorkspaceManagement() {
     const library = usePatternLibraryStore();
     const meta = useManuscriptMetaStore();
     const direct = useDirectSnippetsStore();
+    const projects = useProjectsStore();
     const ommr = useOmmrStore();
     const reminder = useSaveReminderStore();
     const storage = useWorkspaceStorage();
@@ -59,7 +61,7 @@ export function useWorkspaceManagement() {
 
     const data = useDataManagement();
 
-    const stores = { settings, annotations, tables, iiif, registry, library, meta, direct };
+    const stores = { settings, annotations, tables, iiif, registry, library, meta, direct, projects };
 
     /**
      * The manuscripts that have work in them (snippets, line regions or table

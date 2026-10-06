@@ -32,6 +32,7 @@ export async function freshStores({ direct = fakeDirectStore() } = {}) {
         import('../stores/settings'), import('../stores/annotations'), import('../stores/personalTables'),
         import('../stores/iiif'), import('../stores/iiifRegistry'), import('../stores/patternLibrary'), import('../stores/manuscriptMeta')
     ]);
+    const { useProjectsStore } = await import('../stores/projects');
     return {
         settings: useSettingsStore(),
         annotations: useAnnotationsStore(),
@@ -40,13 +41,14 @@ export async function freshStores({ direct = fakeDirectStore() } = {}) {
         registry: useIiifRegistryStore(),
         library: usePatternLibraryStore(),
         meta: useManuscriptMetaStore(),
-        direct
+        direct,
+        projects: useProjectsStore()
     };
 }
 
 /** Put a bit of everything into the stores. */
 export function fillStores(stores) {
-    const { settings, annotations, tables, iiif, registry, library, meta, direct } = stores;
+    const { settings, annotations, tables, iiif, registry, library, meta, direct, projects } = stores;
     annotations.annotations = { 'Aa 13_1r_*u': [{ id: 'a1' }, { id: 'a2' }] };
     annotations.regions = { 'Aa 13_1r': [{ id: 'r1', name: 'Line 1', points: '0,0' }] };
     annotations.regionItems = { r1: [{ id: 'i1', pattern: '*u' }] };
@@ -67,5 +69,6 @@ export function fillStores(stores) {
     settings.setSourceAlignment('Aa 13', { dataType: 'paginated', offset: 2 });
     settings.displayMode = 'text';
     direct.collections = [{ id: 'dc1', source: 'Mine', name: '', patterns: [], snippets: [{ id: 's1' }] }];
+    projects.create({ name: 'Aa 13, first hand', source: 'Aa 13', from: '1r', to: '9v', columns: ['*ud'], extended: ['*uud'] });
     return id;
 }

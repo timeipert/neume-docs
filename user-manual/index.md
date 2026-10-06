@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: "Neumen-Editor"
+  name: "neume-docs"
   text: "User Manual"
   tagline: Document the neume shapes of a manuscript against the Corpus Monodicum.
   actions:
@@ -11,7 +11,7 @@ hero:
       link: /docs/getting-started
     - theme: alt
       text: View on GitHub
-      link: https://github.com/timeipert/cm-neumen-editor
+      link: https://github.com/timeipert/neume-docs
 
 features:
   - title: Load your own corpus

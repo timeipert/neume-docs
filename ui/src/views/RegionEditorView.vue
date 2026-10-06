@@ -184,6 +184,10 @@ function handleSave(points) {
 }
 
 function handleCancel() {
+    if (returnTo.value === 'project' && returnId.value) {
+        router.push({ name: 'project_cell', params: { id: returnId.value }, query: { code: highlightPattern.value || undefined } });
+        return;
+    }
     if (returnTo.value === 'annotations' && returnId.value) {
         router.push({
             name: 'annotations',

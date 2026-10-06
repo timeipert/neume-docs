@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
+import { defaultSnippetAttributes, cleanSnippetAttributes } from '../utils/snippetAttributes'
 
 /** Fresh default values for every persisted setting (new objects on every call). */
 export const settingDefaults = () => ({
@@ -16,6 +17,7 @@ export const settingDefaults = () => ({
     sourceMetaFields: [],
     sourceMeta: {},
     snippetVariants: [],
+    snippetAttributes: defaultSnippetAttributes(),
     frequencyBasis: 'cm'
 })
 
@@ -26,7 +28,7 @@ export const settingDefaults = () => ({
  */
 export const SETTING_GROUPS = {
     // Display and table options: edited on the Settings page.
-    preferences: ['displayMode', 'autoFillIds', 'snippetSize', 'snippetPadding', 'frequencyBasis', 'backupLabel'],
+    preferences: ['displayMode', 'autoFillIds', 'snippetSize', 'snippetPadding', 'frequencyBasis', 'snippetAttributes', 'backupLabel'],
     // Signs, code variants, preferred IDs, snippet variants: edited in the pattern library.
     library: ['globalDisplayIds', 'customSigns', 'codeVariants', 'discriminateSigns', 'snippetVariants'],
     // Hand-made folio pins and offsets: edited next to the page images.
@@ -46,7 +48,7 @@ export const SHARED_SETTING_KEYS = [
 const KINDS = {
     displayMode: ['svg', 'arrow', 'text'],
     frequencyBasis: ['cm', 'loaded'],
-    globalDisplayIds: 'object', sourceAlignments: 'object', codeVariants: 'object', sourceMeta: 'object',
+    globalDisplayIds: 'object', sourceAlignments: 'object', codeVariants: 'object', sourceMeta: 'object', snippetAttributes: 'object',
     customSigns: 'array', sourceMetaFields: 'array', snippetVariants: 'array',
     autoFillIds: 'boolean', discriminateSigns: 'boolean',
     snippetSize: 'number', snippetPadding: 'number',
@@ -98,12 +100,15 @@ export const useSettingsStore = defineStore('settings', () => {
     // (same code, different graphical realisation). Empty = the built-in a–g.
     // Each: { key, label }
     const snippetVariants = ref([])
+    // What a snippet says about itself: { line: [definition], sign: [definition] } (see utils/snippetAttributes).
+    // A line snippet has a folio and a line, a sign snippet a syllable; both can be extended.
+    const snippetAttributes = ref(defaultSnippetAttributes())
 
     // --- Whole-store operations (backups, restore points, "reset") ---
     const fields = {
         displayMode, autoFillIds, globalDisplayIds, snippetSize, snippetPadding, backupLabel,
         sourceAlignments, customSigns, codeVariants, discriminateSigns, sourceMetaFields,
-        sourceMeta, snippetVariants, frequencyBasis
+        sourceMeta, snippetVariants, snippetAttributes, frequencyBasis
     }
 
     /** A plain, detached copy of the given settings (all of them by default). */
@@ -122,7 +127,7 @@ export const useSettingsStore = defineStore('settings', () => {
         const defaults = settingDefaults()
         for (const key of keys) {
             const value = data ? data[key] : undefined
-            if (acceptable(key, value)) fields[key].value = value
+            if (acceptable(key, value)) fields[key].value = key === 'snippetAttributes' ? cleanSnippetAttributes(value) : value
             else if (replace) fields[key].value = defaults[key]
         }
     }
@@ -307,6 +312,19 @@ export const useSettingsStore = defineStore('settings', () => {
             .map(v => ({ key: String(v.key).trim(), label: (v.label || '').trim() || String(v.key).trim() }))
     }
 
+    /** The attribute definitions of one level ('line' or 'sign'), always usable. */
+    function getSnippetAttributes(level) {
+        return cleanSnippetAttributes(snippetAttributes.value)[level] || []
+    }
+
+    function setSnippetAttributes(level, list) {
+        snippetAttributes.value = cleanSnippetAttributes({ ...cleanSnippetAttributes(snippetAttributes.value), [level]: list })
+    }
+
+    function resetSnippetAttributes() {
+        snippetAttributes.value = defaultSnippetAttributes()
+    }
+
     function setSourceAlignment(source, config) {
         sourceAlignments.value = { ...sourceAlignments.value, [source]: config }
     }
@@ -371,6 +389,10 @@ export const useSettingsStore = defineStore('settings', () => {
         sourceMeta,
         snippetVariants,
         frequencyBasis,
+        snippetAttributes,
+        getSnippetAttributes,
+        setSnippetAttributes,
+        resetSnippetAttributes,
         getSnippetVariants,
         hasSnippetVariantConfig,
         setSnippetVariants,

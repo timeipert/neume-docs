@@ -72,6 +72,8 @@ export function toCatalogRecord(result, importedAt = new Date().toISOString()) {
         images: result.images || [],
         clefs: result.clefs,
         skippedDocuments: result.skippedDocuments,
+        lineUuids: result.lineUuids || {},
+        monodiAnnotations: result.monodiAnnotations || null,
         importedAt
     };
 }
@@ -81,7 +83,7 @@ export async function saveSource(result) {
     const record = toCatalogRecord(result);
     await transaction([CATALOG, OCCURRENCES], 'readwrite', (tx) => {
         tx.objectStore(CATALOG).put(record);
-        tx.objectStore(OCCURRENCES).put({ name: result.name, patterns: result.patterns });
+        tx.objectStore(OCCURRENCES).put({ name: result.name, patterns: result.patterns, noteUuids: result.noteUuids || {}, noteOrder: result.noteOrder || {} });
     });
     return record;
 }
@@ -99,6 +101,30 @@ export async function loadOccurrences(name) {
     const tx = db.transaction(OCCURRENCES, 'readonly');
     const row = await requestPromise(tx.objectStore(OCCURRENCES).get(name));
     return row ? row.patterns : null;
+}
+
+/**
+ * @returns {Promise<Object<string, string[]>|null>} pattern -> the first note's uuid of each
+ *   occurrence, in the order of `loadOccurrences(name)[pattern]`; null for a source
+ *   imported before uuids were kept
+ */
+export async function loadNoteUuids(name) {
+    const db = await openDb();
+    const tx = db.transaction(OCCURRENCES, 'readonly');
+    const row = await requestPromise(tx.objectStore(OCCURRENCES).get(name));
+    return row && row.noteUuids ? row.noteUuids : null;
+}
+
+/**
+ * @returns {Promise<Object<string, number[]>|null>} pattern -> the reading-order number of each
+ *   occurrence (increasing through the source), same order as `loadOccurrences(name)[pattern]`;
+ *   null for a source imported before it was kept
+ */
+export async function loadNoteOrder(name) {
+    const db = await openDb();
+    const tx = db.transaction(OCCURRENCES, 'readonly');
+    const row = await requestPromise(tx.objectStore(OCCURRENCES).get(name));
+    return row && row.noteOrder ? row.noteOrder : null;
 }
 
 export async function deleteSource(name) {

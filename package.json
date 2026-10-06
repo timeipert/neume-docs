@@ -1,7 +1,7 @@
 {
-  "name": "cm-neumen-editor",
+  "name": "neume-docs",
   "private": true,
-  "description": "Neumen-Editor: document the neume shapes of a manuscript against the Corpus Monodicum.",
+  "description": "neume-docs: document the neume shapes of a manuscript against the Corpus Monodicum.",
   "scripts": {
     "dev": "npm --prefix ui run dev",
     "build": "npm --prefix ui run build",

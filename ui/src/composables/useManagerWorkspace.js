@@ -52,7 +52,8 @@ export function useManagerWorkspace(props) {
 
     const patternCustomIdMap = computed(() => {
         let table = null;
-        if (props.returnId) {
+        // A project's id is not a table's: the project pages come back here too.
+        if (props.returnId && props.returnTo !== 'project') {
             table = tableStore.getTable(props.returnId);
         } else {
             table = tableStore.tables.find(t => t.source === props.source || getStandardSource(t.source) === stdSource.value);
@@ -115,7 +116,9 @@ export function useManagerWorkspace(props) {
                 hasLegacy = true; break;
             }
         }
-        if (hasLegacy) {
+        // A project that marks the signs alone asks for the page as a whole (`region=legacy`),
+        // so that it can be drawn on before any sign is on it.
+        if (hasLegacy || props.initialRegionId === 'legacy') {
             return [{ id: 'legacy', name: 'Legacy Annotations (Whole Page)', points: '0,0 100,0 100,100 0,100', isLegacy: true }, ...standardRegions];
         }
         return standardRegions;

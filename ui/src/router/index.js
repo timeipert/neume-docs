@@ -16,13 +16,40 @@ import SetupView from '../views/SetupView.vue'
 import CorpusView from '../views/CorpusView.vue'
 import ManuscriptMetadataView from '../views/ManuscriptMetadataView.vue'
 import IiifSourcesView from '../views/IiifSourcesView.vue'
-import NeumeTableListView from '../views/NeumeTableListView.vue'
-import NeumeTableView from '../views/NeumeTableView.vue'
+import ProjectsView from '../views/ProjectsView.vue'
+import ProjectWizardView from '../views/ProjectWizardView.vue'
+import ProjectShellView from '../views/ProjectShellView.vue'
+import ProjectColumnsView from '../views/ProjectColumnsView.vue'
+import ProjectTableView from '../views/ProjectTableView.vue'
+import ProjectAllView from '../views/ProjectAllView.vue'
 
 // Import storage for guard
 import { useWorkspaceStorage } from '../composables/useWorkspaceStorage';
 import { usePersonalTablesStore } from '../stores/personalTables';
+import { useProjectsStore } from '../stores/projects';
 import { corpusReady } from '../composables/useTranscriptionData';
+import { adoptLegacyProjects } from '../composables/useProjectAdoption';
+import { getBaseCode } from '../utils/patternCode';
+
+/** Where a project is worked on first: choosing its columns, or — once chosen — filling the table. */
+function projectHome(id) {
+    const project = useProjectsStore().get(id);
+    return { name: project && project.columnsChosen ? 'project_standard' : 'project_columns', params: { id } };
+}
+
+/** The tab a cell is in: the extended table when the code is only there. */
+function projectCellTarget(to) {
+    const project = useProjectsStore().get(to.params.id);
+    const code = getBaseCode(to.query.code);
+    const extendedOnly = !!(project && code && !project.columns.includes(code) && project.extended.includes(code));
+    return {
+        name: extendedOnly ? 'project_extended' : 'project_standard',
+        params: { id: to.params.id },
+        query: { cell: code || undefined }
+    };
+}
+
+const nothing = { render: () => null };
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -35,9 +62,13 @@ const router = createRouter({
     },
     {
       path: '/',
-      name: 'home',
+      redirect: '/projects'
+    },
+    {
+      path: '/overview',
+      name: 'overview',
       component: GlobalAnalysisView,
-      meta: { title: 'Global Analysis', requiresWorkspace: true, requiresCorpus: true }
+      meta: { title: 'Corpus overview', requiresWorkspace: true, requiresCorpus: true }
     },
     {
       path: '/corpus',
@@ -58,23 +89,54 @@ const router = createRouter({
       meta: { title: 'IIIF sources', requiresWorkspace: true }
     },
     {
-      path: '/table',
-      name: 'tables',
-      component: NeumeTableListView,
-      meta: { title: 'Neume Tables', requiresWorkspace: true }
+      path: '/projects',
+      name: 'projects',
+      component: ProjectsView,
+      meta: { title: 'Projects', requiresWorkspace: true }
     },
+    {
+      path: '/projects/new',
+      name: 'project_new',
+      component: ProjectWizardView,
+      meta: { title: 'New project', requiresWorkspace: true }
+    },
+    // The table of all manuscripts is the last tab of a project: go to the one worked on last.
+    {
+      path: '/projects/all',
+      name: 'projects_all',
+      redirect: () => {
+        const store = useProjectsStore();
+        const id = store.lastOpenedId || (store.projects[0] && store.projects[0].id);
+        return id ? { name: 'project_all', params: { id } } : { name: 'projects' };
+      }
+    },
+    {
+      path: '/projects/:id',
+      component: ProjectShellView,
+      meta: { requiresWorkspace: true },
+      children: [
+        { path: '', name: 'project', redirect: (to) => projectHome(to.params.id) },
+        { path: 'columns', name: 'project_columns', component: ProjectColumnsView, meta: { title: 'Columns' } },
+        { path: 'standard', name: 'project_standard', component: ProjectTableView, props: { scope: 'standard' }, meta: { title: 'Standard table' } },
+        { path: 'extended', name: 'project_extended', component: ProjectTableView, props: { scope: 'extended' }, meta: { title: 'Extended table' } },
+        { path: 'all', name: 'project_all', component: ProjectAllView, meta: { title: 'All manuscripts' } },
+        // A link to one cell, from wherever the person was working on it.
+        { path: 'cell', name: 'project_cell', redirect: projectCellTarget }
+      ]
+    },
+    // The neume tables, the comparison and the table of all manuscripts are the project's tabs now.
+    { path: '/table', redirect: '/projects' },
     {
       path: '/table/:source',
-      name: 'table',
-      component: NeumeTableView,
-      meta: { title: 'Neume Table', requiresWorkspace: true }
+      component: nothing,
+      beforeEnter: async (to) => {
+        await adoptLegacyProjects();
+        const source = String(to.params.source);
+        const project = useProjectsStore().projects.find(p => p.source === source);
+        return project ? { ...projectHome(project.id), replace: true } : { name: 'project_new', query: { source }, replace: true };
+      }
     },
-    {
-      path: '/compare',
-      name: 'compare',
-      component: PublicNeumeTableView,
-      meta: { title: 'Compare manuscripts', requiresWorkspace: true }
-    },
+    { path: '/compare', redirect: '/projects/all' },
     {
       path: '/patterns',
       name: 'patterns',
@@ -165,6 +227,11 @@ router.beforeEach(async (to, from) => {
     }
   }
 
+  // Work from before projects existed becomes projects the first time the project pages are entered.
+  if (typeof to.name === 'string' && to.name.startsWith('project')) {
+    await adoptLegacyProjects();
+  }
+
   // The editor starts without data: pages that only make sense on a loaded
   // corpus send a first-time visitor to the page where it is loaded.
   if (to.meta.requiresCorpus) {
@@ -175,8 +242,11 @@ router.beforeEach(async (to, from) => {
 
 router.afterEach((to) => {
   let title = to.meta.title || '';
-  
-  if (to.params.id) {
+
+  if (typeof to.name === 'string' && to.name.startsWith('project') && to.params.id) {
+    const project = useProjectsStore().get(to.params.id);
+    if (project) title = title ? `${project.name} — ${title}` : project.name;
+  } else if (to.params.id) {
     try {
       const tablesStore = usePersonalTablesStore();
       const table = tablesStore.tables.find(t => t.id === to.params.id);
@@ -195,9 +265,9 @@ router.afterEach((to) => {
   }
 
   if (title) {
-    document.title = `${title} — Neumen-Editor`;
+    document.title = `${title} — neume-docs`;
   } else {
-    document.title = 'Neumen-Editor';
+    document.title = 'neume-docs';
   }
 })
 

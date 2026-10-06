@@ -164,15 +164,38 @@ function skipped(documentId, suffixes) {
 }
 
 /**
+ * What Monodi-Zero already holds about a source's annotations, so that a reload
+ * does not lose them: `{ id, annotationRegions, annotationItems, equivalents }`,
+ * or null when there is none. Only lists are taken; shapes are checked later,
+ * when the user is offered to merge them.
+ */
+function pickMonodiAnnotations(meta) {
+    if (!meta || typeof meta !== 'object') return null;
+    const list = (v) => (Array.isArray(v) ? v : []);
+    const out = {
+        id: typeof meta.id === 'string' ? meta.id : '',
+        annotationRegions: list(meta.annotationRegions),
+        annotationItems: list(meta.annotationItems),
+        equivalents: list(meta.equivalents)
+    };
+    return out.annotationRegions.length || out.annotationItems.length || out.equivalents.length ? out : null;
+}
+
+/**
  * Collects the results of one source across however many documents it has.
  */
 class SourceAccumulator {
     constructor(name, meta = {}) {
         this.name = name;
         this.meta = pickSourceFields(normaliseSourceMeta(meta));
+        this.monodiAnnotations = pickMonodiAnnotations(meta);
+        this.lineUuids = {}; // folio -> line -> uuid of the LineChange that ends it
         this.images = new Map(); // folio -> IIIF image base address
         this.documents = [];
         this.patterns = Object.create(null);
+        this.noteUuids = Object.create(null); // pattern -> uuids, parallel to this.patterns[pattern]
+        this.noteOrder = Object.create(null); // pattern -> reading-order numbers, parallel again
+        this.occurrenceCount = 0;             // documents arrive in reading order, so this numbers the neumes
         this.folios = new Set();
         this.clefs = 0;
         this.skippedDocuments = 0;
@@ -200,12 +223,17 @@ class SourceAccumulator {
             documentId,
             foliostart: docMeta.foliostart,
             zeilenstart: docMeta.zeilenstart
-        }, (pattern, info) => {
+        }, (pattern, info, noteUuid) => {
             (this.patterns[pattern] || (this.patterns[pattern] = [])).push(info);
+            (this.noteUuids[pattern] || (this.noteUuids[pattern] = [])).push(noteUuid || '');
+            (this.noteOrder[pattern] || (this.noteOrder[pattern] = [])).push(this.occurrenceCount++);
         });
 
         this.clefs += stats.clefs;
         for (const f of stats.folios) this.folios.add(f);
+        for (const [f, lines] of Object.entries(stats.lineUuids)) {
+            this.lineUuids[f] = { ...this.lineUuids[f], ...lines };
+        }
         this.documents.push({ ...pick(docMeta, DOCUMENT_FIELDS), patternCount: stats.patterns });
     }
 
@@ -219,11 +247,15 @@ class SourceAccumulator {
             meta: this.meta,
             documents: this.documents,
             patterns: this.patterns,
+            noteUuids: this.noteUuids,
+            noteOrder: this.noteOrder,
             counts,
             folios: [...this.folios].filter(Boolean).sort(compareFoliosSimple),
             images: [...this.images].sort((a, b) => compareFoliosSimple(a[0], b[0])),
             clefs: this.clefs,
-            skippedDocuments: this.skippedDocuments
+            skippedDocuments: this.skippedDocuments,
+            lineUuids: this.lineUuids,
+            monodiAnnotations: this.monodiAnnotations
         };
     }
 }

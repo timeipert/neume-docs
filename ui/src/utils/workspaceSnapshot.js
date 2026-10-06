@@ -1,7 +1,7 @@
 /**
  * Reading the whole workspace out of the stores and putting it back.
  *
- * The workspace is everything the user has made: annotations, neume tables,
+ * The workspace is everything the user has made: projects, annotations, neume tables,
  * metadata edits, the pattern library, IIIF links, custom manuscripts and the
  * settings. It is NOT the loaded corpus (that is reloaded from the user's own
  * files and lives in a database of its own).
@@ -11,7 +11,7 @@
  * what is part of it.
  *
  * Every function takes the stores as an argument:
- *   { settings, annotations, tables, iiif, registry, library, meta, direct }
+ *   { settings, annotations, tables, iiif, registry, library, meta, direct, projects }
  */
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -23,7 +23,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
  */
 export function captureWorkspace(stores, { copy = true } = {}) {
     const take = copy ? clone : (v) => v;
-    const { settings, annotations, tables, iiif, registry, library, meta, direct } = stores;
+    const { settings, annotations, tables, iiif, registry, library, meta, direct, projects } = stores;
     return {
         personalTables: take(tables.tables),
         starredItems: Array.from(tables.starredItems),
@@ -36,6 +36,8 @@ export function captureWorkspace(stores, { copy = true } = {}) {
         settings: settings.snapshot(),
         patternLibrary: take(library.serialize()),
         manuscriptMeta: take(meta.serialize()),
+        // Older stores in tests and files may not have projects: leave the key out then.
+        ...(projects ? { projects: take(projects.serialize()) } : {}),
         // Only once the collections have loaded from their database: a capture
         // taken during startup must not read "no collections" and blank them.
         ...(direct.loaded ? { directSnippets: take(direct.collections) } : {})
@@ -52,7 +54,7 @@ export function captureWorkspace(stores, { copy = true } = {}) {
  */
 export function applyWorkspace(stores, data, { replace = false } = {}) {
     if (!data) return;
-    const { settings, annotations, tables, iiif, registry, library, meta, direct } = stores;
+    const { settings, annotations, tables, iiif, registry, library, meta, direct, projects } = stores;
     const has = (key) => data[key] !== undefined && data[key] !== null;
 
     if (has('personalTables') || replace) tables.tables = has('personalTables') ? data.personalTables : [];
@@ -79,6 +81,15 @@ export function applyWorkspace(stores, data, { replace = false } = {}) {
         meta.clear();
     }
 
+    if (projects) {
+        if (has('projects')) {
+            if (replace) projects.clear();
+            projects.hydrate(data.projects);
+        } else if (replace) {
+            projects.clear();
+        }
+    }
+
     if (has('settings')) settings.apply(data.settings, { replace });
     else if (replace) settings.reset();
 
@@ -96,6 +107,7 @@ export function isEmptyWorkspace(data) {
         || size(data.annotations) || size(data.regions) || size(data.regionItems) || size(data.manualLines)
         || size(data.iiifLinks) || (data.iiifRegistry?.entries || []).length || size(data.patternLibrary?.patterns)
         || size(data.manuscriptMeta?.overrides)
+        || (data.projects?.projects || []).length
         || (data.directSnippets || []).length
     );
 }

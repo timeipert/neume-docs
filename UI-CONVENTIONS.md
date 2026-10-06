@@ -13,8 +13,12 @@ A function is reachable from one place, the place where it is *used*. Other page
 | IIIF manifests per manuscript, MMMO suggestions | Metadata → IIIF sources | the Manuscripts table, the Workspace |
 | Folio alignment of scans | Page images (⇄ on a manuscript) | |
 | Backups, project folder, restore points, deleting work, reset | Workspace | the save-status pill in the navigation bar |
+| Sending annotations to Monodi-Zero, taking them back, linking snippets to the transcription | Workspace (Exchange with Monodi-Zero) | the Corpus page, after an update from Monodi-Zero |
 | Removing the loaded corpus | Corpus | |
 | OMMR4all import | Corpus (leads to `/ommr`) | |
+| Making a project, choosing its columns, filling its table, comparing all manuscripts | Projects (the four tabs of a project) | the Corpus page, the Metadata table |
+| Lines, the signs on them, snippets | the cell of a table (and the line editor it opens) | |
+| What a snippet says about itself: its attributes and how they are checked | Settings | the cell, the line editor |
 | Display mode, order of the neume table | Settings | |
 
 Settings is for preferences that apply everywhere. If a setting belongs to one page, it goes on that page.
@@ -24,6 +28,16 @@ Settings is for preferences that apply everywhere. If a setting belongs to one p
 - Every page starts with `PageHeader`: a small **eyebrow** (where in the workflow), the **title**, a one-line **subtitle**, and the page's main **actions** at the right.
 - Pages made of blocks (Workspace, Settings) use `PageShell` with `Panel`s. Panels with an `id` appear in the "On this page" index. Fold-away set-up uses `Disclosure`.
 - Tools that need the width (the metadata grid, the neume table, the pattern list) use `PageHeader` and fill the page.
+
+## Projects: guiding, and where you can jump
+
+Work is guided, but never locked: every step has an address, so a person can enter, leave and come back anywhere.
+
+- **A question that shapes the work** is asked in a stepper (`/projects/new?step=…`): one question per step, answers as `ChoiceCards` (each answer explained), back and forth freely, a review at the end. What it decided can be changed later under **Settings…**.
+- **The steps of a project** are the four tabs of `ProjectShellView` (Columns → Standard table → Extended table → All manuscripts), always in view and always clickable. They are child routes (`/projects/:id/columns`, `…/standard`, `…/extended`, `…/all`), and the end of each tab offers the next as its primary button.
+- **A cell** of a table opens beside it, addressed by `?cell=<code>`. A link to a cell from anywhere is `{ name: 'project_cell', params: { id }, query: { code } }`.
+- **A page that is reached from a cell** (the page editor, the line region editor) is given `return_to=project&return_id=<project id>&highlight=<code>`, and its back button leads to that cell.
+- **Old addresses** (`/table`, `/table/:source`, `/compare`, `/`) are redirects to the project pages, so links and bookmarks keep working.
 
 ## Buttons
 
@@ -67,7 +81,8 @@ Anything that removes workspace data goes through `useWorkspaceManagement`, whic
 | **Corpus** | the data you loaded (Monodi-Zero workspace or CM project) |
 | **Workspace** | everything *you* made on top of it |
 | **Patterns** | the pattern library (the vocabulary) |
-| **Neume Tables** | the standard table per manuscript |
+| **Project** | a range of folios in one manuscript (one scribe's pages, say) and the table that documents its neumes |
+| **Standard table** / **Extended table** | the project's table with the columns of the brief / with any further pattern of the library |
 | **Page images** | a manuscript's IIIF folios, where line regions are drawn |
 | **Custom manuscripts** | collections with their own images, no IIIF |
 

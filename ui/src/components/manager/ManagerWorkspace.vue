@@ -207,6 +207,10 @@ function openSnippet(item) {
 }
 
 function handleBackToGallery() {
+    if (props.returnTo === 'project') {
+        router.push({ name: 'project_cell', params: { id: props.returnId }, query: { code: props.highlightPattern || undefined } });
+        return;
+    }
     router.push({ name: 'annotations', params: { id: props.returnId }, query: { gallery: props.highlightPattern } });
 }
 

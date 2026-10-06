@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import PatternDisplay from '../PatternDisplay.vue';
 import PatternCode from '../PatternCode.vue';
 import { searchLibrary, sortCodes, classify } from '../../utils/neumeTable';
+import { checkCode } from '../../utils/projectTable';
 
 /**
  * Adds patterns to the expanded documentation: by searching the whole pattern
@@ -19,7 +20,7 @@ const props = defineProps({
     inTable: { type: Object, required: true }
 });
 
-const emit = defineEmits(['add']);
+const emit = defineEmits(['add', 'create']);
 
 const query = ref('');
 const showAll = ref(false);
@@ -41,6 +42,13 @@ const found = computed(() => {
 });
 
 const searching = computed(() => query.value.trim().length > 0);
+
+/** What was typed is a good code that the library does not have: it can be made. */
+const creatable = computed(() => {
+    const check = checkCode(query.value);
+    if (!check.ok || props.inTable.has(check.code)) return null;
+    return props.allCodes.includes(check.code) ? null : check;
+});
 const list = computed(() => (searching.value ? results.value : (showAll.value ? found.value : found.value.slice(0, SUGGESTIONS))));
 
 const fmt = (n) => n.toLocaleString('en-US');
@@ -60,7 +68,7 @@ const fmt = (n) => n.toLocaleString('en-US');
                 @keydown.esc="query = ''"
             />
         </div>
-        <p class="hint">Without brackets a code matches every way of writing it; with brackets, exactly. The whole library is searched.</p>
+        <p class="hint">Without brackets a code matches every way of writing it; with brackets, exactly. A code the library does not have can be added.</p>
     </header>
 
     <h3 class="list-title">
@@ -74,14 +82,23 @@ const fmt = (n) => n.toLocaleString('en-US');
                 <span class="r-glyph"><PatternDisplay :pattern="code" :glyphs="glyphs" :scale="0.9" /></span>
                 <span class="r-text">
                     <PatternCode :pattern="code" />
-                    <span class="r-meta">{{ fmt(freq.code(code)) }}× CM<template v-if="counts[code]"> · <strong>{{ fmt(counts[code]) }}× here</strong></template></span>
+                    <span v-if="counts[code]" class="r-meta"><strong>{{ fmt(counts[code]) }}× in these folios</strong></span>
                 </span>
                 <span class="r-add" aria-hidden="true">+</span>
             </button>
         </li>
     </ul>
-    <p v-else-if="searching" class="empty">No pattern in the library contains “{{ query }}”.</p>
-    <p v-else class="empty">Everything this manuscript contains is already in the table, or no corpus is loaded for it.</p>
+    <p v-else-if="searching && !creatable" class="empty">No pattern in the library contains “{{ query }}”.</p>
+    <p v-else-if="!searching" class="empty">Everything this manuscript contains is already in the table, or no corpus is loaded for it.</p>
+
+    <button v-if="creatable" class="create" :title="`Add ${creatable.code} to the pattern library and to this table`" @click="emit('create', creatable.code); query = ''">
+        <span class="r-glyph"><PatternDisplay :pattern="creatable.code" :glyphs="glyphs" :scale="0.9" /></span>
+        <span class="r-text">
+            <PatternCode :pattern="creatable.code" />
+            <span class="r-meta">Not in the library yet — add it, under <code>{{ creatable.category.label }}</code></span>
+        </span>
+        <span class="r-add" aria-hidden="true">+</span>
+    </button>
 
     <button v-if="!searching && found.length > SUGGESTIONS" class="ne-btn ne-btn--sm more" @click="showAll = !showAll">
         {{ showAll ? 'Show fewer' : `Show all ${found.length}` }}
@@ -109,4 +126,9 @@ const fmt = (n) => n.toLocaleString('en-US');
 .result:hover .r-add { opacity: 1; }
 .empty { color: var(--color-text-muted); font-style: italic; margin: var(--space-2) 0 0; font-size: 0.88rem; }
 .more { margin-top: var(--space-3); align-self: flex-start; }
+.create { margin-top: var(--space-2); width: 100%; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2); text-align: left; background: var(--color-accent-light); border: 1px dashed var(--color-accent); border-radius: var(--radius-md); color: var(--color-text); }
+.create:hover { background: #e4dbff; }
+.create .r-add { opacity: 1; color: var(--color-accent-dark); }
+.create .r-text :deep(.pattern-code) { font-size: 0.95rem; font-weight: 700; }
+.create .r-meta { font-size: 0.78rem; }
 </style>

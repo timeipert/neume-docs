@@ -1,6 +1,6 @@
 # Public Documentation
 
-The ultimate goal of the Neumen-Editor tool is to publish your findings. The tool provides a built-in, static "Public View" that serves as an interactive documentation site for your notation system.
+The ultimate goal of neume-docs is to publish your findings. The tool provides a built-in, static "Public View" that serves as an interactive documentation site for your notation system.
 
 ## Generating the Data
 

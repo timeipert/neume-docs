@@ -6,7 +6,7 @@
  * Measuring and emptying are the only things here; deciding when to ask for
  * confirmation or make a restore point is the caller's job.
  *
- * All functions take the stores: { settings, annotations, tables, iiif, registry, library, meta, direct }
+ * All functions take the stores: { settings, annotations, tables, iiif, registry, library, meta, direct, projects }
  */
 import { SETTING_GROUPS } from '../stores/settings';
 
@@ -25,6 +25,18 @@ function countOwnValues(sourceMeta) {
 }
 
 export const AREAS = [
+    {
+        key: 'projects',
+        title: 'Projects',
+        blurb: 'The manuscripts and folio ranges you work on, and the columns of each project\'s table. Their snippets are kept under Annotations.',
+        to: '/projects',
+        goLabel: 'Projects',
+        measure({ projects }) {
+            const n = projects ? projects.projects.length : 0;
+            return { count: n, text: n ? plural(n, 'project') : '' };
+        },
+        clear({ projects }) { if (projects) projects.clear(); }
+    },
     {
         key: 'annotations',
         title: 'Annotations',
@@ -50,8 +62,8 @@ export const AREAS = [
         key: 'tables',
         title: 'Neume tables',
         blurb: 'The patterns you chose for each manuscript, with their IDs and notes.',
-        to: '/table',
-        goLabel: 'Neume Tables',
+        to: '/projects',
+        goLabel: 'Projects',
         measure({ tables }) {
             const rows = tables.tables.reduce((n, t) => n + (t.rows || []).length, 0);
             return {
@@ -144,16 +156,18 @@ export const AREAS = [
     {
         key: 'custom',
         title: 'Custom manuscripts',
-        blurb: 'Snippet collections with their own images, outside any corpus.',
+        blurb: 'Collections of screenshots — lines and the signs cut from them — outside any corpus.',
         to: '/custom-manuscripts',
         goLabel: 'Custom manuscripts',
         measure({ direct }) {
             const snippets = direct.collections.reduce((n, c) => n + (c.snippets || []).length, 0);
+            const lines = direct.collections.reduce((n, c) => n + (c.lines || []).length, 0);
             return {
                 count: direct.collections.length,
                 text: describe([
                     direct.collections.length && plural(direct.collections.length, 'collection'),
-                    snippets && plural(snippets, 'snippet')
+                    snippets && plural(snippets, 'snippet'),
+                    lines && plural(lines, 'line')
                 ])
             };
         },

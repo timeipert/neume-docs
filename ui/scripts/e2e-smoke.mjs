@@ -9,10 +9,11 @@
  * few sources are enough. `--base` is the server address (default
  * http://localhost:5173). `--shots <dir>` saves screenshots.
  *
- * It walks the new user story: the editor starts empty, a corpus is loaded and
- * survives a reload, a manuscript's standard table is filled (including the
- * three-constellation limit), the expanded documentation takes an addition by
- * code, and the comparison table shows the standard columns in the fixed order.
+ * It walks the user story: the editor starts empty, a corpus is loaded and
+ * survives a reload, a project is made with the wizard and its columns are chosen
+ * (including the three-constellation limit), a cell opens, the extended table takes
+ * an addition by code, the table of all manuscripts has the project as a row, and
+ * publishing it fills the public comparison table in the fixed order.
  */
 import assert from 'node:assert/strict';
 import { chromium } from 'playwright';
@@ -46,11 +47,18 @@ try {
     await page.goto(`${base}/#/setup`);
     await page.getByText('Continue without a folder').click();
     await page.goto(`${base}/#/`);
-    await page.waitForURL(/#\/corpus/);
-    assert.equal(await page.locator('.loaded').count(), 0, 'no corpus is loaded at first');
-    step('starts empty, sends a first visitor to the Corpus page');
+    await page.waitForURL(/#\/projects/);
+    await page.waitForSelector('.empty');
+    assert.equal(await page.locator('.card').count(), 0, 'there is no project at first');
+    step('starts empty: the home page is the (empty) list of projects');
+
+    await page.goto(`${base}/#/projects/new`);
+    await page.waitForSelector('.cc-card');
+    assert.ok(await page.getByRole('radio', { name: /The transcription/ }).isDisabled(), 'without a corpus the project cannot start from the transcription');
+    step('without a corpus, a project starts from the manuscript');
 
     // 2. Load a corpus --------------------------------------------------------
+    await page.goto(`${base}/#/corpus`);
     await page.locator('input[webkitdirectory]').setInputFiles(data);
     await page.waitForSelector('.stats', { timeout: 10 * 60 * 1000 });
     const sources = Number((await page.locator('.stats strong').first().innerText()).replace(/\D/g, ''));
@@ -61,84 +69,139 @@ try {
     step(`loaded ${sources} source(s); still there after a reload`);
 
     // 3. The overview works on the loaded corpus ------------------------------
-    await page.goto(`${base}/#/`);
+    await page.goto(`${base}/#/overview`);
     await page.waitForSelector('.controls');
     step('overview renders the loaded corpus');
 
-    // 4. Fill in the standard table -------------------------------------------
-    await page.goto(`${base}/#/table`);
-    await page.waitForSelector('.ms');
-    const name = (await page.locator('.ms .ms-name').first().innerText()).trim();
-    await page.locator('.ms').first().click();
-    await page.waitForSelector('.grid .cell');
+    // 4. A project, and its columns -------------------------------------------
+    await page.goto(`${base}/#/projects/new`);
+    await page.waitForSelector('.cc-card');
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.waitForSelector('#w-source');
+    const name = (await page.locator('#w-sources option').first().getAttribute('value')).trim();
+    await page.locator('#w-source').fill(name);
+    // a folio is a number and r or v: anything else is refused, and the way on is shut
+    await page.locator('#w-from').fill('12');
+    assert.match(await page.locator('.field-error').first().innerText(), /number and r or v/);
+    assert.ok(await page.getByRole('button', { name: 'Next' }).isDisabled(), 'a folio that does not fit stops the wizard');
+    await page.locator('#w-from').fill('');
+    step('a folio that is not a number and r or v is refused');
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('radio', { name: /IIIF page images/ }).click();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('radio', { name: /Lines, then signs/ }).click();
+    await shot('wizard');
+    await page.getByRole('button', { name: /Create project/ }).click();
+    await page.waitForSelector('.pt--select');
+    step(`a project for ${name} made with the four questions`);
 
-    const headers = await page.locator('.cell .code').allInnerTexts();
-    assert.deepEqual(headers, STANDARD, 'the standard table has the columns of the brief, in order');
-    step('standard table: * *d *u *e *dd *ud *uu *du *udd *uud *ddu | L O Q , | Clef Custos');
+    const groupLabels = await page.locator('.pt--select th.cat .cat-name code').allInnerTexts();
+    assert.deepEqual(groupLabels, [...STANDARD.slice(0, 11), 'Clef · Custos'], 'the first tab lays out the shapes, by length and then frequency');
+    step('Columns: * *d *u *e *dd *ud *uu *du *udd *uud *ddu, then Clef · Custos');
 
-    await page.locator('.cell[data-column="dir:*ud"]').getByRole('button', { name: /Choose for|Change/ }).click();
-    await page.waitForSelector('.picker');
-    await page.waitForTimeout(300); // let the dialog finish appearing
-    const variants = await page.locator('.picker .variant').count();
-    assert.ok(variants >= 1, 'the library offers variants for *ud');
-    const letters = await page.locator('.picker .variant code').allInnerTexts();
-    assert.ok(letters.every(c => !/[A-Z]/.test(c)), 'a directional column offers no special signs');
-    await page.locator('.picker .variant').first().click();
-    await page.getByRole('button', { name: 'Done' }).click();
-    assert.equal(await page.locator('.cell[data-column="dir:*ud"] .items li').count(), 1);
-    step('picked a plain variant for *ud from the library');
+    // The library writes a constellation in several ways (`*dL`, `[*dL]`, …): take the one Find shows first.
+    const bare = (code) => code.replace(/[[\]]/g, '');
+    const tick = async (signature) => {
+        await page.locator('input[aria-label="Search codes"]').fill(signature);
+        await page.waitForTimeout(400);
+        const code = await page.locator('.pt--select thead .l2 th').evaluateAll(
+            (ths, sig) => ths.map(t => t.dataset.code).find(c => c.replace(/[[\]]/g, '') === sig), signature);
+        assert.ok(code, `the library has a column for ${signature}`);
+        // click, not check(): a refused choice puts the box back, which check() would call a failure
+        await page.locator(`th[data-code="${code}"] input[type=checkbox]`).click({ force: true });
+        return code;
+    };
+    // the number of chosen columns is the count of the Columns tab
+    const chosenCount = async () => Number((await page.locator('a.tab', { hasText: 'Columns' }).locator('.count').innerText().catch(() => '0')).trim() || 0);
+    await page.getByRole('button', { name: /Add suggested/ }).click();
+    const chosen = await chosenCount();
+    assert.ok(chosen > 0, 'the most frequent codes of the transcription are chosen');
+    step(`${chosen} columns taken from the transcription`);
 
-    await page.locator('.cell[data-column="special:L"]').getByRole('button', { name: /Choose for|Change/ }).click();
-    await page.waitForSelector('.picker');
-    await page.waitForTimeout(300); // let the dialog finish appearing
-    const groups = page.locator('.picker .sig-group');
-    assert.ok(await groups.count() >= 4, 'the L library offers several constellations');
-    for (let i = 0; i < 3; i++) await groups.nth(i).locator('.variant').first().click();
-    assert.equal((await page.locator('.picker .chosen-label strong').innerText()).trim(), '3/3');
-    assert.ok(await groups.nth(3).locator('.variant').first().isDisabled(), 'a fourth constellation is refused');
-    await shot('picker-L');
-    await page.getByRole('button', { name: 'Done' }).click();
+    // Start the special signs from nothing, so that the three that are ticked are the only ones.
+    await page.getByRole('button', { name: 'Clear', exact: true }).click();
+    assert.equal(await chosenCount(), 0);
+    const chosenL = [];
+    for (const signature of ['*dL', '*uL', '*ddL']) chosenL.push(await tick(signature));
+    const refused = await tick('*uuL');
+    await page.waitForSelector('text=At most 3 constellations');
+    assert.equal(await page.locator(`th[data-code="${refused}"] input[type=checkbox]`).isChecked(), false, 'a fourth constellation is refused');
+    await shot('columns');
     step('L: three constellations chosen, the fourth is refused');
 
-    // 5. Expanded documentation ----------------------------------------------
-    // Removing is undoable
-    const udCell = page.locator('.cell[data-column="dir:*ud"] .items li');
-    await udCell.first().getByRole('button', { name: /Remove/ }).click();
-    assert.equal(await udCell.count(), 0, 'the pattern is removed');
-    await page.getByRole('button', { name: 'Undo' }).click();
-    assert.equal(await udCell.count(), 1, 'Undo puts it back');
-    step('removal can be undone');
+    // A code the library does not have is added from the table, checked, and chosen.
+    await page.locator('input[aria-label="Search codes"]').fill('ux');
+    assert.equal(await page.locator('.unknown').count(), 0, 'a text that is not a code is not offered for adding');
+    await page.locator('input[aria-label="Search codes"]').fill('{*u}{d}d');
+    await page.getByRole('button', { name: 'Add it…' }).click();
+    await page.getByRole('button', { name: 'Add to the library' }).click();
+    await page.waitForSelector('th[data-code="{*u}{d}d"]');
+    assert.ok(await page.locator('th[data-code="{*u}{d}d"] input[type=checkbox]').isChecked(), 'the new code is chosen');
+    step('typing a code the library does not have offers to add it: checked, added, chosen');
 
-    // Progress bar: clicking a segment jumps to its cell
-    await page.locator('.toolbar-progress .seg', { hasText: '*udd' }).click();
-    await page.waitForSelector('.cell.highlighted');
-    step('the progress bar jumps to a cell');
+    // What the transcription suggests fills in the shapes that have no column yet.
+    await page.getByRole('button', { name: /Add suggested/ }).click();
+    assert.ok(await chosenCount() > 3, 'the transcription adds columns for the other shapes');
 
-    await page.getByRole('radio', { name: 'Expanded Documentation' }).click();
+    // 5. The standard table, a cell, the extended table ------------------------
+    await page.getByRole('button', { name: /^Standard table/ }).click();
+    await page.waitForSelector('.pt--fill');
+    const standardCodes = await page.locator('.pt--fill thead .l2 th').evaluateAll(ths => ths.map(t => t.dataset.code));
+    assert.ok(chosenL.every(c => standardCodes.includes(c)) && !standardCodes.includes(refused), 'the standard table has the chosen columns');
+    await page.locator('.pt--fill .r-snip .cell').first().click();
+    await page.waitForSelector('.drawer');
+    assert.match(page.url(), /[?&]cell=/, 'an open cell has an address');
+    await shot('cell');
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.drawer', { state: 'detached' });
+    step('Standard table: a cell opens beside it, with an address, and closes with Esc');
+
+    await page.getByRole('link', { name: /Extended table/ }).first().click();
     await page.waitForSelector('.aside .panel');
     await page.locator('#pattern-search').fill('*ed');
     await page.waitForSelector('.results .result');
     const first = (await page.locator('.results .result code').first().innerText()).trim();
     await page.locator('.results .result').first().click();
-    const expanded = await page.locator('.cell .code').allInnerTexts();
-    assert.ok(expanded.some(h => h.startsWith('*ed')), 'the addition got a column of its own');
-    assert.ok(expanded.indexOf('*du') > expanded.indexOf('*uu'), 'the standard columns keep their order');
-    await shot('expanded');
-    step(`expanded documentation: added ${first} by code`);
+    await page.waitForSelector('.drawer');
+    const extended = await page.locator('.pt--fill thead .l2 th').evaluateAll(ths => ths.map(t => t.dataset.code));
+    assert.ok(extended.includes(first), `the addition (${first}) got a column of its own`);
+    assert.ok(extended.length > standardCodes.length, 'the extended table has more columns');
+    await shot('extended');
+    step(`Extended table: added ${first} by code`);
 
-    await page.getByRole('radio', { name: 'Standard Table' }).click();
-    const hidden = await page.locator('.cell .code').allInnerTexts();
-    assert.deepEqual(hidden, STANDARD, 'the standard table hides the addition');
-    step('Show Standard Table hides it again');
+    await page.keyboard.press('Escape');
+    const before = extended.length;
+    await page.locator('th.added .x').first().click();
+    assert.equal(await page.locator('.pt--fill thead .l2 th').count(), before - 1, 'the column is taken out');
+    // earlier messages may still be showing: the newest Undo is the last one
+    await page.getByRole('button', { name: 'Undo' }).last().click();
+    assert.equal(await page.locator('.pt--fill thead .l2 th').count(), before, 'Undo puts it back');
+    step('taking a column out can be undone');
 
-    // 6. The comparison table -------------------------------------------------
-    // Seed one published manuscript with annotated patterns, as the annotation
-    // editor would have saved them.
+    await page.getByRole('link', { name: /All manuscripts/ }).first().click();
+    await page.waitForSelector('.pt--matrix');
+    assert.equal(await page.locator('.pt--matrix .r-row').count(), 1, 'the project is a row of the table of all manuscripts');
+    await shot('all-manuscripts');
+    step('All manuscripts: the project is a row');
+
+    // The old addresses lead to the project's tabs.
+    await page.goto(`${base}/#/compare`);
+    await page.waitForSelector('.pt--matrix');
+    await page.goto(`${base}/#/table/${encodeURIComponent(name)}`);
+    await page.waitForSelector('.pt--fill');
+    step('the old addresses (#/compare, #/table/…) lead to the project');
+
+    // 6. Publishing, and the public comparison table --------------------------
+    await page.getByRole('button', { name: 'Settings…' }).click();
+    await page.getByLabel('Show this project in the public views').check();
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.waitForFunction((source) => {
+        const t = (JSON.parse(localStorage.getItem('personalTables') || '{"tables":[]}').tables || []).find(x => x.source === source);
+        return t && t.isPublished && t.rows.length > 0;
+    }, name);
+    // Seed annotated snippets for the chosen patterns, as the annotation editor would have saved them.
     await page.evaluate((source) => {
-        const tables = JSON.parse(localStorage.getItem('personalTables') || '{"tables":[]}');
-        const t = (tables.tables || []).find(x => x.source === source);
-        t.isPublished = true;
-        localStorage.setItem('personalTables', JSON.stringify(tables));
+        const t = JSON.parse(localStorage.getItem('personalTables')).tables.find(x => x.source === source);
         const rows = t.rows.map(r => r.pattern);
         const items = rows.map((p, i) => ({ id: `i${i}`, pattern: p, points: '0,0 10,0 10,10' }));
         localStorage.setItem('annotations_v2', JSON.stringify({
@@ -155,7 +218,64 @@ try {
     assert.deepEqual(matrixHeads, STANDARD, 'the comparison table shows the standard columns');
     assert.ok(await page.locator('.snippet-cell .snippet-card').count() > 0, 'the chosen patterns appear as snippets');
     await shot('comparison-standard');
-    step('comparison table: standard columns, filled from the manuscript\'s selection');
+    step('publishing the project fills the public comparison table: standard columns, filled from its selection');
+
+    // 6b. Screenshots of lines: a line, its signs, validated ---------------------
+    await page.goto(`${base}/#/projects/new`);
+    await page.waitForSelector('.cc-card');
+    await page.getByRole('radio', { name: /The manuscript/ }).click();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.locator('#w-source').fill('Screenshot codex');
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('radio', { name: /Screenshots/ }).click();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('radio', { name: /screenshot of the line/ }).click();
+    await page.getByRole('button', { name: /Create project/ }).click();
+    await page.waitForSelector('.pt--select');
+    await page.locator('th[data-code="*"] input[type=checkbox]').check({ force: true });
+    await page.getByRole('button', { name: /^Standard table/ }).click();
+    await page.waitForSelector('.pt--fill');
+    await page.getByRole('button', { name: 'Add a line…' }).click();
+    const linePng = Buffer.from(await page.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = 1200; c.height = 120;
+        const g = c.getContext('2d'); g.fillStyle = '#f6efdc'; g.fillRect(0, 0, 1200, 120);
+        g.fillStyle = '#222'; for (let i = 0; i < 8; i++) { g.beginPath(); g.arc(100 + i * 130, 50, 14, 0, 7); g.fill(); }
+        return c.toDataURL('image/png').split(',')[1];
+    }), 'base64');
+    await page.locator('.new input[type=file]').setInputFiles({ name: 'line.png', mimeType: 'image/png', buffer: linePng });
+    await page.waitForSelector('.preview img');
+    await page.locator('#ln-folio').fill('118');
+    await page.locator('#ln-line').fill('two');
+    assert.ok(await page.getByRole('button', { name: /Mark the signs/ }).isDisabled(), 'a line needs a folio and a line that fit');
+    await page.locator('#ln-folio').fill('118R');
+    await page.locator('#ln-line').fill('2');
+    await page.getByRole('button', { name: /Mark the signs/ }).click();
+    await page.waitForSelector('.stage');
+    const stage = await page.locator('.stage').boundingBox();
+    for (const [x1, x2] of [[0.06, 0.12], [0.2, 0.26]]) {
+        await page.mouse.move(stage.x + stage.width * x1, stage.y + stage.height * 0.2);
+        await page.mouse.down();
+        await page.mouse.move(stage.x + stage.width * x2, stage.y + stage.height * 0.8, { steps: 5 });
+        await page.mouse.up();
+        await page.waitForSelector(`.sign >> nth=${x1 < 0.1 ? 0 : 1}`);
+    }
+    assert.equal(await page.locator('.sign').count(), 2, 'two signs are marked on the line');
+    await page.locator('.sign input.code').first().fill('*');
+    await page.locator('.sign input.code').first().press('Enter');
+    await page.locator('.sign input.code').first().blur();
+    await page.locator('.sign input.code').nth(1).fill('xx');
+    await page.locator('.sign input.code').nth(1).blur();
+    assert.ok(await page.locator('.sign .error').count(), 'a code that does not fit is refused');
+    await shot('line-editor');
+    await page.getByRole('button', { name: 'Done' }).click();
+    await page.waitForSelector('.md-dialog', { state: 'detached' });
+    assert.equal(await page.locator('.lines .card').count(), 1, 'the line is listed');
+    assert.ok(await page.locator('.pt--fill .r-snip .cell .n').first().innerText(), 'the sign is a snippet of its column');
+    await page.locator('.pt--fill .r-snip .cell').first().click();
+    await page.waitForSelector('.drawer');
+    await page.locator('.drawer .grid .snip').first().click();
+    assert.match(await page.locator('.drawer .detail-head strong').innerText(), /f\. 118r · l\. 2 · sign 1/);
+    step('Screenshots of lines: a line (folio and line checked), signs marked on it, each tied to its line');
 
     // 7. The manuscript metadata table ---------------------------------------
     await page.goto(`${base}/#/metadata`);
@@ -274,15 +394,23 @@ try {
 
     await page.goto(`${base}/#/settings`);
     await page.waitForSelector('.panel');
-    assert.equal(await page.locator('.panel').count(), 2, 'Settings holds only the two global preferences');
-    step('Settings is down to the global preferences');
+    assert.equal(await page.locator('.panel').count(), 3, 'Settings holds the global preferences and the snippet attributes');
+    // snippet attributes: a folio is a number and r or v, by default
+    assert.ok(await page.locator('#snippet-attributes').count());
+    assert.equal(await page.locator('#snippet-attributes tbody tr').count(), 3, 'folio, line and syllable');
+    await page.locator('input[aria-label="New attribute of sign snippets"]').fill('Ink');
+    await page.getByRole('button', { name: 'Add attribute' }).last().click();
+    assert.equal(await page.locator('#snippet-attributes tbody tr').count(), 4, 'an attribute can be added');
+    await page.getByRole('button', { name: 'Back to the defaults' }).click();
+    assert.equal(await page.locator('#snippet-attributes tbody tr').count(), 3, 'and the defaults come back');
+    step('Settings: global preferences, and the attributes of a snippet (extended, reset)');
 
     await page.goto(`${base}/#/equivalents`);
-    await page.waitForURL(/#\/table$/);
-    step('the old Equivalents list leads to the neume tables');
+    await page.waitForURL(/#\/projects$/);
+    step('the old Equivalents list leads to the projects');
 
     // Every page still opens without errors, and the table editor leads to the annotation view and back.
-    for (const route of ['/', '/corpus', '/metadata', '/metadata/iiif', '/table', '/compare', '/patterns', '/polygons', '/custom-manuscripts', '/ommr', '/settings', '/workspace']) {
+    for (const route of ['/', '/projects', '/projects/new', '/overview', '/corpus', '/metadata', '/metadata/iiif', '/table', '/compare', '/patterns', '/polygons', '/custom-manuscripts', '/ommr', '/settings', '/workspace']) {
         const before = problems.length;
         await page.goto(`${base}/#${route}`);
         await page.waitForTimeout(500);
@@ -290,14 +418,10 @@ try {
     }
     step('every page opens without errors');
 
-    await page.goto(`${base}/#/table`);
-    await page.waitForSelector('.ms');
-    await page.locator('.ms').first().click();
-    await page.getByRole('button', { name: /Annotate snippets/ }).click();
-    await page.waitForURL(/#\/annotations\//);
-    await page.getByRole('button', { name: 'Back to the neume table' }).click();
-    await page.waitForURL(/#\/table\/.+/);
-    step('Annotate snippets leads to the annotation view, which leads back to the table');
+    // The old pattern editor (reference IDs, public notes) is still there for old work.
+    await page.goto(`${base}/#/annotations`);
+    await page.waitForTimeout(500);
+    step('the old pattern editor still opens');
 
     // The table of IIIF sources, and adding a manuscript that is not in the corpus.
     await page.goto(`${base}/#/metadata/iiif`);
@@ -322,6 +446,7 @@ try {
     await page.goto(`${base}/#/workspace`);
     await page.waitForSelector('[data-area="tables"]');
     const holds = async (area) => (await page.locator(`[data-area="${area}"] .holds`).innerText()).trim();
+    assert.match(await holds('projects'), /project/);
     assert.match(await holds('tables'), /table/);
     assert.match(await holds('metadata'), /edited cell/);
     assert.match(await holds('library'), /custom sign/);

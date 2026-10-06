@@ -466,7 +466,7 @@ const visibleFilterSources = computed(() => {
                     <p>Side-by-side comparison of the neume shapes of the published manuscripts. Each column is a neume; read it downwards to see how every manuscript writes it.</p>
                 </template>
                 <template v-if="embedded" #actions>
-                    <RouterLink to="/table" class="ne-btn">Neume Tables</RouterLink>
+                    <RouterLink to="/projects" class="ne-btn">Projects</RouterLink>
                     <a href="#/public/table" target="_blank" rel="noopener" class="ne-btn ne-btn--ghost">Public view ↗</a>
                 </template>
             </PageHeader>
@@ -571,7 +571,7 @@ const visibleFilterSources = computed(() => {
             <h3>No Published Manuscripts</h3>
             <p>Publish manuscripts with annotations in the editor to see them in this comparative table.</p>
             <ol v-if="embedded" class="how">
-                <li>Open a manuscript's table under <RouterLink to="/table">Neume Tables</RouterLink> and choose its neumes.</li>
+                <li>Open a project under <RouterLink to="/projects">Projects</RouterLink>, choose its columns and publish it.</li>
                 <li>Mark the snippets on its images with <em>Annotate snippets</em>.</li>
                 <li>Switch on <em>Published</em>. The manuscript appears here.</li>
             </ol>

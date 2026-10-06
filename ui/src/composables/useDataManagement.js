@@ -7,6 +7,7 @@ import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
 import { useOmmrStore } from '../stores/ommr';
 import { useDirectSnippetsStore } from '../stores/directSnippets';
+import { useProjectsStore } from '../stores/projects';
 import { useSaveReminderStore } from '../stores/saveReminder';
 import { extractManuscripts, mergeManuscript, getManuscriptStats } from '../utils/workspaceSharing';
 
@@ -20,6 +21,7 @@ export function useDataManagement() {
     const registryStore = useIiifRegistryStore();
     const ommrStore = useOmmrStore();
     const directStore = useDirectSnippetsStore();
+    const projectsStore = useProjectsStore();
     const libraryStore = usePatternLibraryStore();
     const metaStore = useManuscriptMetaStore();
     const reminder = useSaveReminderStore();
@@ -50,6 +52,8 @@ export function useDataManagement() {
             // Direct snippet collections carry their images inline as base64, so a
             // backup of them is self-contained (no IIIF server needed to restore).
             directSnippets: directStore.collections,
+            // The projects are the work itself: they travel with the file (their snippets are in `data`).
+            projects: projectsStore.serialize(),
             data: {
                 ...filteredData,
                 settings: includeSettings ? settings.snapshot(SHARED_SETTING_KEYS) : undefined,
@@ -67,7 +71,7 @@ export function useDataManagement() {
         a.href = url;
         const cleanDate = new Date().toISOString().slice(0, 10);
         const cleanLabel = (settings.backupLabel || 'backup').replace(/[^a-z0-9]/gi, '-');
-        a.download = `neumen-editor-backup-${cleanLabel}-${cleanDate}.json`;
+        a.download = `neume-docs-backup-${cleanLabel}-${cleanDate}.json`;
         a.click();
 
         URL.revokeObjectURL(url);
@@ -91,6 +95,7 @@ export function useDataManagement() {
             type: 'cm-manuscript-export',
             exportedAt: new Date().toISOString(),
             exportedManuscripts: actualExported,
+            projects: { projects: projectsStore.projects.filter(p => actualExported.includes(p.source)) },
             data
         };
 
@@ -312,6 +317,13 @@ export function useDataManagement() {
         // manuscript merge strategies above, so merge them by id.
         if (Array.isArray(parsedJson.directSnippets)) {
             directStore.mergeCollections(parsedJson.directSnippets);
+        }
+
+        // Projects likewise travel by their own ids; those of manuscripts left out are left out.
+        if (parsedJson.projects) {
+            projectsStore.mergeIn(parsedJson.projects, {
+                skipSources: importedSources.filter(src => choices[src] === 'skip')
+            });
         }
     }
 

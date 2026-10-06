@@ -2,7 +2,7 @@
 
 The **pattern editor** is where you give the patterns of one manuscript your standardized Reference IDs, look at where they occur (the gallery), and write the public notes for the manuscript.
 
-Open it from the neume table of a manuscript with **Annotate snippets →**. **Back to the neume table** returns to the table.
+This is the older way of working with a manuscript's patterns, kept for work made with it. What matters in the [projects](./projects) is the pattern code; reference IDs are no longer needed there. Open the editor at `#/annotations/…`; **Back to the neume table** leads to the manuscript's project.
 
 ## The Pattern Editor
 

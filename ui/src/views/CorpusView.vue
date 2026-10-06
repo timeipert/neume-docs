@@ -6,6 +6,7 @@ import { useCorpusImport } from '../composables/useCorpusImport';
 import { collectFromFileList, collectFromDrop } from '../services/corpus/corpusImport';
 import PageHeader from '../components/ui/PageHeader.vue';
 import ActionDialog from '../components/workspace/ActionDialog.vue';
+import CorpusFollowUp from '../components/workspace/CorpusFollowUp.vue';
 import { useEffectiveMeta } from '../composables/useEffectiveMeta';
 
 const router = useRouter();
@@ -87,12 +88,12 @@ const fmt = (n) => n.toLocaleString('en-US');
 
 <template>
 <div class="corpus-view" @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="onDrop">
-    <PageHeader title="Corpus" eyebrow="Step 1 · Your data">
+    <PageHeader title="Corpus" eyebrow="Your data">
         <template #subtitle>
-            <p>The editor starts empty. Load a Monodi-Zero workspace or a Corpus Monodicum project, and the neume tables are built from it.</p>
+            <p>The editor starts empty. Load a Monodi-Zero workspace or a Corpus Monodicum project, then start a project on one of its manuscripts.</p>
         </template>
         <template v-if="hasCorpus" #actions>
-            <button class="ne-btn ne-btn--primary" @click="router.push('/table')">Open the neume tables &rarr;</button>
+            <button class="ne-btn ne-btn--primary" @click="router.push('/projects')">Go to the projects &rarr;</button>
         </template>
     </PageHeader>
 
@@ -155,6 +156,8 @@ const fmt = (n) => n.toLocaleString('en-US');
             <li v-if="result.warnings.length > 5">… and {{ result.warnings.length - 5 }} more.</li>
         </ul>
     </section>
+
+    <CorpusFollowUp v-if="phase === 'done'" />
 
     <section v-if="phase === 'error'" class="note bad" role="alert">
         <strong>That did not work.</strong> {{ errorMessage }}

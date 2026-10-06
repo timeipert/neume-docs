@@ -17,6 +17,7 @@ describe('the parts of the workspace', () => {
         const stores = await freshStores();
         fillStores(stores);
         const areas = measureAreas(stores);
+        expect(byKey(areas, 'projects').text).toBe('1 project');
         expect(byKey(areas, 'annotations').text).toBe('3 snippets · 1 line region · 2 manual lines');
         expect(byKey(areas, 'tables').text).toBe('1 table · 2 pattern rows');
         expect(byKey(areas, 'metadata').text).toBe('1 edited cell · 1 own column · 1 own value');

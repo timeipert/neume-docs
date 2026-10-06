@@ -59,3 +59,36 @@ describe('settings: whole-store operations', () => {
         expect(saved.customSigns[0].key).toBe('V');
     });
 });
+
+describe('settings: snippet attributes', () => {
+    it('start as a folio and a line for a line, a syllable for a sign', async () => {
+        const { settings } = await freshStores();
+        expect(settings.getSnippetAttributes('line').map(d => d.key)).toEqual(['folio', 'line']);
+        expect(settings.getSnippetAttributes('sign').map(d => d.key)).toEqual(['syllable']);
+    });
+
+    it('can be extended, and the folio and line stay', async () => {
+        const { settings } = await freshStores();
+        settings.setSnippetAttributes('sign', [...settings.getSnippetAttributes('sign'), { key: 'ink', label: 'Ink', type: 'text' }]);
+        expect(settings.getSnippetAttributes('sign').map(d => d.key)).toEqual(['syllable', 'ink']);
+        settings.setSnippetAttributes('line', []);
+        expect(settings.getSnippetAttributes('line').map(d => d.key)).toEqual(['folio', 'line']);
+    });
+
+    it('count as a changed preference, and go back with a reset', async () => {
+        const { settings } = await freshStores();
+        expect(settings.changedCount(SETTING_GROUPS.preferences)).toBe(0);
+        settings.setSnippetAttributes('sign', []);
+        expect(settings.changedCount(SETTING_GROUPS.preferences)).toBe(1);
+        settings.resetSnippetAttributes();
+        expect(settings.changedCount(SETTING_GROUPS.preferences)).toBe(0);
+    });
+
+    it('travel in backups, and a broken file cannot break them', async () => {
+        const { settings } = await freshStores();
+        expect(SHARED_SETTING_KEYS).toContain('snippetAttributes');
+        settings.apply({ snippetAttributes: { line: 'nonsense', sign: [{ key: 'ink', label: 'Ink' }, null] } });
+        expect(settings.getSnippetAttributes('line').map(d => d.key)).toEqual(['folio', 'line']);
+        expect(settings.getSnippetAttributes('sign').map(d => d.key)).toEqual(['ink']);
+    });
+});

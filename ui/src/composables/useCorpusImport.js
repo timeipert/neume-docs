@@ -2,6 +2,7 @@ import { ref, computed } from 'vue';
 import { runImport } from '../services/corpus/corpusImport';
 import { DEFAULT_SKIPPED_SUFFIXES } from '../services/corpus/corpusReader';
 import { useTranscriptionData } from './useTranscriptionData';
+import { useMonodiExchange } from './useMonodiExchange';
 
 /**
  * The state of the running (or last) corpus import.
@@ -41,6 +42,9 @@ const statusLine = computed(() => {
 async function start(items, { skipWorkingCopies = true } = {}) {
     if (busy.value) return;
     const data = useTranscriptionData();
+    const exchange = useMonodiExchange();
+    // Where each source's folios stand now, so that pages whose folio the update changed can be found.
+    const before = exchange.snapshotFolios();
 
     errorMessage.value = '';
     result.value = null;
@@ -63,6 +67,7 @@ async function start(items, { skipWorkingCopies = true } = {}) {
         });
         result.value = await current.promise;
         await data.refresh();
+        exchange.checkDrift(before);
         phase.value = 'done';
     } catch (e) {
         console.error(e);

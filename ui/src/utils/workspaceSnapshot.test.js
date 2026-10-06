@@ -22,7 +22,15 @@ describe('capturing the workspace', () => {
         expect(data.settings.customSigns[0].key).toBe('V');
         expect(data.settings.displayMode).toBe('text');
         expect(data.directSnippets).toHaveLength(1);
+        expect(data.projects.projects).toHaveLength(1);
+        expect(data.projects.projects[0]).toMatchObject({ source: 'Aa 13', from: '1r', to: '9v', columns: ['*ud'], extended: ['*uud'] });
         expect(isEmptyWorkspace(data)).toBe(false);
+    });
+
+    it('is not empty when projects are all there is', async () => {
+        const stores = await freshStores();
+        stores.projects.create({ source: 'Aa 13' });
+        expect(isEmptyWorkspace(captureWorkspace(stores))).toBe(false);
     });
 
     it('is a copy: later edits do not reach into it', async () => {
@@ -56,11 +64,13 @@ describe('restoring a workspace', () => {
         stores.settings.reset();
         stores.tables.getOrCreateTableForSource('Another');
         stores.meta.set('Another', 'datierung', '12th c.', '');
+        stores.projects.create({ source: 'Another' });
 
         applyWorkspace(stores, before, { replace: true });
         expect(captureWorkspace(stores)).toEqual(before);
         expect(stores.tables.tables.map(t => t.source)).toEqual(['Aa 13']);
         expect(stores.meta.overrides.Another).toBeUndefined();
+        expect(stores.projects.projects.map(p => p.source)).toEqual(['Aa 13']);
     });
 
     it('empties the workspace when restoring an empty capture', async () => {

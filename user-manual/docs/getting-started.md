@@ -1,13 +1,13 @@
 # Getting Started
 
-Welcome to the **Neumen-Editor** user manual.
+Welcome to the **neume-docs** user manual.
 
 ## What is this tool?
-The **Neumen-Editor** is a lightweight research application for **musicologists** working with medieval chant manuscripts and their digital transcriptions in the *Corpus Monodicum* (CM).
+**neume-docs** is a lightweight research application for **musicologists** working with medieval chant manuscripts and their digital transcriptions in the *Corpus Monodicum* (CM).
 
 It bridges the gap between abstract melodic data and the physical graphical reality of a manuscript. You can:
 1. Load a transcribed corpus and see which neume patterns occur in each manuscript.
-2. Document the neume shapes of a manuscript in a **Neume Table**: a fixed, comparable table of neumes ordered by number of tones and frequency in the CM.
+2. Work in **projects** — a range of folios in a manuscript — and document its neume shapes in a **Neume Table**: a fixed, comparable table of neumes ordered by number of tones and frequency in the CM.
 3. Link patterns directly to specific ink strokes on high-resolution IIIF manuscript scans.
 4. Establish a standard typology (Reference IDs) for graphical signs across manuscripts.
 5. Publish an interactive comparison of notation across manuscripts.
@@ -26,4 +26,4 @@ The tool is a web application. To run it locally:
 2. In the `ui` directory, run `npm install`.
 3. Run `npm run dev` and open the `localhost` address in your browser.
 
-Next: [Loading Data](./loading-data), then [The Neume Table](./neume-table).
+Next: [Loading Data](./loading-data), then [Projects](./projects) and [The Neume Table](./neume-table).

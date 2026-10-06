@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: "Neumen-Editor",
+  title: "neume-docs",
   description: "User Manual & Documentation",
   base: '/manual/',
   themeConfig: {
@@ -24,6 +24,7 @@ export default defineConfig({
         items: [
           { text: 'Manuscript Metadata', link: '/docs/manuscript-metadata' },
           { text: 'IIIF Sources & MMMO', link: '/docs/iiif-sources' },
+          { text: 'Projects', link: '/docs/projects' },
           { text: 'The Neume Table', link: '/docs/neume-table' },
           { text: 'Pattern Editor & Ref IDs', link: '/docs/equivalents' },
           { text: 'Manuscript Annotation', link: '/docs/annotation' },
@@ -34,7 +35,7 @@ export default defineConfig({
       }
     ],
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/timeipert/cm-neumen-editor' }
+      { icon: 'github', link: 'https://github.com/timeipert/neume-docs' }
     ]
   }
 })

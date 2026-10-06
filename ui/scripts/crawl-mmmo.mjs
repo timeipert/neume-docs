@@ -56,7 +56,7 @@ const corpusDir = opt('for', '');
 const onlyMatched = flag('only-matched');
 const requestedDelay = Number(opt('delay', 10));
 const contact = opt('contact', '');
-const userAgent = `cm-neumen-editor-metadata-crawler/1.0 (research use; polite, one request at a time)${contact ? ` ${contact}` : ''}`;
+const userAgent = `neume-docs-metadata-crawler/1.0 (research use; polite, one request at a time)${contact ? ` ${contact}` : ''}`;
 
 mkdirSync(outDir, { recursive: true });
 const file = (name) => join(outDir, name);

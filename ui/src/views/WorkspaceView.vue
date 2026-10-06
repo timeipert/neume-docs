@@ -4,6 +4,7 @@ import ContentsPanel from '../components/workspace/ContentsPanel.vue';
 import ManuscriptsPanel from '../components/workspace/ManuscriptsPanel.vue';
 import StoragePanel from '../components/workspace/StoragePanel.vue';
 import BackupPanel from '../components/workspace/BackupPanel.vue';
+import MonodiExchangePanel from '../components/workspace/MonodiExchangePanel.vue';
 import RestorePointsPanel from '../components/workspace/RestorePointsPanel.vue';
 import PublishPanel from '../components/workspace/PublishPanel.vue';
 import ResetPanel from '../components/workspace/ResetPanel.vue';
@@ -18,6 +19,7 @@ import ResetPanel from '../components/workspace/ResetPanel.vue';
     <ManuscriptsPanel />
     <StoragePanel />
     <BackupPanel />
+    <MonodiExchangePanel />
     <RestorePointsPanel />
     <PublishPanel />
     <ResetPanel />

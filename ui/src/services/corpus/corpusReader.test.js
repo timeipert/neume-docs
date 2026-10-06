@@ -372,3 +372,60 @@ describe('compareDocuments', () => {
         expect([...docs].sort(compareDocuments).map(d => d.dokumenten_id)).toEqual(['d', 'a', 'b', 'c']);
     });
 });
+
+describe('what Monodi-Zero already knows (uuids, annotations)', () => {
+    const withLines = () => ({
+        kind: 'RootContainer', uuid: 'r',
+        children: [{ kind: 'ZeileContainer', uuid: 'z', children: [
+            syllable('Pa-', group(note('G', 4)), group(note('A', 4))),
+            { kind: 'LineChange', uuid: 'line-end-1', focus: false },
+            syllable('ter', group(note('F', 4)))
+        ] }]
+    });
+    const ws = (source = {}) => ({
+        sources: [{ id: 'src-1', quellensigle: 'Aa 1', ...source }],
+        documents: [{ id: 'd', quelle_id: 'src-1', dokumenten_id: 'Aa 1-1r-1', foliostart: '1r', zeilenstart: '1' }],
+        notes: { d: withLines() }
+    });
+
+    it('keeps the first note\'s uuid of each occurrence, parallel to the occurrences', async () => {
+        const { sources } = await read([file('w.monodijson', ws())]);
+        expect(sources[0].noteUuids['*u']).toEqual(['G4']);
+        expect(sources[0].noteUuids['*']).toEqual(['F4']);
+        for (const [pattern, list] of Object.entries(sources[0].patterns)) {
+            expect(sources[0].noteUuids[pattern]).toHaveLength(list.length);
+            expect(list.every(o => o.length === 5)).toBe(true); // sysId of existing snippet links is unchanged
+        }
+    });
+
+    it('numbers the neumes in reading order, parallel to the occurrences', async () => {
+        const { sources } = await read([file('w.monodijson', ws())]);
+        const order = [];
+        for (const [pattern, list] of Object.entries(sources[0].patterns)) {
+            expect(sources[0].noteOrder[pattern]).toHaveLength(list.length);
+            sources[0].noteOrder[pattern].forEach((n, i) => order.push([n, list[i][3]])); // [number, syllable]
+        }
+        // 'Pa-' (a rising pair) comes before 'ter', whichever pattern each belongs to
+        expect(order.sort((a, b) => a[0] - b[0]).map(o => o[1])).toEqual(['Pa-', 'ter']);
+    });
+
+    it('records which LineChange ends each line', async () => {
+        const { sources } = await read([file('w.monodijson', ws())]);
+        expect(sources[0].lineUuids).toEqual({ '1r': { '1': 'line-end-1' } });
+    });
+
+    it('keeps regions, items and equivalents already on the source, and its id', async () => {
+        const regions = [{ id: 'r1', name: 'Line 1', points: '0,0 10,0 10,5 0,5', folio: '0' }];
+        const items = [{ id: 'i1', regionId: 'r1', pattern: '*u', points: '1,1 2,1 2,2 1,2', uuid: 'G4' }];
+        const equivalents = [{ pattern: '*u', refId: '12', notes: '' }];
+        const { sources } = await read([file('w.monodijson', ws({ annotationRegions: regions, annotationItems: items, equivalents }))]);
+        expect(sources[0].monodiAnnotations).toEqual({ id: 'src-1', annotationRegions: regions, annotationItems: items, equivalents });
+        // they are not mistaken for plain metadata fields
+        expect(sources[0].meta).not.toHaveProperty('annotationRegions');
+    });
+
+    it('says nothing when the source has no annotations', async () => {
+        const { sources } = await read([file('w.monodijson', ws())]);
+        expect(sources[0].monodiAnnotations).toBeNull();
+    });
+});

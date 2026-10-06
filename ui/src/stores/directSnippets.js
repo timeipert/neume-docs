@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch, computed } from 'vue'
 import { loadCollections, saveCollections } from '../utils/directSnippetsDb'
 import { dataUrlBytes } from '../utils/snippetImages'
+import { linesOf, withLine, withLinePatched, withoutLine, withLineRestored } from '../utils/lineSigns'
 
 /**
  * "Direct snippet" collections: a lightweight path for documenting a notation
@@ -13,7 +14,10 @@ import { dataUrlBytes } from '../utils/snippetImages'
  */
 export const useDirectSnippetsStore = defineStore('directSnippets', () => {
     // [{ id, source, name, notes, isPublished, patterns: [{code, label, notes}],
-    //    snippets: [{id, pattern, image, caption, refId, variant, width, height, createdAt}] }]
+    //    snippets: [{id, pattern, image, caption, refId, variant, width, height, createdAt,
+    //                lineId?, box?, attrs?, link?}],
+    //    lines: [{id, image, width, height, attrs, createdAt}] }]
+    // A snippet with a `lineId` is a sign cut from that line (see utils/lineSigns).
     const collections = ref([])
     const loaded = ref(false)
 
@@ -52,7 +56,8 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
             notes: '',
             isPublished: false,
             patterns: [],
-            snippets: []
+            snippets: [],
+            lines: []
         }
         collections.value = [...collections.value, c]
         return c
@@ -97,7 +102,7 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
     }
 
     // --- Snippets ---
-    function addSnippet(collectionId, { pattern, image, caption = '', refId = '', variant = '', width = 0, height = 0 }) {
+    function addSnippet(collectionId, { pattern, image, caption = '', refId = '', variant = '', width = 0, height = 0, lineId, box, attrs, link }) {
         const c = getCollection(collectionId)
         if (!c || !image) return null
         const s = {
@@ -108,7 +113,11 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
             refId: refId.trim(),
             variant: variant.trim(),
             width, height,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            ...(lineId ? { lineId } : {}),
+            ...(box ? { box } : {}),
+            ...(attrs && Object.keys(attrs).length ? { attrs } : {}),
+            ...(link ? { link } : {})
         }
         updateCollection(collectionId, { snippets: [...c.snippets, s] })
         return s
@@ -128,6 +137,41 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
         updateCollection(collectionId, { snippets: c.snippets.filter(s => s.id !== snippetId) })
     }
 
+    // --- Lines: a picture of a text line, with the signs cut from it ---
+    function getLines(collectionId) {
+        return linesOf(getCollection(collectionId))
+    }
+
+    /** @returns {object|null} the new line */
+    function addLine(collectionId, fields) {
+        const c = getCollection(collectionId)
+        if (!c || !fields || !fields.image) return null
+        const { lines, line } = withLine(c, fields)
+        updateCollection(collectionId, { lines })
+        return line
+    }
+
+    function updateLine(collectionId, lineId, patch) {
+        const c = getCollection(collectionId)
+        if (!c) return
+        updateCollection(collectionId, { lines: withLinePatched(c, lineId, patch) })
+    }
+
+    /** Take a line out with its signs. @returns {{ line: object, signs: object[] }|null} what to give `restoreLine` */
+    function removeLine(collectionId, lineId) {
+        const c = getCollection(collectionId)
+        if (!c) return null
+        const { lines, snippets, removed } = withoutLine(c, lineId)
+        if (removed) updateCollection(collectionId, { lines, snippets })
+        return removed
+    }
+
+    function restoreLine(collectionId, removed) {
+        const c = getCollection(collectionId)
+        if (!c || !removed) return
+        updateCollection(collectionId, withLineRestored(c, removed))
+    }
+
     const publishedCollections = computed(() => collections.value.filter(c => c.isPublished))
 
     /** Approximate stored image size, so the UI can warn before it gets silly. */
@@ -135,11 +179,13 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
         const c = getCollection(id)
         if (!c) return 0
         return c.snippets.reduce((sum, s) => sum + dataUrlBytes(s.image), 0)
+            + linesOf(c).reduce((sum, l) => sum + dataUrlBytes(l.image), 0)
     }
 
     const totalBytes = computed(() =>
         collections.value.reduce((sum, c) =>
-            sum + c.snippets.reduce((s2, s) => s2 + dataUrlBytes(s.image), 0), 0)
+            sum + c.snippets.reduce((s2, s) => s2 + dataUrlBytes(s.image), 0)
+                + linesOf(c).reduce((s2, l) => s2 + dataUrlBytes(l.image), 0), 0)
     )
 
     function clearAll() {
@@ -171,6 +217,7 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
         getCollection, createCollection, updateCollection, removeCollection,
         addPattern, updatePattern, removePattern,
         addSnippet, updateSnippet, removeSnippet,
+        getLines, addLine, updateLine, removeLine, restoreLine,
         collectionBytes, replaceAll, mergeCollections, clearAll
     }
 })

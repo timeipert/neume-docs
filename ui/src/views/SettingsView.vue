@@ -3,6 +3,7 @@ import { RouterLink } from 'vue-router';
 import PageShell from '../components/ui/PageShell.vue';
 import Panel from '../components/ui/Panel.vue';
 import SegmentedControl from '../components/ui/SegmentedControl.vue';
+import SnippetAttributes from '../components/settings/SnippetAttributes.vue';
 import { useSettingsStore } from '../stores/settings';
 import { CM_REFERENCE_INFO } from '../composables/usePatternCatalog';
 
@@ -53,6 +54,10 @@ const bases = [
             Counts only what is loaded on the <RouterLink to="/corpus">Corpus</RouterLink> page. Useful for material outside
             the CM. Patterns the loaded data has never seen fall back to the CM snapshot.
         </p>
+    </Panel>
+
+    <Panel id="snippet-attributes" title="What a snippet says about itself" description="The attributes of a line snippet (its place) and of a sign snippet (its syllable). Extend them, require them, and decide what is checked.">
+        <SnippetAttributes />
     </Panel>
 </PageShell>
 </template>

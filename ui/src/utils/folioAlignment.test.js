@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseFolioLabel, isDividerLabel, detectScheme, inferAlignment, applyOffsetAlignment } from './folioAlignment';
+import { parseFolioLabel, isDividerLabel, isUnnumberedLabel, detectScheme, inferAlignment, applyOffsetAlignment } from './folioAlignment';
 
 describe('parseFolioLabel', () => {
     it('reads an explicit folio marker', () => {
@@ -204,5 +204,29 @@ describe('applyOffsetAlignment', () => {
 
     it('returns null without a config', () => {
         expect(applyOffsetAlignment('1r', null)).toBeNull();
+    });
+});
+
+describe('inferAlignment — unnumbered pages ("NP")', () => {
+    it('reads Gallica\'s "NP" as an unnumbered page, not a section divider', () => {
+        expect(isUnnumberedLabel('NP')).toBe(true);
+        expect(isUnnumberedLabel('n. p.')).toBe(true);
+        expect(isDividerLabel('NP')).toBe(false);
+        expect(isDividerLabel('Fehlende Zeilen')).toBe(true);
+    });
+
+    it('guesses nothing for a manifest that numbers no page, until a pin says where it is', () => {
+        const labels = Array(10).fill('NP');
+        const none = inferAlignment({ canvasLabels: labels, dataType: 'foliated' });
+        expect(none.entries.every(e => e.resolvedFolio === null && !e.isDivider)).toBe(true);
+
+        // one pin: canvas 4 is 139r — and every page after it follows
+        const pinned = inferAlignment({ canvasLabels: labels, dataType: 'foliated', pins: { 4: '139r' } });
+        expect(pinned.entries.slice(3, 8).map(e => e.resolvedFolio)).toEqual([null, '139r', '139v', '140r', '140v']);
+    });
+
+    it('counts an unnumbered page between numbered ones, and the next label resyncs', () => {
+        const r = inferAlignment({ canvasLabels: ['10r', '10v', 'NP', '12r'], dataType: 'foliated' });
+        expect(r.entries.map(e => e.resolvedFolio)).toEqual(['10r', '10v', '11r', '12r']);
     });
 });

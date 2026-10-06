@@ -2,7 +2,7 @@
 
 **Workspace** in the navigation bar is where you look after everything you have made in the editor: what is in it, where it is kept, how to back it up, and how to clear it.
 
-Your *work* is the annotations, the neume tables, your metadata edits, the pattern library (labels, signs, variants, preferred IDs), IIIF links and the custom manuscripts. It is not the loaded corpus: that is loaded and removed on the [Corpus](./loading-data) page.
+Your *work* is the projects, the annotations, the neume tables, your metadata edits, the pattern library (labels, signs, variants, preferred IDs), IIIF links and the custom manuscripts. It is not the loaded corpus: that is loaded and removed on the [Corpus](./loading-data) page.
 
 ## What is in your workspace
 

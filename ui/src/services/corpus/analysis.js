@@ -62,6 +62,22 @@ function collectNotes(element, out = []) {
 }
 
 /**
+ * The uuid Monodi-Zero uses to point at a neume: that of its first note. (A
+ * neume has no uuid of its own; Monodi's `AnnotationItem.uuid` is this one.)
+ *
+ * @param {Array} nonSpaced list of `{ grouped: [...] }`
+ * @returns {string} '' when the notes carry no uuid
+ */
+export function firstNoteUuid(nonSpaced) {
+    if (!Array.isArray(nonSpaced)) return '';
+    for (const item of nonSpaced) {
+        const first = collectNotes(item)[0];
+        if (first && first.uuid) return String(first.uuid);
+    }
+    return '';
+}
+
+/**
  * Turn one `nonSpaced` list into its pattern code and note list.
  *
  * @param {Array} nonSpaced list of `{ grouped: [...] }`
@@ -123,9 +139,13 @@ function parseLineNumber(value) {
  *
  * @param {object} root the document's RootContainer
  * @param {{ source: string, documentId: string, foliostart?: string, zeilenstart?: string }} ctx
- * @param {(pattern: string, info: string[]) => void} emit
- *        `info` is `[documentId, folio, line, syllable, notes]`
- * @returns {{ clefs: number, folios: Set<string>, patterns: number }}
+ * @param {(pattern: string, info: string[], noteUuid: string) => void} emit
+ *        `info` is `[documentId, folio, line, syllable, notes]`. Its join('|') is the
+ *        `sysId` snippets use to link to an occurrence, so it must not change shape.
+ *        `noteUuid` is the first note's uuid ('' if the file has none).
+ * @returns {{ clefs: number, folios: Set<string>, patterns: number, lineUuids: Object<string, Object<string, string>> }}
+ *          `lineUuids[folio][line]` is the uuid of the LineChange that ENDS that line
+ *          (Monodi's `lineUUID`); a line with no such marker has no entry
  */
 export function analyzeDocument(root, ctx, emit) {
     const { source, documentId } = ctx;
@@ -139,7 +159,7 @@ export function analyzeDocument(root, ctx, emit) {
     let line = String(lineCounter);
     let syllable = '';
 
-    const stats = { clefs: 0, folios: new Set(), patterns: 0 };
+    const stats = { clefs: 0, folios: new Set(), patterns: 0, lineUuids: {} };
     if (folio) stats.folios.add(folio);
 
     const visit = (node) => {
@@ -162,7 +182,7 @@ export function analyzeDocument(root, ctx, emit) {
                 const found = extractPattern(item.nonSpaced);
                 if (!found) continue;
                 stats.patterns++;
-                emit(found.pattern, [documentId, folio, line, syllable, found.notes]);
+                emit(found.pattern, [documentId, folio, line, syllable, found.notes], firstNoteUuid(item.nonSpaced));
             }
             return;
         }
@@ -180,6 +200,7 @@ export function analyzeDocument(root, ctx, emit) {
             line = String(lineCounter);
             if (folio) stats.folios.add(folio);
         } else if (kind === 'LineChange') {
+            if (folio && node.uuid) (stats.lineUuids[folio] || (stats.lineUuids[folio] = {}))[line] = String(node.uuid);
             lineCounter += 1;
             line = String(lineCounter);
         } else if (kind === 'ParatextContainer') {

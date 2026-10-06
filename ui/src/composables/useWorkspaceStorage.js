@@ -3,6 +3,7 @@ import { getHandle, setHandle, deleteHandle } from '../utils/idb';
 import { useSettingsStore } from '../stores/settings';
 import { useAnnotationsStore } from '../stores/annotations';
 import { usePersonalTablesStore } from '../stores/personalTables';
+import { useProjectsStore } from '../stores/projects';
 import { useIiifStore } from '../stores/iiif';
 import { useIiifRegistryStore } from '../stores/iiifRegistry';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
@@ -44,6 +45,7 @@ export function useWorkspaceStorage() {
     const directStore = useDirectSnippetsStore();
     const libraryStore = usePatternLibraryStore();
     const metaStore = useManuscriptMetaStore();
+    const projectsStore = useProjectsStore();
 
 
     const stores = () => ({
@@ -54,7 +56,8 @@ export function useWorkspaceStorage() {
         registry: registryStore,
         library: libraryStore,
         meta: metaStore,
-        direct: directStore
+        direct: directStore,
+        projects: projectsStore
     });
 
     // Retrieve full app state as an object compatible with data management schema
@@ -219,7 +222,8 @@ export function useWorkspaceStorage() {
                 () => iiifStore.$state,
                 () => registryStore.entries,
                 () => metaStore.$state,
-                () => directStore.collections
+                () => directStore.collections,
+                () => projectsStore.projects
             ],
             () => {
                 triggerAutosave();

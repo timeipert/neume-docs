@@ -112,3 +112,37 @@ export function imagesFromDrop(e) {
     }
     return out;
 }
+
+/** Line screenshots are wide and thin, and signs are cut from them: keep more of them than of a single sign. */
+export const LINE_OPTIONS = { maxWidth: 2600, maxHeight: 1000, quality: 0.9 };
+
+/**
+ * Cut a part out of an image.
+ *
+ * @param {string} dataUrl the whole image
+ * @param {{x:number,y:number,w:number,h:number}} box the part, in percent of the image
+ * @returns {Promise<{dataUrl: string, width: number, height: number}>}
+ */
+export function cropImage(dataUrl, box) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onerror = () => reject(new Error('Could not read the line image.'));
+        img.onload = () => {
+            const sx = Math.round((box.x / 100) * img.naturalWidth);
+            const sy = Math.round((box.y / 100) * img.naturalHeight);
+            const sw = Math.max(1, Math.round((box.w / 100) * img.naturalWidth));
+            const sh = Math.max(1, Math.round((box.h / 100) * img.naturalHeight));
+            const canvas = document.createElement('canvas');
+            canvas.width = sw;
+            canvas.height = sh;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(0, 0, sw, sh);
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+            const png = canvas.toDataURL('image/png');
+            const jpeg = canvas.toDataURL('image/jpeg', SNIPPET_QUALITY);
+            resolve({ dataUrl: png.length <= jpeg.length ? png : jpeg, width: sw, height: sh });
+        };
+        img.src = dataUrl;
+    });
+}

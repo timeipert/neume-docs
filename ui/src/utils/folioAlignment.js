@@ -127,9 +127,18 @@ export function parseFolioLabel(raw) {
     };
 }
 
-/** A label with no digits at all is a structural divider, not a page. */
+// A page the library says has no number: Gallica's "NP" (non paginé), "n.p.",
+// "s.n.". Unlike a section title it is a page, just an unnumbered one.
+const UNNUMBERED = /^\s*(np|n\.\s*p\.?|s\.\s*n\.?|non\s+pagin[ée]e?)\s*$/i;
+
+/** Whether a label marks an unnumbered page ("NP"). */
+export function isUnnumberedLabel(raw) {
+    return UNNUMBERED.test(String(raw ?? ''));
+}
+
+/** A label with no digits at all is a structural divider, not a page — unless it says it is an unnumbered page. */
 export function isDividerLabel(raw) {
-    return parseFolioLabel(raw).num === null;
+    return parseFolioLabel(raw).num === null && !isUnnumberedLabel(raw);
 }
 
 /**
@@ -211,6 +220,7 @@ export function inferAlignment(args) {
     const { canvasLabels = [], dataType = 'foliated', pins = {} } = args;
 
     let runningIndex = 1; // the folio index the next uncertain canvas will count as
+    let anchored = false; // whether a pin or a page's own label has said where the count is
     let matched = 0;
     let dividerCount = 0;
 
@@ -223,8 +233,19 @@ export function inferAlignment(args) {
             }
             matched++;
             const idx = folioToIndex(pinned, dataType);
-            if (idx !== null) runningIndex = idx + 1;
+            if (idx !== null) { runningIndex = idx + 1; anchored = true; }
             return entry(canvasIndex, label, pinned, 'pinned', 1);
+        }
+
+        // An unnumbered page ("NP"): counted once something has said where the count
+        // is — so one pin aligns a manifest that numbers none of its pages — and left
+        // unresolved before that rather than guessed from the first scan.
+        if (isUnnumberedLabel(label)) {
+            if (!anchored) return entry(canvasIndex, label, null, 'none', 0);
+            const resolved = indexToFolio(runningIndex, dataType);
+            runningIndex++;
+            if (resolved) { matched++; return entry(canvasIndex, label, resolved, 'position', 0.6); }
+            return entry(canvasIndex, label, null, 'none', 0);
         }
 
         const parsed = parseFolioLabel(label);
@@ -239,6 +260,7 @@ export function inferAlignment(args) {
             if (idx !== null) {
                 matched++;
                 runningIndex = idx + 1;
+                anchored = true;
                 return entry(canvasIndex, label, indexToFolio(idx, dataType), 'label', 0.95);
             }
         }

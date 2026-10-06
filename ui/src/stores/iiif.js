@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { iiifParseRules } from '../config/iiifRules';
+import { parseManifest } from '../services/iiif/manifestParser';
 import { getCachedItem, setCachedItem, deleteCachedItem, clearStore } from '../utils/idb';
 
 export const useIiifStore = defineStore('iiif', () => {
@@ -137,95 +138,9 @@ export const useIiifStore = defineStore('iiif', () => {
             
             const data = await res.json();
             
-            const folios = [];
-            
-            // IIIF v2 Parsing
-            if (data['@context'] && data['@context'].includes('2/context.json')) {
-                if (data.sequences && data.sequences.length > 0) {
-                    for (const canvas of data.sequences[0].canvases) {
-                        const label = canvas.label || 'Unknown';
-                        let imgUrl = null;
-                        let serviceUrl = null;
-                        const cw = canvas.width || 0;
-                        const ch = canvas.height || 0;
-                        if (canvas.images && canvas.images[0].resource) {
-                            const res = canvas.images[0].resource;
-                            if (res.service && res.service['@id']) {
-                                serviceUrl = res.service['@id'];
-                                imgUrl = serviceUrl + '/full/full/0/default.jpg';
-                            } else {
-                                imgUrl = res['@id'];
-                            }
-                        }
-                        if (imgUrl) {
-                            let mappedLabels = [label];
-                            if (iiifParseRules[source]) {
-                                const mapped = iiifParseRules[source](label);
-                                if (Array.isArray(mapped)) {
-                                    mappedLabels = mapped;
-                                } else if (mapped !== null && mapped !== undefined) {
-                                    mappedLabels = [mapped];
-                                }
-                            }
-                            for (const mappedLabel of mappedLabels) {
-                                const cleanLabel = String(mappedLabel).replace(/^p\.?\s*/i, '').trim();
-                                folios.push({ folio: cleanLabel, imgUrl, serviceUrl, w: cw, h: ch, originalFolio: label });
-                            }
-                        }
-                    }
-                }
-            } 
-            // IIIF v3 Parsing
-            else if (data['@context'] && (data['@context'].includes('3/context.json') || data['@context'] === 'http://iiif.io/api/presentation/3/context.json')) {
-                if (data.items) {
-                    for (const item of data.items) {
-                        let label = 'Unknown';
-                        if (typeof item.label === 'string') {
-                            label = item.label;
-                        } else if (item.label && typeof item.label === 'object') {
-                            const keys = Object.keys(item.label);
-                            if (keys.length > 0) {
-                                label = item.label[keys[0]][0];
-                            }
-                        }
-                        
-                        let imgUrl = null;
-                        let serviceUrl = null;
-                        const cw = item.width || 0;
-                        const ch = item.height || 0;
-                        if (item.items && item.items.length > 0 && item.items[0].items && item.items[0].items.length > 0) {
-                            const body = item.items[0].items[0].body;
-                            if (body && body.service && body.service.length > 0) {
-                                const sid = body.service[0].id || body.service[0]['@id'];
-                                if (sid) {
-                                    serviceUrl = sid;
-                                    imgUrl = sid + '/full/max/0/default.jpg';
-                                }
-                            } else if (body && body.id) {
-                                imgUrl = body.id;
-                            }
-                        }
-                        if (imgUrl) {
-                            let mappedLabels = [label];
-                            if (iiifParseRules[source]) {
-                                const mapped = iiifParseRules[source](label);
-                                if (Array.isArray(mapped)) {
-                                    mappedLabels = mapped;
-                                } else if (mapped !== null && mapped !== undefined) {
-                                    mappedLabels = [mapped];
-                                }
-                            }
-                            for (const mappedLabel of mappedLabels) {
-                                const cleanLabel = String(mappedLabel).replace(/^p\.?\s*/i, '').trim();
-                                folios.push({ folio: cleanLabel, imgUrl, serviceUrl, w: cw, h: ch, originalFolio: label });
-                            }
-                        }
-                    }
-                }
-            } else {
-                 console.warn("Unknown IIIF manifest version", data['@context']);
-            }
-            
+            // One parser for both manifest versions (services/iiif/manifestParser.js).
+            const folios = parseManifest(data, { labelRule: iiifParseRules[source] });
+
             if (folios.length > 0) {
                 parsedData.value[source] = folios;
                 delete folioImageSources.value[source];

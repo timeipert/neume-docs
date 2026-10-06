@@ -90,7 +90,7 @@ function goToGlobalTable() {
     const { source, pattern } = props.annotation;
     // Navigate to Global View and try to open details
     router.push({
-        name: 'home',
+        name: 'overview',
         query: { 
             openSource: source, 
             openPattern: pattern,

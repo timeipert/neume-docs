@@ -64,30 +64,28 @@ const router = createRouter({
       path: '/',
       redirect: '/projects'
     },
+    // The manuscripts: their catalogue, their images, and the corpus they come from.
     {
-      path: '/overview',
-      name: 'overview',
-      component: GlobalAnalysisView,
-      meta: { title: 'Corpus overview', requiresWorkspace: true, requiresCorpus: true }
+      path: '/manuscripts',
+      name: 'metadata',
+      component: ManuscriptMetadataView,
+      meta: { title: 'Manuscripts', requiresWorkspace: true }
     },
     {
-      path: '/corpus',
+      path: '/manuscripts/images',
+      name: 'iiif_sources',
+      component: IiifSourcesView,
+      meta: { title: 'Manuscript images', requiresWorkspace: true }
+    },
+    {
+      path: '/manuscripts/corpus',
       name: 'corpus',
       component: CorpusView,
       meta: { title: 'Corpus', requiresWorkspace: true }
     },
-    {
-      path: '/metadata',
-      name: 'metadata',
-      component: ManuscriptMetadataView,
-      meta: { title: 'Manuscript metadata', requiresWorkspace: true }
-    },
-    {
-      path: '/metadata/iiif',
-      name: 'iiif_sources',
-      component: IiifSourcesView,
-      meta: { title: 'IIIF sources', requiresWorkspace: true }
-    },
+    { path: '/metadata', redirect: (to) => ({ path: '/manuscripts', query: to.query }) },
+    { path: '/metadata/iiif', redirect: (to) => ({ path: '/manuscripts/images', query: to.query }) },
+    { path: '/corpus', redirect: (to) => ({ path: '/manuscripts/corpus', query: to.query }) },
     {
       path: '/projects',
       name: 'projects',
@@ -141,8 +139,15 @@ const router = createRouter({
       path: '/patterns',
       name: 'patterns',
       component: PatternLibraryView,
-      meta: { title: 'Pattern-Bibliothek', requiresWorkspace: true }
+      meta: { title: 'Pattern library', requiresWorkspace: true }
     },
+    {
+      path: '/patterns/corpus',
+      name: 'overview',
+      component: GlobalAnalysisView,
+      meta: { title: 'Patterns in the corpus', requiresWorkspace: true, requiresCorpus: true }
+    },
+    { path: '/overview', redirect: (to) => ({ path: '/patterns/corpus', query: to.query }) },
     // The old list of pattern tables: the neume tables replaced it.
     { path: '/equivalents', redirect: '/table' },
     {

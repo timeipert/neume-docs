@@ -355,7 +355,7 @@ watch([() => route.query.gallery, dataLoading], ([gallery, isLoading]) => {
                         <h3>Metadata</h3>
                         <p class="card-desc">
                             Origin, date, library and your own fields are edited in the
-                            <RouterLink :to="{ path: '/metadata', query: { q: table.source } }">Metadata table</RouterLink>,
+                            <RouterLink :to="{ path: '/manuscripts', query: { q: table.source } }">Metadata table</RouterLink>,
                             together with all other manuscripts.
                         </p>
                     </div>

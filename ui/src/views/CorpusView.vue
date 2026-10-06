@@ -4,10 +4,10 @@ import { useRouter } from 'vue-router';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { useCorpusImport } from '../composables/useCorpusImport';
 import { collectFromFileList, collectFromDrop } from '../services/corpus/corpusImport';
+import ManuscriptsTabs from '../components/manuscripts/ManuscriptsTabs.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import ActionDialog from '../components/workspace/ActionDialog.vue';
 import CorpusFollowUp from '../components/workspace/CorpusFollowUp.vue';
-import { useEffectiveMeta } from '../composables/useEffectiveMeta';
 
 const router = useRouter();
 const { catalog, sourceNames, hasCorpus, corpusSummary, loading, removeSource, clearAll } = useTranscriptionData();
@@ -15,7 +15,6 @@ const {
     phase, importedNow, result, errorMessage, busy, percent, statusLine, start, cancel, reset
 } = useCorpusImport();
 
-const metaOf = useEffectiveMeta();
 const dragging = ref(false);
 const skipWorkingCopies = ref(true);
 const filter = ref('');
@@ -71,16 +70,13 @@ const rows = computed(() => {
             const neumes = Object.values(rec.counts || {}).reduce((a, b) => a + b, 0);
             return {
                 name,
-                place: [metaOf(name, 'herkunftsort'), metaOf(name, 'herkunftsinstitution')].filter(Boolean).join(', '),
-                library: [metaOf(name, 'bibliotheksort'), metaOf(name, 'bibliothek'), metaOf(name, 'bibliothekssignatur')].filter(Boolean).join(', '),
-                date: metaOf(name, 'datierung'),
                 documents: (rec.documents || []).length,
                 neumes,
                 patterns: Object.keys(rec.counts || {}).length,
                 importedAt: rec.importedAt ? rec.importedAt.slice(0, 10) : ''
             };
         })
-        .filter(r => !q || `${r.name} ${r.place} ${r.library} ${r.date}`.toLowerCase().includes(q));
+        .filter(r => !q || r.name.toLowerCase().includes(q));
 });
 
 const fmt = (n) => n.toLocaleString('en-US');
@@ -88,12 +84,10 @@ const fmt = (n) => n.toLocaleString('en-US');
 
 <template>
 <div class="corpus-view" @dragover.prevent="dragging = true" @dragleave.self="dragging = false" @drop.prevent="onDrop">
-    <PageHeader title="Corpus" eyebrow="Your data">
-        <template #subtitle>
-            <p>The editor starts empty. Load a Monodi-Zero workspace or a Corpus Monodicum project, then start a project on one of its manuscripts.</p>
-        </template>
+    <ManuscriptsTabs />
+    <PageHeader title="Corpus">
         <template v-if="hasCorpus" #actions>
-            <button class="ne-btn ne-btn--primary" @click="router.push('/projects')">Go to the projects &rarr;</button>
+            <button class="ne-btn ne-btn--primary" @click="router.push('/projects')">Projects &rarr;</button>
         </template>
     </PageHeader>
 
@@ -163,12 +157,6 @@ const fmt = (n) => n.toLocaleString('en-US');
         <strong>That did not work.</strong> {{ errorMessage }}
     </section>
 
-    <ol v-if="!hasCorpus && !loading" class="steps" aria-label="How it works">
-        <li><span class="n">1</span><div><strong>Load your data</strong><p>A Monodi-Zero workspace or a Corpus Monodicum project.</p></div></li>
-        <li><span class="n">2</span><div><strong>Fill in the standard table</strong><p>Per manuscript: choose how it writes each neume, ordered by tones and frequency.</p></div></li>
-        <li><span class="n">3</span><div><strong>Add and compare</strong><p>Add what the manuscript needs, link neumes to the scans, compare manuscripts.</p></div></li>
-    </ol>
-
     <section v-if="!hasCorpus && !loading" class="formats">
         <h2>What can I load?</h2>
         <div class="format-grid">
@@ -201,7 +189,7 @@ const fmt = (n) => n.toLocaleString('en-US');
         <table class="sources">
             <thead>
                 <tr>
-                    <th>Source</th><th>Origin</th><th>Date</th>
+                    <th>Source</th>
                     <th class="num">Documents</th><th class="num">Neumes</th><th class="num">Patterns</th>
                     <th>Loaded</th><th></th>
                 </tr>
@@ -209,17 +197,15 @@ const fmt = (n) => n.toLocaleString('en-US');
             <tbody>
                 <tr v-for="r in rows" :key="r.name">
                     <td>
-                        <button class="link" :title="`Open the neume table of ${r.name}`" @click="router.push(`/table/${encodeURIComponent(r.name)}`)">{{ r.name }}</button>
+                        <button class="link" :title="`Show ${r.name} in the catalogue`" @click="router.push({ path: '/manuscripts', query: { q: r.name } })">{{ r.name }}</button>
                     </td>
-                    <td :title="r.library">{{ r.place || '—' }}</td>
-                    <td>{{ r.date || '—' }}</td>
                     <td class="num">{{ fmt(r.documents) }}</td>
                     <td class="num">{{ fmt(r.neumes) }}</td>
                     <td class="num">{{ fmt(r.patterns) }}</td>
                     <td>{{ r.importedAt }}</td>
                     <td class="actions"><button class="icon danger" :aria-label="`Remove ${r.name}`" title="Remove from the loaded corpus" @click="askRemove(r.name)">✕</button></td>
                 </tr>
-                <tr v-if="rows.length === 0"><td colspan="8" class="empty">No source matches “{{ filter }}”.</td></tr>
+                <tr v-if="rows.length === 0"><td colspan="6" class="empty">No source matches “{{ filter }}”.</td></tr>
             </tbody>
         </table>
     </section>
@@ -263,10 +249,6 @@ const fmt = (n) => n.toLocaleString('en-US');
 .note.bad { background: var(--color-danger-light); border-color: var(--color-danger-muted); }
 .warnings { margin: var(--space-2) 0 0; padding-left: 1.2em; font-size: 0.85rem; color: var(--color-text-muted); }
 
-.steps { list-style: none; margin: var(--space-5) 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--space-3); }
-.steps li { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); }
-.steps .n { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--color-primary-light); color: var(--color-primary-dark); font-weight: 700; font-size: 0.85rem; display: inline-flex; align-items: center; justify-content: center; }
-.steps p { margin: 2px 0 0; color: var(--color-text-muted); font-size: 0.86rem; }
 .formats { margin-top: var(--space-6); }
 .formats h2 { font-size: 1.1rem; }
 .format-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--space-4); }

@@ -9,11 +9,11 @@ A function is reachable from one place, the place where it is *used*. Other page
 | Function | Lives in | Linked from |
 | --- | --- | --- |
 | Signs, code variants, snippet variants, preferred IDs | Patterns (pattern library) | the variant editor (`/patterns?setup=signs`), the snippet dialog (`?setup=snippet-variants`) |
-| Own metadata columns, their names and kinds | Metadata table (column menu) | the annotation view |
-| IIIF manifests per manuscript, MMMO suggestions | Metadata → IIIF sources | the Manuscripts table, the Workspace |
-| Folio alignment of scans | Page images (⇄ on a manuscript) | |
+| Own metadata columns, their names and kinds | Manuscripts → Catalogue (column menu) | the annotation view |
+| IIIF manifests per manuscript, MMMO suggestions | Manuscripts → Images | the catalogue, the Workspace, a project's cell |
+| Folio alignment of scans | the page editor (⇄ on a manuscript), reached by *Pages →* in the catalogue | a project's cell |
 | Backups, project folder, restore points, deleting work, reset | Workspace | the save-status pill in the navigation bar |
-| Sending annotations to Monodi-Zero, taking them back, linking snippets to the transcription | Workspace (Exchange with Monodi-Zero) | the Corpus page, after an update from Monodi-Zero |
+| Sending annotations to Monodi-Zero, taking them back, linking snippets to the transcription | Workspace (Exchange with Monodi-Zero) | Manuscripts → Corpus, after an update from Monodi-Zero |
 | Removing the loaded corpus | Corpus | |
 | OMMR4all import | Corpus (leads to `/ommr`) | |
 | Making a project, choosing its columns, filling its table, comparing all manuscripts | Projects (the four tabs of a project) | the Corpus page, the Metadata table |
@@ -25,6 +25,8 @@ Settings is for preferences that apply everywhere. If a setting belongs to one p
 
 ## Page structure
 
+- **One navigation, no drop-downs:** Projects · Manuscripts · Patterns · Workspace · Settings. A page that has several views shows them as tabs under its title (`PageTabs`: *Manuscripts* has Catalogue, Images, Corpus; *Patterns* has Library, In the corpus); each tab is a page with an address of its own.
+- **A row leads on:** where a table lists manuscripts (the catalogue), the selected row offers what can be done with it — *Project →* and *Pages →* — instead of another menu entry.
 - Every page starts with `PageHeader`: a small **eyebrow** (where in the workflow), the **title**, a one-line **subtitle**, and the page's main **actions** at the right.
 - Pages made of blocks (Workspace, Settings) use `PageShell` with `Panel`s. Panels with an `id` appear in the "On this page" index. Fold-away set-up uses `Disclosure`.
 - Tools that need the width (the metadata grid, the neume table, the pattern list) use `PageHeader` and fill the page.
@@ -78,12 +80,13 @@ Anything that removes workspace data goes through `useWorkspaceManagement`, whic
 
 | Word | Means |
 | --- | --- |
+| **Manuscripts** | the catalogue of every manuscript, its images, and the corpus it comes from (three tabs) |
 | **Corpus** | the data you loaded (Monodi-Zero workspace or CM project) |
 | **Workspace** | everything *you* made on top of it |
 | **Patterns** | the pattern library (the vocabulary) |
 | **Project** | a range of folios in one manuscript (one scribe's pages, say) and the table that documents its neumes |
 | **Standard table** / **Extended table** | the project's table with the columns of the brief / with any further pattern of the library |
-| **Page images** | a manuscript's IIIF folios, where line regions are drawn |
+| **Page editor** | a manuscript's IIIF folios, where line regions and signs are marked; reached from a cell or *Pages →* |
 | **Custom manuscripts** | collections with their own images, no IIIF |
 
 All text in the interface is English.

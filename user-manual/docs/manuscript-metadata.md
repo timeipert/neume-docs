@@ -1,6 +1,6 @@
 # Manuscript Metadata
 
-**Metadata** in the navigation bar shows all manuscripts in one table, like a spreadsheet: one row per manuscript, one column per piece of metadata. It is meant for preparing many manuscripts at once.
+**Manuscripts** in the navigation bar (tab *Catalogue*) shows all manuscripts in one table, like a spreadsheet: one row per manuscript, one column per piece of metadata. It is meant for preparing many manuscripts at once.
 
 ## What is in the table
 
@@ -9,7 +9,7 @@
 | **Corpus catalogue** — region, place, institution, library, shelfmark, date, … | the `meta.json` of each source in the corpus. Which columns there are depends on what your corpus has; extra ones (Cantus siglum, status, …) can be switched on under *Columns*. |
 | **IIIF** — manifest, page images, image source | the manuscript's manifest address, and the page images the corpus names (see below). |
 | **Your fields** | columns you add yourself, e.g. "Notation type". They are the attributes the public pages offer as filters. |
-| **Corpus** — documents, neumes, patterns, neume table | calculated; read-only. |
+| **Corpus** — documents, neumes, patterns, projects | calculated; read-only. |
 
 The corpus itself is never changed. What you edit is stored as a change on top of it, in your workspace, and every changed cell is marked with an orange corner. *Put back to what the corpus says* (column menu) removes your changes again.
 

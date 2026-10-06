@@ -190,7 +190,7 @@ function chooseImages(value) {
                         ? { ...o, disabled: true, note: 'No corpus is loaded yet.' } : o)"
                 />
                 <p v-if="!hasCorpus && !loading" class="ne-note ne-note--info">
-                    <RouterLink to="/corpus">Load a corpus</RouterLink> to start from its transcription.
+                    <RouterLink to="/manuscripts/corpus">Load a corpus</RouterLink> to start from its transcription.
                 </p>
             </template>
 
@@ -236,7 +236,7 @@ function chooseImages(value) {
                 <ChoiceCards :model-value="draft.images" label="Images" :options="imageOptions" @update:model-value="chooseImages" />
                 <div v-if="draft.images === 'iiif' && iiifState === 'none'" class="ne-note ne-note--warn manifest">
                     <div class="ne-field">
-                        <label for="w-manifest">IIIF manifest of {{ draft.source }} <span class="ne-muted">(optional, or later under <RouterLink to="/metadata/iiif">IIIF sources</RouterLink>)</span></label>
+                        <label for="w-manifest">IIIF manifest of {{ draft.source }} <span class="ne-muted">(optional, or later under <RouterLink to="/manuscripts/images">Images</RouterLink>)</span></label>
                         <input id="w-manifest" v-model.trim="draft.manifest" class="ne-input" type="url" placeholder="https://…/manifest.json" />
                     </div>
                 </div>

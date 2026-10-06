@@ -1,18 +1,21 @@
 <script setup>
 import { RouterLink } from 'vue-router';
 
-/** The two views of the manuscripts' metadata: the table of fields, and the table of IIIF sources. */
+/**
+ * The views of one page, as tabs under its title: each is a page of its own (an address of
+ * its own), and the tabs only say that they belong together.
+ */
 defineProps({
-    // A number shown on the IIIF tab, e.g. how many manuscripts have a suggestion waiting.
-    badge: { type: Number, default: 0 }
+    /** [{ to, label, badge?, title? }] */
+    tabs: { type: Array, required: true },
+    label: { type: String, default: 'Views' }
 });
 </script>
 
 <template>
-<nav class="tabs" aria-label="Metadata views">
-    <RouterLink to="/metadata" class="tab" exact-active-class="on">Manuscripts</RouterLink>
-    <RouterLink to="/metadata/iiif" class="tab" exact-active-class="on">
-        IIIF sources<span v-if="badge" class="badge" :title="`${badge} manuscript${badge === 1 ? '' : 's'} with a suggestion`">{{ badge }}</span>
+<nav class="tabs" :aria-label="label">
+    <RouterLink v-for="t in tabs" :key="t.to" :to="t.to" class="tab" exact-active-class="on" :title="t.title">
+        {{ t.label }}<span v-if="t.badge" class="badge">{{ t.badge }}</span>
     </RouterLink>
 </nav>
 </template>

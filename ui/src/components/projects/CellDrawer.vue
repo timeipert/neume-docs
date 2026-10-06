@@ -331,7 +331,7 @@ onBeforeUnmount(() => {
         <template v-else>
             <p v-if="!iiifAvailable" class="ne-note ne-note--warn">
                 There are no page images for <strong>{{ project.source }}</strong> yet. Add its manifest under
-                <RouterLink to="/metadata/iiif">Data → IIIF sources</RouterLink> to mark snippets.
+                <RouterLink to="/manuscripts/images">Manuscripts → Images</RouterLink> to mark snippets.
             </p>
 
             <section v-if="hasTranscription">

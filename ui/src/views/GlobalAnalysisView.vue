@@ -17,6 +17,7 @@ import { useRouter } from 'vue-router';
 import { compareFolios } from '../utils/sorting';
 
 import StateWrapper from '../components/StateWrapper.vue';
+import PatternsTabs from '../components/patterns/PatternsTabs.vue';
 
 // Use Composable
 const { rawData, patStats, glyphs, manifests, overallMax, loading, error, sourceFolios, loadSource } = useTranscriptionData();
@@ -452,6 +453,7 @@ function isHighlighted(row) {
 
 <template>
 <div class="app-container">
+    <div class="tabs-bar"><PatternsTabs /></div>
     <div class="controls">
         <div class="control-group">
             <label>Order of the columns
@@ -657,6 +659,8 @@ function isHighlighted(row) {
 .img-cell { padding: 4px; }
 
 /* CSS Port from HTML */
+.tabs-bar { padding: var(--space-3) var(--space-5) 0; background: var(--color-surface); }
+.tabs-bar :deep(.tabs) { margin-bottom: 0; border-bottom: none; }
 .controls {
     padding: 10px var(--space-5);
     background: var(--color-surface);

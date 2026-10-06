@@ -1,6 +1,6 @@
 # IIIF Sources & MMMO Suggestions
 
-**Metadata → IIIF sources** is a table of where each manuscript's images come from. Next to the *Manuscripts* table of fields, it lists IIIF resources: manifests and image addresses, several per manuscript if you like, with where each came from.
+**Manuscripts → Images** is a table of where each manuscript's images come from. Next to the *Catalogue* table of fields, it lists IIIF resources: manifests and image addresses, several per manuscript if you like, with where each came from.
 
 ## The table
 
@@ -28,7 +28,7 @@ Suggestions are matched on the library siglum and shelfmark (`D-Eu 84`, taken fr
 
 ### Add a manuscript
 
-*Add a manuscript…* (on both Metadata views) is for a manuscript that is not in your corpus. Type its siglum and whatever you know; matching entries of the catalogue are suggested as you type. **Take this** fills in the empty fields (library, shelfmark, date, origin, siglum) and links the manifest. The manuscript then appears as a row of the Manuscripts table, where you can complete it.
+*Add a manuscript…* (on the Catalogue and the Images tab) is for a manuscript that is not in your corpus. Type its siglum and whatever you know; matching entries of the catalogue are suggested as you type. **Take this** fills in the empty fields (library, shelfmark, date, origin, siglum) and links the manifest. The manuscript then appears as a row of the Manuscripts table, where you can complete it.
 
 ## Collecting the catalogue
 

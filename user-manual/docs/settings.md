@@ -5,8 +5,8 @@
 | What | Where |
 | --- | --- |
 | Signs, code variants, snippet variants, preferred IDs | **Patterns** (the pattern library) |
-| Your own metadata columns, renaming and describing them | **Metadata** (a column's menu → *Edit this column…*) |
-| Aligning a manuscript's scans with the folios of the transcription | **Annotate → Page images**, the ⇄ button of a manuscript |
+| Your own metadata columns, renaming and describing them | **Manuscripts → Catalogue** (a column's menu → *Edit this column…*) |
+| Aligning a manuscript's scans with the folios of the transcription | the page editor (*Pages →* in the catalogue), the ⇄ button of a manuscript |
 | Backups, the project folder, restore points, deleting things | **Workspace** |
 
 ## What a snippet says about itself

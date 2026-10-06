@@ -51,7 +51,7 @@ const bases = [
             Recommended.
         </p>
         <p class="hint" v-else>
-            Counts only what is loaded on the <RouterLink to="/corpus">Corpus</RouterLink> page. Useful for material outside
+            Counts only what is loaded on the <RouterLink to="/manuscripts/corpus">Corpus</RouterLink> page. Useful for material outside
             the CM. Patterns the loaded data has never seen fall back to the CM snapshot.
         </p>
     </Panel>

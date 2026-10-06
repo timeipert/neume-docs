@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import SaveReminder from './components/SaveReminder.vue';
 import ToastHost from './components/ui/ToastHost.vue';
@@ -7,7 +7,6 @@ import MonodiExchangeDialog from './components/workspace/MonodiExchangeDialog.vu
 import LinkAssistantDialog from './components/workspace/LinkAssistantDialog.vue';
 import { useProjectPublishing } from './composables/useProjectPublishing';
 
-import { watch, onMounted, onBeforeUnmount } from 'vue';
 
 useProjectPublishing();
 
@@ -19,55 +18,17 @@ const isProjectPage = computed(() => route.path.startsWith('/projects') || route
 const isMenuOpen = ref(false);
 
 /**
- * Menus that gather pages of one kind. `match` lists the route prefixes that light
- * the group up — broader than the child links, because sub-editors (the page editor,
- * the import) live under the same group.
+ * Which top-level item a page belongs to. The page editor and the custom collections are
+ * reached from elsewhere: from a project's cell (then they are that project), from the
+ * catalogue, or from the workspace.
  */
-const navGroups = [
-    {
-        key: 'data',
-        label: 'Data',
-        title: 'The corpus and what is known about its manuscripts',
-        match: ['/corpus', '/ommr', '/metadata', '/overview', '/polygons', '/custom-manuscripts'],
-        children: [
-            { to: '/corpus', label: 'Corpus', hint: 'Load a Monodi-Zero workspace or a Corpus Monodicum project', section: 'Your data' },
-            { to: '/metadata', label: 'Metadata', hint: 'Every manuscript as a table: catalogue data and your own columns', section: 'Your data' },
-            { to: '/overview', label: 'Overview', hint: 'Statistics of the loaded corpus', section: 'Your data' },
-            { to: '/metadata/iiif', label: 'IIIF sources', hint: 'Which manifest belongs to which manuscript', section: 'Images' },
-            { to: '/polygons', label: 'Page images', hint: 'Browse the folios of any manuscript and mark line regions', section: 'Images' },
-            { to: '/custom-manuscripts', label: 'Custom manuscripts', hint: 'The screenshot collections behind your projects — and publish them', section: 'Images' }
-        ]
-    }
-];
+const fromProject = computed(() => route.query.return_to === 'project');
+const inProjects = computed(() => route.path.startsWith('/projects') || fromProject.value);
+const inManuscripts = computed(() => !fromProject.value && ['/manuscripts', '/ommr', '/polygons', '/annotations', '/custom-manuscripts'].some(p => route.path.startsWith(p)));
+const inPatterns = computed(() => route.path.startsWith('/patterns'));
 
-const openGroup = ref('');
-
-function isGroupActive(g) {
-    if (route.query.return_to === 'project') return false;
-    return g.match.some(p => route.path.startsWith(p));
-}
-
-function toggleGroup(key) {
-    openGroup.value = openGroup.value === key ? '' : key;
-}
-
-// A dropdown left open over the new page is disorienting, so close on navigation.
-watch(() => route.path, () => { openGroup.value = ''; isMenuOpen.value = false; });
-
-function onDocClick(e) {
-    if (!e.target.closest('.nav-group')) openGroup.value = '';
-}
-function onKey(e) {
-    if (e.key === 'Escape') openGroup.value = '';
-}
-onMounted(() => {
-    document.addEventListener('click', onDocClick);
-    document.addEventListener('keydown', onKey);
-});
-onBeforeUnmount(() => {
-    document.removeEventListener('click', onDocClick);
-    document.removeEventListener('keydown', onKey);
-});
+// A menu left open over the new page is disorienting, so close on navigation.
+watch(() => route.path, () => { isMenuOpen.value = false; });
 </script>
 
 <template>
@@ -84,33 +45,10 @@ onBeforeUnmount(() => {
         <span v-else>✕</span>
       </button>
       <div id="nav-links" class="nav-links" :class="{ 'menu-open': isMenuOpen }">
-        <!-- Work happens in projects; the page editor and the custom manuscripts are reached from a project's cells. -->
-        <RouterLink to="/projects" :class="{ active: isProjectPage }" @click="isMenuOpen = false">Projects</RouterLink>
-        <RouterLink to="/patterns" active-class="active" @click="isMenuOpen = false">Patterns</RouterLink>
-
-        <span class="nav-sep" aria-hidden="true"></span>
-
-        <!-- The pages that feed the projects; their pages live in the submenu. -->
-        <div v-for="g in navGroups" :key="g.key" class="nav-group"
-             :class="{ open: openGroup === g.key, active: isGroupActive(g) }">
-          <button class="group-btn" :title="g.title"
-                  :aria-expanded="openGroup === g.key" aria-haspopup="true"
-                  @click.stop="toggleGroup(g.key)">
-            {{ g.label }}
-            <span class="caret" aria-hidden="true">▾</span>
-          </button>
-          <div class="submenu" :class="{ open: openGroup === g.key }">
-            <template v-for="(c, i) in g.children" :key="c.to">
-            <span v-if="i === 0 || g.children[i - 1].section !== c.section" class="sub-section">{{ c.section }}</span>
-            <RouterLink :to="c.to"
-                        class="submenu-item" active-class="sub-active"
-                        @click="openGroup = ''; isMenuOpen = false">
-              <span class="sub-label">{{ c.label }}</span>
-              <span class="sub-hint">{{ c.hint }}</span>
-            </RouterLink>
-            </template>
-          </div>
-        </div>
+        <!-- Work happens in projects, on manuscripts, with patterns. -->
+        <RouterLink to="/projects" :class="{ active: inProjects }" @click="isMenuOpen = false">Projects</RouterLink>
+        <RouterLink to="/manuscripts" :class="{ active: inManuscripts }" @click="isMenuOpen = false">Manuscripts</RouterLink>
+        <RouterLink to="/patterns" :class="{ active: inPatterns }" @click="isMenuOpen = false">Patterns</RouterLink>
 
         <span class="nav-sep" aria-hidden="true"></span>
 
@@ -233,62 +171,6 @@ onBeforeUnmount(() => {
   margin: 0 var(--space-2);
 }
 
-/* --- Workflow groups with submenus --- */
-.nav-group { position: relative; }
-
-.group-btn {
-  display: inline-flex; align-items: center; gap: 5px;
-  background: transparent; border: none; cursor: pointer;
-  color: var(--color-text-light);
-  font-size: 0.9rem; font-weight: 500; font-family: inherit;
-  padding: var(--space-2) 0.5rem;
-  border-radius: var(--radius-md);
-  transition: color 0.15s ease, background 0.15s ease;
-}
-.group-btn:hover { color: var(--color-surface); background: rgba(255,255,255,0.07); }
-.nav-group.active .group-btn { color: var(--color-surface); background: rgba(255,255,255,0.1); font-weight: 600; }
-.nav-group.open .group-btn { color: var(--color-surface); background: rgba(255,255,255,0.12); }
-
-/* Active underline, matching the plain nav links */
-.nav-group.active .group-btn::after {
-  content: ""; position: absolute;
-  left: 12px; right: 12px; bottom: -1px;
-  height: 2px; border-radius: 2px;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
-}
-
-.caret { font-size: 0.8em; opacity: 0.75; transition: transform 0.15s ease; }
-.nav-group.open .caret { transform: rotate(180deg); }
-
-.submenu {
-  display: none;
-  position: absolute; top: calc(100% + 6px); left: 0;
-  min-width: 250px; z-index: 200;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 12px 28px rgba(0,0,0,0.22);
-  padding: 6px;
-  text-align: left;
-}
-.submenu.open { display: block; }
-
-.submenu-item {
-  display: flex; flex-direction: column; gap: 2px;
-  padding: 9px 12px; border-radius: 6px;
-  color: var(--color-text) !important;
-  text-decoration: none;
-}
-.submenu-item:hover { background: var(--color-bg); }
-.submenu-item.sub-active { background: var(--color-primary-light); }
-.submenu-item.sub-active .sub-label { color: var(--color-primary-hover); }
-.sub-section { display: block; padding: 8px 12px 2px; font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-light); }
-.sub-section:first-child { padding-top: 4px; }
-.sub-label { font-size: 0.88rem; font-weight: 600; }
-.sub-hint { font-size: 0.72rem; color: var(--color-text-muted); line-height: 1.35; }
-/* The generic `.nav-links a` rules target the dark bar, not this light panel. */
-.submenu-item.sub-active::after { display: none; }
-
 .nav-util {
   color: var(--color-text-light) !important;
   font-size: 0.85rem;
@@ -337,8 +219,8 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-/* The full bar needs about 1230px; below that the menu folds into a column. */
-@media (max-width: 1240px) {
+/* The full bar needs about 960px; below that the menu folds into a column. */
+@media (max-width: 980px) {
   .hamburger-btn {
     display: block;
   }
@@ -371,31 +253,6 @@ onBeforeUnmount(() => {
     margin: 0;
   }
 
-  /* In the hamburger column a floating dropdown makes no sense: show each
-     group's pages inline, indented under their heading. */
-  .nav-group { width: 100%; }
-  .group-btn { width: 100%; justify-content: center; }
-  .nav-group.active .group-btn::after { display: none; }
-  .caret { display: none; }
-
-  .submenu {
-    display: block;
-    position: static;
-    min-width: 0; width: 100%;
-    background: transparent;
-    border: none; box-shadow: none;
-    padding: 0 0 var(--space-2);
-  }
-  .submenu-item {
-    align-items: center; text-align: center;
-    color: var(--color-text-light) !important;
-    padding: 8px 12px;
-  }
-  .submenu-item:hover { background: rgba(255,255,255,0.07); }
-  .submenu-item.sub-active { background: rgba(255,255,255,0.12); }
-  .submenu-item.sub-active .sub-label { color: var(--color-surface); }
-  .sub-hint { display: none; }
-  .sub-section { text-align: center; }
   .nav-sep { width: 100%; height: 1px; margin: var(--space-2) 0; }
   /* Room to spell the save status out in the opened menu. */
   .nav-links :deep(.pill-label) { display: inline !important; }

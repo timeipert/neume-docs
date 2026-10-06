@@ -1,11 +1,9 @@
 import { computed } from 'vue';
 import { useTranscriptionData } from './useTranscriptionData';
-import { usePatternCatalog } from './usePatternCatalog';
 import { useSettingsStore } from '../stores/settings';
 import { useIiifStore } from '../stores/iiif';
 import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
-import { usePersonalTablesStore } from '../stores/personalTables';
-import { buildColumns, standardCellStates, tierOf } from '../utils/neumeTable';
+import { useProjectsStore } from '../stores/projects';
 
 /**
  * The manuscripts as a table: one row per manuscript, one column per piece of
@@ -61,17 +59,16 @@ export function isUrl(text) {
 
 export function useManuscriptTable() {
     const { catalog } = useTranscriptionData();
-    const { freq } = usePatternCatalog();
     const settings = useSettingsStore();
     const iiif = useIiifStore();
     const meta = useManuscriptMetaStore();
-    const tables = usePersonalTablesStore();
+    const projects = useProjectsStore();
 
     // ---- rows -------------------------------------------------------------
 
     const sources = computed(() => {
         const names = new Set(Object.keys(catalog.value));
-        for (const t of tables.tables) if (t.source) names.add(t.source);
+        for (const p of projects.projects) if (p.source) names.add(p.source);
         for (const s of Object.keys(meta.overrides)) names.add(s);
         for (const s of Object.keys(settings.sourceMeta)) names.add(s);
         return [...names].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
@@ -127,8 +124,8 @@ export function useManuscriptTable() {
             { key: 'stat:documents', label: 'Documents', group: 'corpus', type: 'number', readonly: true, width: 90 },
             { key: 'stat:neumes', label: 'Neumes', group: 'corpus', type: 'number', readonly: true, width: 90 },
             { key: 'stat:patterns', label: 'Patterns', group: 'corpus', type: 'number', readonly: true, width: 90 },
-            { key: 'stat:table', label: 'Neume table', group: 'corpus', type: 'text', readonly: true, width: 120,
-              hint: 'Filled cells of the standard table, and what is added beyond it' }
+            { key: 'stat:projects', label: 'Projects', group: 'corpus', type: 'number', readonly: true, width: 90,
+              hint: 'How many projects work on this manuscript. Select the row and choose Project → to open or start one.' }
         );
         return cols;
     });
@@ -150,22 +147,16 @@ export function useManuscriptTable() {
 
     // ---- statistics (read-only columns) -------------------------------------
 
-    const standardColumns = computed(() => buildColumns('standard', [], freq.value));
-
     const stats = computed(() => {
         const out = {};
         for (const source of sources.value) {
             const rec = catalog.value[source];
-            const rows = tables.rowsFor(source);
-            const cells = standardCellStates(rows, standardColumns.value);
             const counts = (rec && rec.counts) || {};
             out[source] = {
                 documents: rec ? (rec.documents || []).length : 0,
                 neumes: Object.values(counts).reduce((a, b) => a + b, 0),
                 patterns: Object.keys(counts).length,
-                filled: cells.filter(c => c.filled).length,
-                total: cells.length,
-                expanded: rows.filter(r => tierOf(r) === 'expanded').length,
+                projects: projects.projects.filter(p => p.source === source).length,
                 images: rec && rec.images ? rec.images.length : 0
             };
         }
@@ -201,7 +192,6 @@ export function useManuscriptTable() {
             case 'corpus': {
                 const s = stats.value[source];
                 if (!s) return '';
-                if (col.key === 'stat:table') return s.filled || s.expanded ? `${s.filled}/${s.total}${s.expanded ? ` +${s.expanded}` : ''}` : '';
                 const n = s[col.key.slice(5)];
                 return n ? String(n) : '';
             }

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import PageHeader from '../components/ui/PageHeader.vue';
-import MetadataTabs from '../components/metadata/MetadataTabs.vue';
+import ManuscriptsTabs from '../components/manuscripts/ManuscriptsTabs.vue';
 import MmmoCandidate from '../components/metadata/MmmoCandidate.vue';
 import AddManuscriptDialog from '../components/metadata/AddManuscriptDialog.vue';
 import { useIiifRegistryStore } from '../stores/iiifRegistry';
@@ -191,7 +191,7 @@ function addFromCatalogue(record) {
 
 const adding = ref(false);
 function onAdded(siglum) {
-    router.push({ path: '/metadata', query: { q: siglum } });
+    router.push({ path: '/manuscripts', query: { q: siglum } });
 }
 
 const fmt = (n) => n.toLocaleString('en-US');
@@ -199,11 +199,11 @@ const fmt = (n) => n.toLocaleString('en-US');
 
 <template>
 <div class="iiif-view">
-    <MetadataTabs :badge="suggestions.length" />
+    <ManuscriptsTabs :badge="suggestions.length" />
 
-    <PageHeader title="IIIF sources" eyebrow="Metadata">
+    <PageHeader title="Images">
         <template #subtitle>
-            <p>Where each manuscript's images come from. Add manifests of your own, and let the editor suggest the ones the {{ MMMO_NAME }} knows.</p>
+            <p>Where each manuscript's images come from: manifests of your own, and the ones the {{ MMMO_NAME }} knows.</p>
         </template>
         <template #actions>
             <button class="ne-btn" @click="adding = true">Add a manuscript…</button>

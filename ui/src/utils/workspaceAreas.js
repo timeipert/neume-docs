@@ -80,8 +80,8 @@ export const AREAS = [
         key: 'metadata',
         title: 'Manuscript metadata',
         blurb: 'Your edits to the corpus metadata, and the columns you added yourself.',
-        to: '/metadata',
-        goLabel: 'Metadata',
+        to: '/manuscripts',
+        goLabel: 'Manuscripts',
         measure({ meta, settings }) {
             const edits = meta.editedCount();
             const columns = settings.sourceMetaFields.length;
@@ -132,8 +132,8 @@ export const AREAS = [
         key: 'images',
         title: 'Images & IIIF',
         blurb: 'Manifest links you set, your IIIF table and the folio alignments you corrected by hand.',
-        to: '/metadata/iiif',
-        goLabel: 'IIIF sources',
+        to: '/manuscripts/images',
+        goLabel: 'Manuscript images',
         measure({ iiif, registry, settings }) {
             const links = Object.keys(iiif.links).length;
             const rows = registry.entries.length;

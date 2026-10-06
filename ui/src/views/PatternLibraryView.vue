@@ -33,6 +33,7 @@ import PageHeader from '../components/ui/PageHeader.vue';
 import Disclosure from '../components/ui/Disclosure.vue';
 import SignVocabulary from '../components/patterns/SignVocabulary.vue';
 import SnippetVariants from '../components/patterns/SnippetVariants.vue';
+import PatternsTabs from '../components/patterns/PatternsTabs.vue';
 import PreferredIds from '../components/patterns/PreferredIds.vue';
 import { useToast } from '../composables/useToast';
 
@@ -209,9 +210,10 @@ const stats = computed(() => ({
 <template>
 <StateWrapper :loading="loading" loadingText="Loading pattern data...">
 <div class="library-view">
-    <PageHeader title="Pattern library" eyebrow="Vocabulary">
+    <PatternsTabs />
+    <PageHeader title="Pattern library">
         <template #subtitle>
-            <p>Every notation shape the editor knows: the whole Corpus Monodicum, your loaded corpus, the annotations and your code variants. Shapes that exist only on scans can be added by hand.</p>
+            <p>Every pattern the editor knows, and the signs, variants and IDs you give them. A shape that exists only on a scan can be added by hand.</p>
         </template>
         <template #actions>
             <div class="header-stats">

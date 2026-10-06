@@ -1,14 +1,15 @@
 <script setup>
 import { computed, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useProjectsStore } from '../stores/projects';
 import PageHeader from '../components/ui/PageHeader.vue';
 import ProjectCard from '../components/projects/ProjectCard.vue';
 
+const route = useRoute();
 const router = useRouter();
 const store = useProjectsStore();
 
-const filter = ref('');
+const filter = ref(typeof route.query.q === 'string' ? route.query.q : '');
 const projects = computed(() => {
     const q = filter.value.trim().toLowerCase();
     return [...store.projects]
@@ -34,7 +35,7 @@ const projects = computed(() => {
         </div>
 
         <template v-else>
-            <input v-if="store.projects.length > 6" v-model="filter" type="search" class="ne-input search" placeholder="Find a project or manuscript…" aria-label="Find a project" />
+            <input v-if="store.projects.length > 6 || filter" v-model="filter" type="search" class="ne-input search" placeholder="Find a project or manuscript…" aria-label="Find a project" />
             <div class="cards">
                 <ProjectCard v-for="p in projects" :id="p.id" :key="p.id" />
                 <p v-if="projects.length === 0" class="none">No project matches.</p>

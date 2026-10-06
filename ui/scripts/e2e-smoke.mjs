@@ -58,7 +58,7 @@ try {
     step('without a corpus, a project starts from the manuscript');
 
     // 2. Load a corpus --------------------------------------------------------
-    await page.goto(`${base}/#/corpus`);
+    await page.goto(`${base}/#/manuscripts/corpus`);
     await page.locator('input[webkitdirectory]').setInputFiles(data);
     await page.waitForSelector('.stats', { timeout: 10 * 60 * 1000 });
     const sources = Number((await page.locator('.stats strong').first().innerText()).replace(/\D/g, ''));
@@ -69,7 +69,7 @@ try {
     step(`loaded ${sources} source(s); still there after a reload`);
 
     // 3. The overview works on the loaded corpus ------------------------------
-    await page.goto(`${base}/#/overview`);
+    await page.goto(`${base}/#/patterns/corpus`);
     await page.waitForSelector('.controls');
     step('overview renders the loaded corpus');
 
@@ -278,8 +278,14 @@ try {
     step('Screenshots of lines: a line (folio and line checked), signs marked on it, each tied to its line');
 
     // 7. The manuscript metadata table ---------------------------------------
-    await page.goto(`${base}/#/metadata`);
+    await page.goto(`${base}/#/manuscripts`);
     await page.waitForSelector('.grid-scroller td');
+    // one flat navigation, and the manuscripts have their own tabs
+    assert.deepEqual(await page.locator('.top-nav .nav-links > a:not(.nav-util)').allInnerTexts(), ['Projects', 'Manuscripts', 'Patterns', 'Workspace', 'Settings'], 'one flat navigation, no drop-down');
+    assert.deepEqual((await page.locator('nav[aria-label="Manuscripts"] .tab').allInnerTexts()).map(t => t.trim()), ['Catalogue', 'Images', 'Corpus']);
+    await page.goto(`${base}/#/metadata`);
+    await page.waitForURL(/#\/manuscripts$/);
+    step('the old addresses (#/metadata, #/corpus, #/overview) lead to the manuscripts and the patterns');
 
     /** The cell of a manuscript (by row index in view order) in a column (by header label). */
     const cellAt = async (row, label) => page.locator('.grid-scroller').evaluateHandle((root, [r, l]) => {
@@ -291,7 +297,13 @@ try {
 
     const sigla = await page.locator('.grid-scroller td[data-c="0"] .text').allInnerTexts();
     assert.ok(sigla.length >= 4, 'the table lists the loaded manuscripts');
-    step(`metadata table lists ${sigla.length} manuscripts`);
+    step(`the catalogue lists ${sigla.length} manuscripts`);
+
+    // the manuscript of the selected row leads on to its project and its pages
+    await page.locator('.grid-scroller td[data-c="0"]').first().click();
+    await page.getByRole('button', { name: /Start a project|Project →|projects →/ }).waitFor();
+    await page.getByRole('button', { name: 'Pages →' }).waitFor();
+    step('selecting a row offers Project → and Pages →');
 
     const original = await textAt(0, 'Place of origin');
     await clickAt(0, 'Place of origin');
@@ -410,7 +422,7 @@ try {
     step('the old Equivalents list leads to the projects');
 
     // Every page still opens without errors, and the table editor leads to the annotation view and back.
-    for (const route of ['/', '/projects', '/projects/new', '/overview', '/corpus', '/metadata', '/metadata/iiif', '/table', '/compare', '/patterns', '/polygons', '/custom-manuscripts', '/ommr', '/settings', '/workspace']) {
+    for (const route of ['/', '/projects', '/projects/new', '/overview', '/patterns/corpus', '/corpus', '/manuscripts', '/manuscripts/images', '/manuscripts/corpus', '/metadata', '/metadata/iiif', '/table', '/compare', '/patterns', '/polygons', '/custom-manuscripts', '/ommr', '/settings', '/workspace']) {
         const before = problems.length;
         await page.goto(`${base}/#${route}`);
         await page.waitForTimeout(500);
@@ -424,7 +436,7 @@ try {
     step('the old pattern editor still opens');
 
     // The table of IIIF sources, and adding a manuscript that is not in the corpus.
-    await page.goto(`${base}/#/metadata/iiif`);
+    await page.goto(`${base}/#/manuscripts/images`);
     await page.waitForSelector('#table');
     await page.locator('input[aria-label="Manuscript"]').fill('Eichstätt 84');
     await page.locator('input[aria-label="Address"]').fill('https://example.org/iiif/eu84/manifest.json');
@@ -438,7 +450,7 @@ try {
     await page.locator('#am-siglum').fill('Test 1');
     await page.locator('#am-city').fill('Testville');
     await page.getByRole('button', { name: 'Add manuscript' }).click();
-    await page.waitForURL(/#\/metadata\?q=/);
+    await page.waitForURL(/#\/manuscripts\?q=/);
     await page.waitForSelector('.grid-scroller td[data-c="0"] .text:has-text("Test 1")');
     step('a manuscript outside the corpus is added and appears in the metadata table');
 
@@ -489,7 +501,7 @@ try {
     await page.locator('.md-dialog .md-foot .ne-btn--danger-solid').click();
     await page.waitForSelector('.toast:has-text("The app was reset")');
     assert.match(await holds('tables'), /Nothing yet/);
-    await page.goto(`${base}/#/corpus`);
+    await page.goto(`${base}/#/manuscripts/corpus`);
     await page.waitForSelector('.drop-card');
     assert.equal(await page.locator('.loaded').count(), 0, 'the corpus is gone');
     step('reset the app: work, preferences and corpus are gone');

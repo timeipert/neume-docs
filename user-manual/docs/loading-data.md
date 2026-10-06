@@ -13,7 +13,7 @@ A project folder may be the whole project, a single source, or a single document
 
 ## How to load
 
-1. Open **Corpus** in the navigation bar.
+1. Open **Manuscripts** in the navigation bar, tab **Corpus**.
 2. Drop files or a folder onto the page, or use **Choose files…** / **Choose a project folder…**.
 3. Wait for the import to finish. The whole Corpus Monodicum (about 1.8 GB, 112 sources, 6,000 documents) takes under a minute.
 
@@ -29,7 +29,7 @@ For every syllable with notes, the neumes are read as **pattern codes** (see [Co
 
 ## Removing data
 
-On the Corpus page you can remove single sources or the whole corpus. Your neume tables, annotations and settings are kept. (To delete your own work as well, or to start over completely, use the [Workspace](./workspace) page.)
+On the Corpus tab you can remove single sources or the whole corpus. Your neume tables, annotations and settings are kept. (To delete your own work as well, or to start over completely, use the [Workspace](./workspace) page.)
 
 ## OMMR4all
 

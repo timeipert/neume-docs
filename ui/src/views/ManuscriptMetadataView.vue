@@ -5,6 +5,7 @@ import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { useManuscriptTable } from '../composables/useManuscriptTable';
 import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
 import { useIiifStore } from '../stores/iiif';
+import { useProjectsStore } from '../stores/projects';
 import {
     matchesFilter, compareCells, planMap, planReplace, planImport, parseDelimited, formatDelimited, CLEAN_UP
 } from '../utils/gridOps';
@@ -14,12 +15,13 @@ import PageHeader from '../components/ui/PageHeader.vue';
 import SegmentedControl from '../components/ui/SegmentedControl.vue';
 import StateWrapper from '../components/StateWrapper.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
-import MetadataTabs from '../components/metadata/MetadataTabs.vue';
+import ManuscriptsTabs from '../components/manuscripts/ManuscriptsTabs.vue';
 import AddManuscriptDialog from '../components/metadata/AddManuscriptDialog.vue';
 import { useToast } from '../composables/useToast';
 import { useSettingsStore } from '../stores/settings';
 
 const router = useRouter();
+const projectsStore = useProjectsStore();
 const route = useRoute();
 const { catalog, hasCorpus, loading, error } = useTranscriptionData();
 const table = useManuscriptTable();
@@ -156,6 +158,20 @@ function redo() {
 function say(text, action = null) {
     toast.show(text, { action });
 }
+
+// ---- the manuscript of the selected row: its project, its pages ---------------------
+
+const activeSource = computed(() => (sel.value.activeRowId !== undefined ? String(sel.value.activeRowId) : ''));
+const activeProjects = computed(() => projectsStore.projects.filter(p => p.source === activeSource.value));
+
+/** The project of the manuscript: opened if there is one, a list if there are several, a new one if none. */
+const projectAction = computed(() => {
+    const list = activeProjects.value;
+    if (list.length === 0) return { label: 'Start a project →', go: () => router.push({ name: 'project_new', query: { source: activeSource.value } }) };
+    if (list.length === 1) return { label: 'Project →', go: () => router.push({ name: 'project', params: { id: list[0].id } }) };
+    return { label: `${list.length} projects →`, go: () => router.push({ name: 'projects', query: { q: activeSource.value } }) };
+});
+const openPages = () => router.push({ name: 'polygons', query: { source: activeSource.value } });
 
 // ---- the selection and the formula bar -----------------------------------------------
 
@@ -491,11 +507,8 @@ const fmt = (n) => n.toLocaleString('en-US');
 <template>
 <div class="meta-view">
     <div class="head">
-        <MetadataTabs />
-        <PageHeader title="Manuscript metadata" eyebrow="Metadata">
-            <template #subtitle>
-                <p>Edit all manuscripts like a spreadsheet. Your changes stay in your workspace; the corpus stays as it was imported.</p>
-            </template>
+        <ManuscriptsTabs />
+        <PageHeader title="Manuscripts">
             <template #actions>
                 <button class="ne-btn" title="Add a manuscript that is not in the corpus, with suggestions from the MMMO catalogue" @click="addingManuscript = true">Add a manuscript…</button>
             </template>
@@ -505,8 +518,8 @@ const fmt = (n) => n.toLocaleString('en-US');
     <StateWrapper :loading="loading" :error="error" loadingText="Reading the loaded corpus…">
         <div v-if="!hasCorpus && table.sources.value.length === 0" class="empty">
             <h2>No manuscripts yet</h2>
-            <p>The editor starts without data. Load a Monodi-Zero workspace or a Corpus Monodicum project, and its manuscripts appear here.</p>
-            <button class="ne-btn ne-btn--primary" @click="router.push('/corpus')">Load data</button>
+            <p>Load a Monodi-Zero workspace or a Corpus Monodicum project, and its manuscripts appear here.</p>
+            <button class="ne-btn ne-btn--primary" @click="router.push('/manuscripts/corpus')">Load data</button>
         </div>
 
         <template v-else>
@@ -600,6 +613,10 @@ const fmt = (n) => n.toLocaleString('en-US');
                         @blur="barFocused = false; commitBar()"
                         @keydown="onBarKey"
                     />
+                    <span v-if="activeSource" class="row-actions">
+                        <button class="ne-btn ne-btn--sm" :title="`Projects on ${activeSource}`" @click="projectAction.go">{{ projectAction.label }}</button>
+                        <button class="ne-btn ne-btn--sm" :title="`Browse the pages of ${activeSource}`" @click="openPages">Pages →</button>
+                    </span>
                 </div>
             </div>
 
@@ -772,6 +789,7 @@ kbd { font-family: inherit; font-size: 0.72rem; background: var(--color-surface-
 .formula .where { flex: 0 0 auto; min-width: 190px; max-width: 320px; padding: 0.35em 0.8em; background: var(--color-surface-muted); border-right: 1px solid var(--color-border); font-size: 0.8rem; font-weight: 600; color: var(--color-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .formula .bar { flex: 1; min-width: 0; border: none; padding: 0.35em 0.8em; font-size: 0.88rem; outline: none; background: transparent; }
 .formula:focus-within { box-shadow: var(--ring); }
+.formula .row-actions { display: flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); border-left: 1px solid var(--color-border); background: var(--color-surface-muted); }
 .formula.readonly .bar { color: var(--color-text-muted); background: #fafbfc; }
 
 .iiif-note { flex: 0 0 auto; display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: 0.8rem; color: var(--color-text-muted); margin-bottom: var(--space-2); }

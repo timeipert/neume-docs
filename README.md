@@ -15,7 +15,7 @@ Files are read in a Web Worker and stored in IndexedDB. The entire CM (112 sourc
 
 ### Manuscript metadata (new)
 
-*Metadata* shows all manuscripts as a spreadsheet: every field the corpus has for a source, the IIIF manifest, and columns of your own. Edit by typing, paste from Excel, fill down (`Ctrl+D`), find and replace, import and export CSV, undo. Your edits are stored on top of the corpus, which is never changed.
+*Manuscripts → Catalogue* shows all manuscripts as a spreadsheet: every field the corpus has for a source, the IIIF manifest, and columns of your own. Edit by typing, paste from Excel, fill down (`Ctrl+D`), find and replace, import and export CSV, undo. Your edits are stored on top of the corpus, which is never changed.
 
 It also uses the IIIF the corpus carries. Few sources have a manifest, but many documents name the IIIF image they were transcribed from; the editor turns those into the manuscript's pages, so a manuscript shows its images in the annotation workspace without a manifest.
 
@@ -70,7 +70,7 @@ Without it the editor works as before and says that no catalogue is available. C
 
 ## Interface
 
-Everything you document is a **project** (see above); the navigation is *Projects · Patterns · Data · Workspace · Settings*, and the pages that feed a project (corpus, metadata, IIIF sources, page images, custom manuscripts) are under *Data*. Each function has one place: signs and preferred IDs are set up in the pattern library, own metadata columns in the metadata table, backups and deleting on the Workspace page, and Settings keeps only the two global preferences. The conventions every page follows (page structure, buttons, how deleting works, naming) are in [UI-CONVENTIONS.md](UI-CONVENTIONS.md).
+Everything you document is a **project** (see above); the navigation is *Projects · Manuscripts · Patterns · Workspace · Settings*. *Manuscripts* has three tabs — the catalogue (where the selected row leads on to its project and its pages), the images (IIIF sources) and the corpus (loading); *Patterns* has the library and what the corpus makes of it. The page editor and the custom collections are reached from a project's cell, the catalogue or the Workspace. Each function has one place: signs and preferred IDs are set up in the pattern library, own metadata columns in the metadata table, backups and deleting on the Workspace page, and Settings keeps only the two global preferences. The conventions every page follows (page structure, buttons, how deleting works, naming) are in [UI-CONVENTIONS.md](UI-CONVENTIONS.md).
 
 ## Running it
 

@@ -1,10 +1,23 @@
-name: CI
+name: CI and Pages
+
+# Every push and pull request is tested and built. A push to main is also published:
+# the built app, with its manual, goes to GitHub Pages at https://neumedocs.monodi.app
+# (the address is set in the repository's Pages settings and in the CNAME file).
 
 on:
   push:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer run of the same branch makes an older one pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test-and-build:
@@ -18,9 +31,11 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: 'ui/package-lock.json'
+          cache-dependency-path: |
+            ui/package-lock.json
+            user-manual/package-lock.json
 
-      - name: Install dependencies
+      - name: Install the app's dependencies
         working-directory: ./ui
         run: npm ci
 
@@ -28,6 +43,40 @@ jobs:
         working-directory: ./ui
         run: npm test
 
-      - name: Build
+      # The manual is part of the site (the app links to /manual/): build it first, into ui/public.
+      - name: Install the manual's dependencies
+        working-directory: ./user-manual
+        run: npm ci
+
+      - name: Build the manual
+        run: npm run build:manual
+
+      - name: Build the app
         working-directory: ./ui
         run: npm run build
+
+      # Pages deployed by a workflow takes the address from its settings; the file keeps the
+      # site's address with the site, wherever it is copied to.
+      - name: Name the domain
+        run: cp CNAME dist/CNAME
+
+      - name: Upload the site
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: test-and-build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,8 +1,8 @@
 import { computed, reactive, ref } from 'vue';
 import {
-    INDEX_FILE, LOCAL_ID, cleanEndpointList, endpointFromId, idFromRepoInput, resolveEndpoint
+    INDEX_FILE, LOCAL_ID, cleanEndpointList, combineId, combinedParts, endpointFromId, idFromRepoInput, isCombineId, resolveEndpoint
 } from '../utils/documentation';
-import { DocumentationError, createMemorySource, createRemoteSource } from '../utils/documentationSource';
+import { DocumentationError, createCombinedSource, createMemorySource, createRemoteSource } from '../utils/documentationSource';
 import { buildLocalDocumentation } from './useLocalDocumentation';
 
 /**
@@ -53,8 +53,38 @@ function newState(id) {
     return reactive({
         id, status: 'loading', error: '', hint: '', endpoint: null, source: null, index: null,
         manuscripts: {}, // entry id -> { status, data, error }
-        local: id === LOCAL_ID
+        local: id === LOCAL_ID || (isCombineId(id) && combinedParts(id).includes(LOCAL_ID))
     });
+}
+
+const PREVIEW_KEY = 'neume-docs.preview-unpublished';
+function readPreview() {
+    try { return localStorage.getItem(PREVIEW_KEY) === '1'; } catch { return false; }
+}
+/** Whether "This browser" shows all of one's own work, not only what is published. */
+export const previewUnpublished = ref(readPreview());
+export function setPreviewUnpublished(on) {
+    previewUnpublished.value = !!on;
+    try { localStorage.setItem(PREVIEW_KEY, on ? '1' : '0'); } catch { /* it lasts until the page is closed */ }
+    const local = opened.get(LOCAL_ID);
+    if (local) openInto(local);
+    // a combination with this browser's work is made again
+    for (const state of opened.values()) if (state.id !== LOCAL_ID && state.endpoint && state.endpoint.kind === 'combine' && combinedParts(state.id).includes(LOCAL_ID)) openInto(state);
+}
+
+/** The source of one documentation: this browser's own, or an endpoint. */
+async function makeSource(id) {
+    if (id === LOCAL_ID) {
+        const built = await buildLocalDocumentation({ includeUnpublished: previewUnpublished.value });
+        const endpoint = { id: LOCAL_ID, kind: 'memory', name: 'This browser', description: 'Your own work, as readers will see it.' };
+        return { endpoint, source: createMemorySource(LOCAL_ID, built, endpoint) };
+    }
+    await loadHosted();
+    const endpoint = resolveEndpoint(id, hosted.list.concat(mine.value.map(endpointFromId).filter(Boolean)));
+    if (!endpoint) {
+        throw new DocumentationError(`There is no documentation called “${id}” here.`, { hint: 'It is not in this site\'s list. A repository on GitHub can be opened by its address, owner/name.' });
+    }
+    return { endpoint, source: createRemoteSource(endpoint, { documentBase: documentBase() }) };
 }
 
 async function openInto(state) {
@@ -62,18 +92,26 @@ async function openInto(state) {
     state.error = '';
     state.hint = '';
     try {
-        if (state.local) {
-            const built = await buildLocalDocumentation();
-            state.endpoint = { id: LOCAL_ID, kind: 'memory', name: 'This browser', description: 'What you have published in the editor, as readers will see it.' };
-            state.source = createMemorySource(LOCAL_ID, built, state.endpoint);
+        if (isCombineId(state.id)) {
+            const ids = combinedParts(state.id);
+            if (!ids.length) throw new DocumentationError('Nothing is named to look at together.');
+            const tried = await Promise.all(ids.map(async (id) => {
+                try {
+                    const { source } = await makeSource(id);
+                    return { id, source, index: await source.loadIndex() };
+                } catch (e) {
+                    return { id, error: e instanceof DocumentationError ? e.message : 'It could not be opened.' };
+                }
+            }));
+            const ok = tried.filter(t => !t.error);
+            const problems = tried.filter(t => t.error).map(t => ({ id: t.id, message: t.error }));
+            if (!ok.length) throw new DocumentationError('None of the documentations could be opened.', { hint: problems.map(p => `${p.id}: ${p.message}`).join(' ') });
+            state.source = createCombinedSource(state.id, ok, problems);
+            state.endpoint = state.source.endpoint;
         } else {
-            await loadHosted();
-            const endpoint = resolveEndpoint(state.id, hosted.list.concat(mine.value.map(endpointFromId).filter(Boolean)));
-            if (!endpoint) {
-                throw new DocumentationError(`There is no documentation called “${state.id}” here.`, { hint: 'It is not in this site\'s list. A repository on GitHub can be opened by its address, owner/name.' });
-            }
-            state.endpoint = endpoint;
-            state.source = createRemoteSource(endpoint, { documentBase: documentBase() });
+            const made = await makeSource(state.id);
+            state.endpoint = made.endpoint;
+            state.source = made.source;
         }
         state.index = await state.source.loadIndex();
         state.manuscripts = {};
@@ -145,5 +183,5 @@ export function useDocumentations() {
         opened.delete(id);
     }
 
-    return { hosted, endpoints, mine, loadHosted, addRepository, removeRepository, open: openDocumentation, INDEX_FILE };
+    return { hosted, endpoints, mine, loadHosted, addRepository, removeRepository, open: openDocumentation, INDEX_FILE, combineId, previewUnpublished, setPreviewUnpublished };
 }

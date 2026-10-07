@@ -4,7 +4,7 @@ neume-docs has two ways in. **View documentations** is for reading what others h
 
 ## Reading a documentation
 
-Open **View documentations** on the start page. You see the documentations this site offers, and — if you have the editor and have published something — *This browser*, a preview of your own work. To read a documentation that is not in the list, type the address of its GitHub repository (`owner/name`) under *Open a repository*; it is remembered in this browser.
+Open **View documentations** on the start page. The page has two parts: **From repositories** — the documentations this site offers and the ones you opened yourself — and **Your own work** (*this browser*), which is there as soon as you have made anything in the editor. Your own work is shown as readers would see it, that is, what you have published; tick *Also show what is not published* to look at all of it. To read a documentation that is not in the list, type the address of its GitHub repository (`owner/name`) under *Open a repository*; it is remembered in this browser.
 
 A documentation has three pages:
 
@@ -12,9 +12,13 @@ A documentation has three pages:
 - **Neume table** — the manuscripts as rows, the neume shapes as columns, in the order of the Corpus Monodicum. *Standard table*, *Expanded documentation* and *All codes* show more or less. *Manuscripts* limits the rows; *Compare these in the neume table* on the first page carries a selection over.
 - **About** — who made it, the licence, where the files are, and how to cite it.
 
+### Looking at several together
+
+Tick two or more on the start page and choose *Look at them together* — or, inside a documentation, *Combine with…*. Their manuscripts then stand in one table and one neume table, so your own work can be compared with a repository's, or two repositories with each other. Columns with the same name are one column; a *Documentation* column says where each manuscript comes from, and can be filtered by like any other. A combination has no authors of its own: a manuscript, a pattern, a cell or a snippet is cited by the documentation it comes from (the ⛓ button does that), and the *About* page has a citation for each. Signs that two documentations draw differently are reported. A combination that includes your own work opens only in your browser.
+
 ### Links and citations
 
-Look for the **⛓** button. A manuscript, a pattern of a manuscript, a cell of the neume table, a column, a single snippet and a selection each have a link that opens exactly that, highlighted, and suggestions for citing it: *Short*, *Author–date* and *BibTeX*. The day you looked at it is part of the citation.
+Look for the **⛓** button. A manuscript, a pattern of a manuscript, a cell of the neume table, a column, a single snippet and a selection each have a link that opens exactly that, highlighted, and suggestions for citing it: *Short*, *APA*, *Chicago*, *MLA*, *BibTeX* and *RIS* (the last two can be saved as files), and the authors' own wording if they gave one. The citation names where the manuscript is kept and the day you looked at it. For documentations on GitHub the link can be fixed to the version you looked at (a commit), so it keeps leading to what you cited.
 
 ## Publishing your own
 

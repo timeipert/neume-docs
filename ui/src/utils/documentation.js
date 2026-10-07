@@ -94,6 +94,10 @@ const GH_ID = /^gh:([\w.-]+)\/([\w.-]+)(?:@([^:]+))?(?::(.+))?$/;
  */
 export function endpointFromId(id) {
     const s = String(id ?? '');
+    if (isCombineId(s)) {
+        const parts = combinedParts(s);
+        return parts.length ? { id: s, kind: 'combine', parts, name: `${parts.length} documentations together`, description: '', custom: true } : null;
+    }
     const gh = s.match(GH_ID);
     if (gh) {
         const path = gh[4] ? gh[4].split('/').filter(Boolean).join('/') : '';
@@ -120,6 +124,22 @@ export function idFromRepoInput(input) {
     s = s.replace(/^gh:/, '');
     const short = s.match(/^([\w.-]+)\/([\w.-]+?)(?:\.git)?(?:@([^:]+))?(?::(.+))?$/);
     return short ? `gh:${short[1]}/${short[2]}${short[3] ? `@${short[3]}` : ''}${short[4] ? `:${short[4]}` : ''}` : '';
+}
+
+/** The id of several documentations looked at together: `combine:` and their ids, each written safe for a list. */
+export const COMBINE_PREFIX = 'combine:';
+export const combineId = (ids) => `${COMBINE_PREFIX}${ids.map(encodeURIComponent).join(',')}`;
+export const isCombineId = (id) => String(id ?? '').startsWith(COMBINE_PREFIX);
+/** The ids a combined id names, once each; the combined id itself is no part of one. */
+export function combinedParts(id) {
+    if (!isCombineId(id)) return [];
+    const parts = [];
+    for (const raw of String(id).slice(COMBINE_PREFIX.length).split(',')) {
+        let part = '';
+        try { part = decodeURIComponent(raw); } catch { part = ''; }
+        if (part && !isCombineId(part) && !parts.includes(part)) parts.push(part);
+    }
+    return parts.slice(0, 12);
 }
 
 const slug = (s) => String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

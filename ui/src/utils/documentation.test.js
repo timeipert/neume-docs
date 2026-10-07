@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-    baseUrl, cleanEndpointList, cleanImageRef, cleanIndex, cleanManuscript, endpointFromId, fileUrl,
+    baseUrl, combineId, combinedParts, isCombineId, cleanEndpointList, cleanImageRef, cleanIndex, cleanManuscript, endpointFromId, fileUrl,
     holdingOf, idFromRepoInput, repoWebUrl, resolveEndpoint, safeHttpUrl, safeRelativePath
 } from './documentation';
 
@@ -239,5 +239,21 @@ describe('the lines of a manuscript', () => {
     it('keeps the label of a sign and refuses its glyph if it is more than a path', () => {
         const { index } = cleanIndex({ format: 'neume-docs', version: 1, signs: { V: { viewBox: '0 0 1 1', d: 'M0 0', label: 'Virga', abbrev: 'v' } } });
         expect(index.signs.V).toEqual({ viewBox: '0 0 1 1', d: 'M0 0', label: 'Virga', abbrev: 'v' });
+    });
+});
+
+describe('documentations together', () => {
+    it('makes an id from several, and reads them back, whatever characters they hold', () => {
+        const id = combineId(['example', 'gh:owner/repo@dev:docs', 'local']);
+        expect(isCombineId(id)).toBe(true);
+        expect(combinedParts(id)).toEqual(['example', 'gh:owner/repo@dev:docs', 'local']);
+        expect(endpointFromId(id)).toMatchObject({ kind: 'combine', parts: ['example', 'gh:owner/repo@dev:docs', 'local'] });
+    });
+
+    it('names each part once, and not a combination in a combination', () => {
+        expect(combinedParts(combineId(['a', 'a', 'b']))).toEqual(['a', 'b']);
+        expect(combinedParts(combineId(['a', combineId(['b', 'c'])]))).toEqual(['a']);
+        expect(endpointFromId('combine:')).toBeNull();
+        expect(combinedParts('gh:a/b')).toEqual([]);
     });
 });

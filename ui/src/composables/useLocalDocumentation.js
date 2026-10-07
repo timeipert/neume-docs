@@ -16,11 +16,12 @@ import { resolveSignGlyphs } from '../utils/signs';
  * it has when it is put on a server. It is what the preview shows and what is downloaded, so the
  * two cannot differ.
  *
- * @param {{ images?: 'inline'|'files', table?: object }} [options]
- *   `images`: 'inline' keeps screenshots in the files, 'files' writes each to a file of its own
+ * @param {{ images?: 'inline'|'files', table?: object, includeUnpublished?: boolean }} [options]
+ *   `images`: 'inline' keeps screenshots in the files, 'files' writes each to a file of its own;
+ *   `includeUnpublished`: for looking at all of one's own work, not only what is switched on for readers
  * @returns {Promise<{ index: object, manuscripts: object, files: Array<{path: string, dataUrl: string}>, columns: object[] }>}
  */
-export async function buildLocalDocumentation({ images = 'inline', table = useManuscriptTable() } = {}) {
+export async function buildLocalDocumentation({ images = 'inline', table = useManuscriptTable(), includeUnpublished = false } = {}) {
     const tables = usePersonalTablesStore();
     const annotations = useAnnotationsStore();
     const direct = useDirectSnippetsStore();
@@ -30,7 +31,7 @@ export async function buildLocalDocumentation({ images = 'inline', table = useMa
 
     await direct.load();
     // A crop's address needs the manifest of its manuscript.
-    const published = tables.tables.filter(t => t.isPublished);
+    const published = tables.tables.filter(t => includeUnpublished || t.isPublished);
     await Promise.all(published.map(t => iiif.ensureLoaded(t.source).catch(() => {})));
 
     const shown = publishedColumns(table.columns.value, settings.publication);
@@ -47,10 +48,10 @@ export async function buildLocalDocumentation({ images = 'inline', table = useMa
         generated: new Date().toISOString().slice(0, 10),
         columns,
         metaOf: (source, key) => (byKey.get(key) ? table.value(source, byKey.get(key)) : ''),
-        tables: tables.tables,
+        tables: includeUnpublished ? tables.tables.map(t => ({ ...t, isPublished: true })) : tables.tables,
         regions: annotations.regions,
         regionItems: annotations.regionItems,
-        collections: direct.collections,
+        collections: includeUnpublished ? direct.collections.map(c => ({ ...c, isPublished: true })) : direct.collections,
         customSigns: settings.customSigns,
         signGlyphs: resolveSignGlyphs(settings.customSigns, GLYPHS),
         discriminateSigns: settings.discriminateSigns,

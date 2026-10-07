@@ -4,8 +4,8 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import CiteDialog from '../../components/docs/CiteDialog.vue';
 import StarredDialog from '../../components/docs/StarredDialog.vue';
 import { provideDocs } from '../../composables/useDocsContext';
-import { openDocumentation } from '../../composables/useDocumentations';
-import { LOCAL_ID } from '../../utils/documentation';
+import { openDocumentation, previewUnpublished, setPreviewUnpublished, useDocumentations } from '../../composables/useDocumentations';
+import { LOCAL_ID, combineId, combinedParts, isCombineId } from '../../utils/documentation';
 import { canPin, isPinned, latestId, shortSha } from '../../utils/documentationVersion';
 
 /**
@@ -26,7 +26,8 @@ const docs = provideDocs(state, {
         // what is cited is named with where its manuscript is kept
         const entry = docs.entry(target.entryId) || docs.entries.value.find(e => e.source === target.source);
         const named = entry && !target.holding ? { ...target, holding: docs.holding(entry.id) } : target;
-        citing.value = { target: named, url: docs.permalink(sub, query), sub, query };
+        // in a combination, a manuscript is cited by the documentation it comes from
+        citing.value = { target: named, url: docs.permalink(sub, query), sub, query, info: entry && entry.origin ? entry.origin : null };
     }
 });
 const pinnedFor = computed(() => (citing.value ? () => docs.pinned(citing.value.sub, citing.value.query) : null));
@@ -41,6 +42,30 @@ function showStarred({ entry, snippet }) {
 }
 const info = computed(() => (ready.value ? state.value.index.info : null));
 const isLocal = computed(() => props.endpoint === LOCAL_ID);
+const parts = computed(() => combinedParts(props.endpoint));
+const combined = computed(() => isCombineId(props.endpoint));
+const includesLocal = computed(() => isLocal.value || parts.value.includes(LOCAL_ID));
+
+// ---- looking at several documentations together ---------------------------------------------
+const { endpoints } = useDocumentations();
+const combining = ref(false);
+const candidates = computed(() => {
+    const here = new Set(combined.value ? parts.value : [props.endpoint]);
+    return [{ id: LOCAL_ID, name: 'This browser (your own work)' }, ...endpoints.value].filter(e => !here.has(e.id));
+});
+function combineWith(id) {
+    combining.value = false;
+    const ids = combined.value ? parts.value : [props.endpoint];
+    router.push(`/docs/${encodeURIComponent(combineId([...ids, id]))}`);
+}
+function leave(id) {
+    const rest = parts.value.filter(p => p !== id);
+    router.push(rest.length > 1 ? `/docs/${encodeURIComponent(combineId(rest))}` : `/docs/${encodeURIComponent(rest[0])}`);
+}
+const partName = (id) => {
+    const part = ready.value && info.value.parts ? info.value.parts.find(p => p.id === id) : null;
+    return part ? part.title : (id === LOCAL_ID ? 'This browser' : id);
+};
 const pinnedVersion = computed(() => (ready.value && isPinned(state.value.endpoint) ? shortSha(state.value.endpoint.branch) : ''));
 const latestPath = computed(() => (pinnedVersion.value ? `/docs/${encodeURIComponent(latestId(state.value.endpoint))}` : ''));
 
@@ -59,7 +84,11 @@ watch([ready, info, () => route.params.source, () => route.name], () => {
 watch(() => route.fullPath, () => { citing.value = null; });
 
 function retry() { state.value = openDocumentation(props.endpoint, { refresh: true }); }
-function citeWhole() { docs.cite({ kind: 'documentation' }, ''); }
+function citeWhole() {
+    // a combination has no authors of its own: each documentation in it is cited on its own page
+    if (combined.value) router.push(docs.path('/about'));
+    else docs.cite({ kind: 'documentation' }, '');
+}
 </script>
 
 <template>
@@ -98,9 +127,19 @@ function citeWhole() { docs.cite({ kind: 'documentation' }, ''); }
     </div>
 
     <template v-else>
-        <div v-if="isLocal" class="preview ne-note ne-note--info">
-            <strong>Preview.</strong> This is what you have published in the editor, as readers will see it. Nobody else sees it until you put the files on a server —
-            <RouterLink to="/workspace#publish">Workspace → Publish documentation</RouterLink>.
+        <div v-if="includesLocal" class="preview ne-note ne-note--info">
+            <strong>{{ isLocal ? 'Preview.' : 'Includes your own work.' }}</strong>
+            Your own work is {{ previewUnpublished ? 'shown whether it is published or not' : 'shown as readers will see it' }}. Nobody else sees it, and links made here open only in this browser, until you put the files on a server —
+            <RouterLink to="/workspace#publish">Workspace → Publish a documentation</RouterLink>.
+            <label class="ne-check also"><input type="checkbox" :checked="previewUnpublished" @change="setPreviewUnpublished($event.target.checked)" /> Also show what is not published yet</label>
+        </div>
+
+        <div v-if="combined && state.source.problems.length" class="preview ne-note ne-note--warn">
+            <strong>Not all could be opened.</strong>
+            <span v-for="p in state.source.problems" :key="p.id"> {{ p.id }}: {{ p.message }}</span>
+        </div>
+        <div v-if="combined && state.index.signClashes.length" class="preview ne-note ne-note--warn">
+            The signs {{ state.index.signClashes.join(', ') }} are drawn differently in different documentations here; the drawing of the first is used for all, so a code with {{ state.index.signClashes.length === 1 ? 'that sign' : 'those signs' }} may look wrong in the others.
         </div>
 
         <div v-if="pinnedVersion" class="preview ne-note ne-note--info">
@@ -112,10 +151,20 @@ function citeWhole() { docs.cite({ kind: 'documentation' }, ''); }
             <div class="head-text">
                 <h1>{{ info.title }}</h1>
                 <p v-if="info.authors.length" class="authors">{{ info.authors.join(', ') }}<template v-if="info.year"> · {{ info.year }}</template></p>
+                <ul v-if="combined" class="parts" aria-label="The documentations in this combination">
+                    <li v-for="p in parts" :key="p"><span>{{ partName(p) }}</span><button v-if="parts.length > 1" type="button" :aria-label="`Leave out ${partName(p)}`" title="Leave this one out" @click="leave(p)">×</button></li>
+                </ul>
                 <p v-if="info.description" class="description">{{ info.description }}</p>
             </div>
             <div class="head-actions">
-                <button type="button" class="ne-btn" title="A link to this documentation and suggestions for citing it" @click="citeWhole">Cite…</button>
+                <div class="combine">
+                    <button type="button" class="ne-btn" :aria-expanded="combining" title="Look at another documentation together with this one: your own work with a repository's, say" @click="combining = !combining">Combine with… <span aria-hidden="true">▾</span></button>
+                    <ul v-if="combining" class="combine-menu" role="menu">
+                        <li v-for="c in candidates" :key="c.id" role="none"><button type="button" role="menuitem" @click="combineWith(c.id)">{{ c.name }}</button></li>
+                        <li v-if="!candidates.length" class="none">There is nothing else to combine with. Documentations are listed on the start page.</li>
+                    </ul>
+                </div>
+                <button type="button" class="ne-btn" :title="combined ? 'Each documentation in a combination is cited on its own' : 'A link to this documentation and suggestions for citing it'" @click="citeWhole">{{ combined ? 'How to cite…' : 'Cite…' }}</button>
             </div>
         </section>
 
@@ -134,8 +183,8 @@ function citeWhole() { docs.cite({ kind: 'documentation' }, ''); }
 
     <CiteDialog
         :open="!!citing"
-        :info="info || { title: '', authors: [] }"
-        :generated="ready ? state.index.generated : ''"
+        :info="(citing && citing.info) || info || { title: '', authors: [] }"
+        :generated="(citing && citing.info && citing.info.generated) || (ready ? state.index.generated : '')"
         :target="citing && citing.target"
         :url="citing ? citing.url : ''"
         :pinned="canPin(state.endpoint) ? pinnedFor : null"
@@ -168,7 +217,17 @@ function citeWhole() { docs.cite({ kind: 'documentation' }, ''); }
 .head h1 { margin: 0; font-size: 1.7rem; letter-spacing: -0.01em; }
 .authors { margin: 4px 0 0; color: var(--color-text-muted); }
 .description { margin: var(--space-2) 0 0; max-width: 70ch; color: var(--color-text); }
-.head-actions { flex: none; }
+.head-actions { flex: none; display: flex; gap: var(--space-2); align-items: flex-start; }
+.combine { position: relative; }
+.combine-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 50; min-width: 16rem; margin: 0; padding: 4px; list-style: none; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); }
+.combine-menu button { width: 100%; text-align: left; border: none; background: none; padding: 0.5em 0.8em; border-radius: var(--radius-sm); font-size: 0.88rem; cursor: pointer; }
+.combine-menu button:hover { background: var(--color-primary-light); }
+.combine-menu .none { padding: 0.5em 0.8em; font-size: 0.82rem; color: var(--color-text-muted); }
+.parts { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.parts li { display: inline-flex; align-items: center; gap: 4px; padding: 2px 4px 2px 10px; border: 1px solid var(--color-primary-muted); border-radius: 999px; background: var(--color-primary-light); font-size: 0.8rem; }
+.parts button { border: none; background: none; cursor: pointer; font-size: 1rem; line-height: 1; color: var(--color-text-muted); }
+.parts button:hover { color: var(--color-danger); }
+.also { display: inline-flex; margin-left: var(--space-3); font-size: 0.86rem; }
 
 .tabs { display: flex; gap: var(--space-1); padding: 0 var(--space-5); border-bottom: 1px solid var(--color-border); }
 .tab { padding: 0.55em 1em; color: var(--color-text-muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 600; font-size: 0.92rem; }

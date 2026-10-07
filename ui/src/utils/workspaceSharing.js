@@ -89,9 +89,11 @@ export function extractManuscripts(fullState, sourceIds, options = {}) {
         filtered.personalTables = fullState.personalTables.filter(t => finalAllowedSet.has(t.source));
     }
     
+    // The address of a manifest is how the manuscript is set up, not work done on it: a manuscript
+    // that has no snippet yet keeps it, or the project that was just started would lose its pages.
     if (fullState.iiifLinks) {
         for (const src in fullState.iiifLinks) {
-            if (finalAllowedSet.has(src)) filtered.iiifLinks[src] = fullState.iiifLinks[src];
+            if (allowedSet.has(src)) filtered.iiifLinks[src] = fullState.iiifLinks[src];
         }
     }
 

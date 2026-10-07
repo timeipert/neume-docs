@@ -32,8 +32,9 @@ const shownMissing = computed(() => (showAll.value ? missing.value : missing.val
 <template>
 <section class="lines" aria-label="Lines of this project">
     <header>
-        <h3>Lines <span class="count">{{ lines.length }}</span></h3>
-        <button class="ne-btn ne-btn--primary" @click="emit('add', {})">Add a line…</button>
+        <h3>Lines <span v-if="lines.length" class="count">{{ lines.length }}</span></h3>
+        <p v-if="!lines.length" class="hint">Add a screenshot of a text line, then mark the signs on it.</p>
+        <button class="ne-btn" :class="lines.length ? '' : 'ne-btn--primary'" @click="emit('add', {})">Add a line…</button>
     </header>
 
     <ul v-if="lines.length" class="cards">
@@ -48,7 +49,6 @@ const shownMissing = computed(() => (showAll.value ? missing.value : missing.val
             </button>
         </li>
     </ul>
-    <p v-else class="none ne-muted">No line yet.</p>
 
     <details v-if="hasTranscription && ready && missing.length" class="missing">
         <summary>{{ missing.length }} line{{ missing.length === 1 ? '' : 's' }} of the transcription without a picture</summary>
@@ -65,8 +65,10 @@ const shownMissing = computed(() => (showAll.value ? missing.value : missing.val
 </template>
 
 <style scoped>
-.lines { padding: var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: var(--space-3); }
-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.lines { padding: var(--space-3) var(--space-4); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); display: flex; flex-direction: column; gap: var(--space-3); }
+header { display: flex; align-items: center; gap: var(--space-3); }
+header .ne-btn { margin-left: auto; }
+.hint { flex: 1; min-width: 0; margin: 0; font-size: 0.88rem; color: var(--color-text-muted); }
 h3 { margin: 0; font-size: 1rem; }
 .count { margin-left: 4px; padding: 0 8px; background: var(--color-surface-muted); border-radius: 999px; font-size: 0.8rem; font-weight: 600; }
 .cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--space-3); }
@@ -77,7 +79,6 @@ h3 { margin: 0; font-size: 1rem; }
 .label { font-weight: 700; font-size: 0.9rem; }
 .meta { display: flex; gap: var(--space-2); font-size: 0.78rem; color: var(--color-text-muted); }
 .warn { color: var(--color-warning-dark); font-weight: 600; }
-.none { margin: 0; font-size: 0.9rem; }
 .missing summary { cursor: pointer; font-size: 0.88rem; font-weight: 600; color: var(--color-primary-dark); }
 .missing ul { list-style: none; margin: var(--space-2) 0 0; padding: 0; display: flex; flex-direction: column; }
 .missing li { display: flex; align-items: center; gap: var(--space-3); padding: 6px 0; border-bottom: 1px solid var(--color-border); font-size: 0.88rem; }

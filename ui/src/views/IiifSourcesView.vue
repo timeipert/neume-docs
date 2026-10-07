@@ -275,6 +275,7 @@ const fmt = (n) => n.toLocaleString('en-US');
                             <span class="btns">
                                 <template v-if="r.entry">
                                     <span v-if="r.inUse" class="using">✓ in use</span>
+                                    <button v-if="r.inUse" class="ne-btn ne-btn--sm" title="Browse the pages of this manuscript" @click="router.push({ name: 'polygons', query: { source: r.siglum } })">Pages →</button>
                                     <button v-if="r.inUse" class="ne-btn ne-btn--sm" @click="stopUsing(r)">Stop using</button>
                                     <button v-else-if="r.kind === 'manifest'" class="ne-btn ne-btn--sm" @click="use(r)">Use</button>
                                     <button class="ne-btn ne-btn--sm ne-btn--ghost" :aria-label="`Remove the row for ${r.siglum}`" title="Remove this row" @click="remove(r)">✕</button>

@@ -9,7 +9,7 @@ import { useProjectsStore } from '../stores/projects';
 import {
     matchesFilter, compareCells, planMap, planReplace, planImport, parseDelimited, formatDelimited, CLEAN_UP
 } from '../utils/gridOps';
-import { META_TYPES, parseCentury } from '../utils/sourceMeta';
+import { META_TYPES } from '../utils/sourceMeta';
 import DataGrid from '../components/grid/DataGrid.vue';
 import PageHeader from '../components/ui/PageHeader.vue';
 import SegmentedControl from '../components/ui/SegmentedControl.vue';
@@ -17,6 +17,9 @@ import StateWrapper from '../components/StateWrapper.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
 import ManuscriptsTabs from '../components/manuscripts/ManuscriptsTabs.vue';
 import AddManuscriptDialog from '../components/metadata/AddManuscriptDialog.vue';
+import ColumnSettingsDialog from '../components/metadata/ColumnSettingsDialog.vue';
+import IiifSetup from '../components/iiif/IiifSetup.vue';
+import { iiifStatus } from '../utils/iiifStatus';
 import { useToast } from '../composables/useToast';
 import { useSettingsStore } from '../stores/settings';
 
@@ -29,8 +32,6 @@ const meta = useManuscriptMetaStore();
 const iiif = useIiifStore();
 const settings = useSettingsStore();
 const toast = useToast();
-
-const GROUP_LABELS = { id: '', catalogue: 'Corpus catalogue', iiif: 'IIIF', project: 'Your fields', corpus: 'Corpus' };
 
 // ---- what is shown --------------------------------------------------------
 
@@ -173,6 +174,16 @@ const projectAction = computed(() => {
 });
 const openPages = () => router.push({ name: 'polygons', query: { source: activeSource.value } });
 
+/** Pages can be opened where there are page images; elsewhere the row says how to get them. */
+const activeHasImages = computed(() => !!activeSource.value && rowHasIiif(activeSource.value));
+const imagesFor = ref(''); // the manuscript whose page images are being added
+const imagesReady = computed(() => !!imagesFor.value && iiifStatus(iiif, imagesFor.value).state === 'ready');
+function openAddedPages() {
+    const source = imagesFor.value;
+    imagesFor.value = '';
+    router.push({ name: 'polygons', query: { source } });
+}
+
 // ---- the selection and the formula bar -----------------------------------------------
 
 const grid = ref(null);
@@ -291,12 +302,12 @@ const addingManuscript = ref(false);
 function onManuscriptAdded(siglum) {
     search.value = siglum;
 }
-const newColumn = ref({ label: '', type: 'text' });
+const newColumn = ref({ label: '', type: 'text', category: 'project' });
 
 function addColumn() {
     const label = newColumn.value.label.trim();
     if (!label) return;
-    const field = table.addProjectColumn(label, newColumn.value.type);
+    const field = table.addProjectColumn(label, newColumn.value.type, newColumn.value.category);
     if (!field) { say(`There is already a column called “${label}”.`); return; }
     newColumn.value.label = '';
     say(`Column “${label}” added. Values you type are kept in your workspace and can be used as a filter on the public pages.`);
@@ -347,41 +358,24 @@ function menuDelete() {
     const col = columnMenu.value.col;
     columnMenu.value = null;
     // The column and its values are kept aside, so deleting needs no question: Undo puts both back.
-    const before = settings.snapshot(['sourceMetaFields', 'sourceMeta']);
+    const before = settings.snapshot(['sourceMetaFields', 'sourceMeta', 'metadataSchema']);
     table.removeProjectColumn(col);
-    say(`Column “${col.label}” deleted.`, { label: 'Undo', run: () => settings.apply(before, { keys: ['sourceMetaFields', 'sourceMeta'] }) });
+    say(`Column “${col.label}” deleted.`, { label: 'Undo', run: () => settings.apply(before, { keys: ['sourceMetaFields', 'sourceMeta', 'metadataSchema'] }) });
 }
 
-// ---- editing one of the project's own columns ---------------------------------------
+// ---- everything about one column: its name, category and what its cells may hold --------
 
-const editing = ref(null); // { key, label, description, type, values, unparsed }
+const settingsFor = ref(''); // the key of the column whose settings are open
 
-function menuEdit() {
-    const col = columnMenu.value.col;
+function menuSettings() {
+    settingsFor.value = columnMenu.value.col.key;
     columnMenu.value = null;
-    const field = settings.sourceMetaFields.find(f => f.key === col.field);
-    if (!field) return;
-    const values = settings.sourceMetaValuesFor(field.key);
-    editing.value = {
-        key: field.key,
-        label: field.label,
-        description: field.description || '',
-        type: field.type || 'text',
-        values: values.length,
-        // For a date column: how many values cannot be read as a date range (still shown, but outside the timeline filter).
-        valueList: values
-    };
 }
 
-const editingUnparsed = computed(() => (editing.value && editing.value.type === 'century'
-    ? editing.value.valueList.filter(v => parseCentury(v) === null).length
-    : 0));
-
-function saveEdit() {
-    const e = editing.value;
-    if (!e || !e.label.trim()) return;
-    settings.updateSourceMetaField(e.key, { label: e.label.trim(), description: e.description.trim(), type: e.type });
-    editing.value = null;
+/** Categories are made and ordered in Settings. */
+function arrangeColumns() {
+    columnsOpen.value = false;
+    router.push({ name: 'settings', query: { section: 'manuscript-metadata' } });
 }
 
 function onResize(key, width, final) {
@@ -476,13 +470,14 @@ const summary = computed(() => {
     const stateCol = table.columnByKey.value.get('iiif:state');
     let manifests = 0;
     let fromDocs = 0;
-    let invalid = 0;
+    let marked = 0;
     for (const id of ids) {
         const m = table.value(id, manifestCol);
-        if (m) { manifests++; if (table.invalid(manifestCol, m)) invalid++; }
+        if (m) manifests++;
         else if (table.value(id, stateCol) === 'documents') fromDocs++;
+        for (const col of columns.value) if (table.invalid(col, table.value(id, col))) marked++;
     }
-    return { total: ids.length, manifests, fromDocs, invalid, edited: meta.editedCount() };
+    return { total: ids.length, manifests, fromDocs, marked, edited: meta.editedCount() };
 });
 
 // ---- closing menus ----------------------------------------------------------------------------
@@ -557,21 +552,29 @@ const fmt = (n) => n.toLocaleString('en-US');
                         <button class="ne-btn ne-btn--sm" :aria-expanded="columnsOpen" @click.stop="columnsOpen = !columnsOpen; exportOpen = false; cleanMenu = false">Columns ▾</button>
                         <div v-if="columnsOpen" class="menu menu--wide" @click.stop>
                             <div class="menu-scroll">
-                                <label v-for="col in table.columns.value.filter(c => !c.frozen)" :key="col.key" class="check">
-                                    <input type="checkbox" :checked="columns.some(c => c.key === col.key)" @change="table.toggleColumn(col.key)" />
-                                    {{ col.label }}
-                                    <span class="tag" :class="`tag--${col.group}`">{{ GROUP_LABELS[col.group] || '' }}</span>
-                                </label>
+                                <template v-for="cat in table.layout.value" :key="cat.key">
+                                    <template v-if="cat.columns.length">
+                                        <p class="menu-note">{{ cat.label }}</p>
+                                        <label v-for="col in cat.columns" :key="col.key" class="check">
+                                            <input type="checkbox" :checked="columns.some(c => c.key === col.key)" @change="table.toggleColumn(col.key)" />
+                                            {{ col.label }}
+                                        </label>
+                                    </template>
+                                </template>
                             </div>
                             <div class="menu-foot">
                                 <button class="link" @click="table.showAllColumns()">Show all</button>
                                 <button class="link" @click="meta.setHidden(table.columns.value.filter(c => c.hiddenByDefault).map(c => c.key))">Reset</button>
+                                <button class="link right" title="Make categories, order the columns, set what each may hold" @click="arrangeColumns">Categories and checks…</button>
                             </div>
                             <div class="add-column">
                                 <p class="menu-note">Add a column of your own</p>
                                 <div class="add-row">
-                                    <input v-model="newColumn.label" placeholder="Name, e.g. Notation type" @keydown.enter="addColumn" />
-                                    <select v-model="newColumn.type" :title="META_TYPES.find(t => t.key === newColumn.type).hint">
+                                    <input v-model="newColumn.label" placeholder="Name, e.g. Ink" @keydown.enter="addColumn" />
+                                    <select v-model="newColumn.category" aria-label="Category" title="The category the column stands under">
+                                        <option v-for="c in table.categories.value" :key="c.key" :value="c.key">{{ c.label }}</option>
+                                    </select>
+                                    <select v-model="newColumn.type" aria-label="Kind" :title="META_TYPES.find(t => t.key === newColumn.type).hint">
                                         <option v-for="t in META_TYPES" :key="t.key" :value="t.key">{{ t.label }}</option>
                                     </select>
                                     <button class="ne-btn ne-btn--sm ne-btn--primary" :disabled="!newColumn.label.trim()" @click="addColumn">Add</button>
@@ -607,15 +610,18 @@ const fmt = (n) => n.toLocaleString('en-US');
                         v-model="barText"
                         class="bar"
                         :readonly="barReadonly"
+                        :list="activeColumn && activeColumn.choices ? 'bar-choices' : null"
                         :placeholder="barReadonly ? 'This value is calculated and cannot be edited' : 'Value of the selected cell'"
                         aria-label="Value of the selected cell"
                         @focus="barFocused = true"
                         @blur="barFocused = false; commitBar()"
                         @keydown="onBarKey"
                     />
+                    <datalist v-if="activeColumn && activeColumn.choices" id="bar-choices"><option v-for="o in activeColumn.choices" :key="o" :value="o" /></datalist>
                     <span v-if="activeSource" class="row-actions">
                         <button class="ne-btn ne-btn--sm" :title="`Projects on ${activeSource}`" @click="projectAction.go">{{ projectAction.label }}</button>
-                        <button class="ne-btn ne-btn--sm" :title="`Browse the pages of ${activeSource}`" @click="openPages">Pages →</button>
+                        <button v-if="activeHasImages" class="ne-btn ne-btn--sm" :title="`Browse the pages of ${activeSource}`" @click="openPages">Pages →</button>
+                        <button v-else class="ne-btn ne-btn--sm" :title="`${activeSource} has no page images yet. Add a IIIF manifest to browse and mark its pages.`" @click="imagesFor = activeSource">Add page images…</button>
                     </span>
                 </div>
             </div>
@@ -623,7 +629,7 @@ const fmt = (n) => n.toLocaleString('en-US');
             <div class="iiif-note" v-if="summary.total">
                 <span><strong>{{ summary.manifests }}</strong> manuscript{{ summary.manifests === 1 ? '' : 's' }} with a IIIF manifest</span>
                 <span v-if="summary.fromDocs"><strong>{{ summary.fromDocs }}</strong> show pages from addresses in the corpus's document metadata</span>
-                <span v-if="summary.invalid" class="bad"><strong>{{ summary.invalid }}</strong> address{{ summary.invalid === 1 ? ' is' : 'es are' }} not a web address</span>
+                <button v-if="summary.marked" class="marked" title="Show the manuscripts with a marked value" @click="quick = 'problems'"><strong>{{ summary.marked }}</strong> value{{ summary.marked === 1 ? ' does' : 's do' }} not fit {{ summary.marked === 1 ? 'its' : 'their' }} column</button>
                 <span v-if="summary.edited"><strong>{{ summary.edited }}</strong> edited value{{ summary.edited === 1 ? '' : 's' }}</span>
             </div>
 
@@ -639,7 +645,7 @@ const fmt = (n) => n.toLocaleString('en-US');
                     :sort="sort"
                     :filters="filters"
                     :show-filters="showFilters"
-                    :group-labels="GROUP_LABELS"
+                    :group-labels="table.bandLabels.value"
                     :quiet-rows="quietRows"
                     @commit="apply"
                     @sort="cycleSort"
@@ -673,7 +679,7 @@ const fmt = (n) => n.toLocaleString('en-US');
         <button v-if="columnMenu.col.group === 'catalogue' || columnMenu.col.key === 'iiif:manifest'" @click="menuRevert">Put back to what the corpus says</button>
         <button v-if="columnMenu.col.group === 'catalogue'" @click="menuCopyToFilter" title="Makes a column of your own with the same values, usable as a filter on the public pages">Copy to a filter column of my own</button>
         <button v-if="!columnMenu.col.frozen" @click="menuHide">Hide this column</button>
-        <button v-if="columnMenu.col.removable" @click="menuEdit">Edit this column…</button>
+        <button v-if="!columnMenu.col.frozen" @click="menuSettings">Category, check and more…</button>
         <button v-if="columnMenu.col.removable" class="danger" @click="menuDelete">Delete this column</button>
     </div>
 
@@ -740,29 +746,17 @@ const fmt = (n) => n.toLocaleString('en-US');
         </template>
     </ModalDialog>
 
-    <!-- edit one of your own columns -->
-    <ModalDialog :open="!!editing" title="Edit column" width="30rem" @close="editing = null">
-        <div v-if="editing" class="dialog-body">
-            <label class="field">Name
-                <input class="ne-input" v-model="editing.label" @keydown.enter="saveEdit" />
-            </label>
-            <label class="field">Description <span class="optional">(optional)</span>
-                <input class="ne-input" v-model="editing.description" placeholder="Shown when you hover over the column heading" @keydown.enter="saveEdit" />
-            </label>
-            <label class="field">Kind
-                <select class="ne-input" v-model="editing.type">
-                    <option v-for="t in META_TYPES" :key="t.key" :value="t.key">{{ t.label }}</option>
-                </select>
-            </label>
-            <p class="note">{{ (META_TYPES.find(t => t.key === editing.type) || {}).hint }}</p>
-            <p v-if="editingUnparsed" class="ne-note ne-note--warn">
-                {{ editingUnparsed }} of the {{ editing.values }} value{{ editing.values === 1 ? '' : 's' }} cannot be read as a date or century.
-                They stay in the table but are left out of the timeline filter.
-            </p>
+    <ColumnSettingsDialog :open="!!settingsFor" :column-key="settingsFor" @close="settingsFor = ''" />
+
+    <!-- page images of the selected manuscript: what they are, and a place to give the address -->
+    <ModalDialog :open="!!imagesFor" :title="`Page images — ${imagesFor}`" width="38rem" @close="imagesFor = ''">
+        <IiifSetup v-if="imagesFor" :source="imagesFor" purpose="browse and mark the pages of this manuscript" />
+        <div v-if="imagesReady" class="ready">
+            <p><strong>The pages are there.</strong> They can be browsed now, and snippets can be marked on them — in a project, or on the pages directly.</p>
         </div>
         <template #footer>
-            <button class="ne-btn" @click="editing = null">Cancel</button>
-            <button class="ne-btn ne-btn--primary" :disabled="!editing || !editing.label.trim()" @click="saveEdit">Save</button>
+            <button class="ne-btn" @click="imagesFor = ''">{{ imagesReady ? 'Close' : 'Cancel' }}</button>
+            <button v-if="imagesReady" class="ne-btn ne-btn--primary" @click="openAddedPages">Open the pages &rarr;</button>
         </template>
     </ModalDialog>
 </div>
@@ -819,13 +813,12 @@ kbd { font-family: inherit; font-size: 0.72rem; background: var(--color-surface-
 .menu-scroll { max-height: 280px; overflow-y: auto; }
 .check { display: flex; align-items: center; gap: var(--space-2); padding: 0.3em 0.7em; font-size: 0.86rem; cursor: pointer; }
 .check:hover { background: var(--color-surface-muted); }
-.tag { margin-left: auto; font-size: 0.66rem; padding: 0 6px; border-radius: 999px; background: var(--color-surface-muted); color: var(--color-text-muted); }
-.tag--catalogue { background: #eef2ff; color: #3730a3; }
-.tag--iiif { background: #ecfeff; color: #155e75; }
-.tag--project { background: var(--color-accent-light); color: var(--color-accent-dark); }
 .menu-foot { display: flex; gap: var(--space-3); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--color-border); }
 .link { border: none; background: none; padding: 0; color: var(--color-primary); font-size: 0.82rem; }
 .link:hover { background: none; text-decoration: underline; }
+.link.right { margin-left: auto; }
+.marked { border: none; background: none; padding: 0; font: inherit; color: var(--color-danger); cursor: pointer; }
+.marked:hover { text-decoration: underline; }
 .add-column { border-top: 1px solid var(--color-border); padding-top: var(--space-1); }
 .add-row { display: flex; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-2); }
 .add-row input { flex: 1; min-width: 0; padding: 0.3em 0.6em; border: 1px solid var(--color-border-hover); border-radius: var(--radius-sm); font-size: 0.84rem; }
@@ -839,6 +832,7 @@ kbd { font-family: inherit; font-size: 0.72rem; background: var(--color-surface-
 .opts { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); font-size: 0.85rem; }
 .opts label { display: inline-flex; align-items: center; gap: 6px; }
 .found { margin: 0; font-size: 0.9rem; }
+.ready p { margin: 0; padding: var(--space-3) var(--space-4); background: var(--color-success-light); color: var(--color-success-dark); border-radius: var(--radius-md); font-size: 0.92rem; }
 .note { margin: 0; font-size: 0.8rem; color: var(--color-text-muted); }
 .preview { list-style: none; margin: 0; padding: 0; font-size: 0.8rem; border: 1px solid var(--color-border); border-radius: var(--radius-md); overflow: hidden; }
 .preview li { display: grid; grid-template-columns: 1.2fr 1fr auto 1fr; gap: var(--space-2); padding: 4px 8px; border-bottom: 1px solid var(--color-surface-muted); align-items: center; }

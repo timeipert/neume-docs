@@ -7,7 +7,7 @@ import {
     toneCount,
     firstSpecialSign,
     buildFrequency,
-    withFallback,
+    blendFrequency,
     compareDirections,
     compareSignatures,
     compareCodes,
@@ -109,11 +109,31 @@ describe('frequency', () => {
         const f = buildFrequency({ '*u': { count: 5, length: 2 }, '[*u]': { count: 3, length: 4 } });
         expect(f.direction('*u')).toBe(8);
     });
+});
 
-    it('falls back to a second source where the first knows nothing', () => {
-        const f = withFallback(buildFrequency({ '*d': 5 }), buildFrequency({ '*d': 9, '*u': 7 }));
-        expect(f.direction('*d')).toBe(5);
-        expect(f.direction('*u')).toBe(7);
+describe('blending two frequency sources', () => {
+    const mine = buildFrequency({ '*d': 2, '*u': 2 });
+    const reference = buildFrequency({ '*d': 1000, '*u': 5000, '*e': 90000 });
+
+    it('puts what the own corpus has seen above what only the reference knows', () => {
+        const f = blendFrequency(mine, reference);
+        expect(f.direction('*d')).toBeGreaterThan(f.direction('*e'));
+        expect(f.direction('*u')).toBeGreaterThan(f.direction('*e'));
+    });
+
+    it('lets the reference decide between patterns the own corpus counts equally', () => {
+        const f = blendFrequency(mine, reference);
+        expect(f.direction('*u')).toBeGreaterThan(f.direction('*d'));
+    });
+
+    it('orders what the own corpus has not seen by the reference', () => {
+        const f = blendFrequency(mine, buildFrequency({ '*e': 10, '*dd': 3 }));
+        expect(f.direction('*e')).toBeGreaterThan(f.direction('*dd'));
+        expect(f.direction('*dd')).toBeGreaterThan(0);
+    });
+
+    it('is the reference when nothing is counted in the own corpus', () => {
+        expect(blendFrequency(buildFrequency({}), reference)).toBe(reference);
     });
 });
 

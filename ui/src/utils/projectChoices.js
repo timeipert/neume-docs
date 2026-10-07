@@ -59,14 +59,24 @@ export function projectChips(project) {
     return [FOCUS_LABEL[project.focus], IMAGES_LABEL[project.images], SNIPPETS_LABEL[project.snippets]].filter(Boolean);
 }
 
-/** The way into the existing page editor for a cell: lines go to the line regions, signs to the whole page. */
-export function pageEditorQuery(project, { folio, code }) {
-    return {
-        source: project.source,
-        folio,
-        highlight: code || undefined,
-        region: project.snippets === 'signs' ? 'legacy' : undefined,
-        return_to: 'project',
-        return_id: project.id
-    };
+const without = (query) => Object.fromEntries(Object.entries(query).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+
+/**
+ * Where the table a cell was opened in is: the standard one unless it says otherwise. The page
+ * editor and the line editor bring the person back to it.
+ */
+const tableName = (from) => (from === 'extended' ? 'project_extended' : 'project_standard');
+
+/** The cell of a code, in the table it was opened in. */
+export function projectCellLocation(id, { code = '', from = 'standard' } = {}) {
+    return { name: tableName(from), params: { id }, query: without({ cell: code }) };
+}
+
+/**
+ * The page editor, in the frame of the project. `code` is the pattern to draw (it is ready on the
+ * palette), `line` a line region's id or `legacy` for the page as a whole, `from` the table the
+ * person came from.
+ */
+export function projectPageLocation(id, { folio = '', code = '', line = '', from = 'standard' } = {}) {
+    return { name: 'project_page', params: { id }, query: without({ folio, line, highlight: code, from: from === 'standard' ? '' : from }) };
 }

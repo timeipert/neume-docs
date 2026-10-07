@@ -113,7 +113,7 @@ describe('buildSourceExchange', () => {
 describe('buildExchange', () => {
     it('writes the format header and counts what it sends', () => {
         const { file, counts } = buildExchange([source(), source({ name: 'Empty 1', id: 'e' })], workspace(), { now: new Date('2026-10-04T10:00:00Z') });
-        expect(file).toMatchObject({ format: EXCHANGE_FORMAT, version: 1, generator: 'neumen-editor', exportedAt: '2026-10-04T10:00:00.000Z' });
+        expect(file).toMatchObject({ format: EXCHANGE_FORMAT, version: 1, generator: 'neume-docs', exportedAt: '2026-10-04T10:00:00.000Z' });
         expect(file.sources.map(s => s.quellensigle)).toEqual(['Aa 1']);
         expect(counts).toEqual({ sources: 1, regions: 1, items: 3, linked: 2, equivalents: 2 });
     });

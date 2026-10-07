@@ -2,7 +2,7 @@ import { computed, effectScope } from 'vue';
 import { useSettingsStore } from '../stores/settings';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useTranscriptionData } from './useTranscriptionData';
-import { buildFrequency, withFallback } from '../utils/neumeTable';
+import { blendFrequency, buildFrequency } from '../utils/neumeTable';
 import { getBaseCode } from '../utils/patternCode';
 import cmReference from '../data/cmReference.json';
 
@@ -12,9 +12,9 @@ import cmReference from '../data/cmReference.json';
  *
  * Codes come from four places — the Corpus Monodicum snapshot the app carries,
  * the corpus the user has imported, the project's code variants, and patterns
- * added by hand to the library. Frequencies are those of the whole CM unless
- * the user asked (Settings) for the loaded corpus instead; the other source
- * fills in whatever the first has never seen.
+ * added by hand to the library. Frequencies are those of the corpus the user has
+ * loaded; the snapshot only orders what that corpus cannot (Settings can ask for
+ * the snapshot alone).
  *
  * Built once and shared: the pieces are lazy, so components that never read
  * them cost nothing.
@@ -40,11 +40,14 @@ function create() {
 
     const loadedFrequency = computed(() => buildFrequency(patStats.value));
 
-    /** Frequency in the CM, per the user's choice of basis. */
+    /**
+     * How frequent each code is, for ordering: the corpus the user loaded, and the CM snapshot
+     * for what that corpus cannot tell apart (see blendFrequency). The snapshot alone is a choice in Settings.
+     */
     const freq = computed(() => (
-        settings.frequencyBasis === 'loaded'
-            ? withFallback(loadedFrequency.value, cmFrequency)
-            : withFallback(cmFrequency, loadedFrequency.value)
+        settings.frequencyBasis === 'snapshot'
+            ? cmFrequency
+            : blendFrequency(loadedFrequency.value, cmFrequency)
     ));
 
     /** Every code the library offers. */

@@ -63,6 +63,13 @@ export function fillStores(stores) {
     meta.set('Aa 13', 'herkunftsort', 'Aix', 'Aachen');
     settings.addSourceMetaField('Notation', '', 'text');
     settings.setSourceMetaValue('Aa 13', 'notation', 'Adiastematic');
+    // categories above the columns of the manuscripts table, and what a column may hold
+    settings.setMetadataSchema({
+        categories: [{ key: 'notation_group', label: 'Notation' }],
+        placement: { 'proj:notation': 'notation_group' },
+        order: ['proj:notation'],
+        checks: { 'proj:notation': { kind: 'list', values: ['Adiastematic', 'Staffless'], ignoreCase: false, message: '' } }
+    });
     settings.addCustomSign({ key: 'V', label: 'Virga', abbrev: 'v', description: '', glyph: 'note', glyphSvg: '' });
     settings.addCodeVariant('*uudd', { id: 'v1', code: '*uuVdd', label: 'with virga', description: '' });
     settings.setGlobalId('*dd', 'Type A');

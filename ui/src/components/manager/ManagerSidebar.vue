@@ -5,6 +5,7 @@ import { useTranscriptionData } from '../../composables/useTranscriptionData';
 import { useImageManifest } from '../../composables/useImageManifest';
 import { useIiifStore } from '../../stores/iiif';
 import { useAnnotationsStore } from '../../stores/annotations';
+import { RouterLink } from 'vue-router';
 import AlignmentReview from './AlignmentReview.vue';
 
 const props = defineProps(['selectedSource', 'selectedFolio']);
@@ -138,7 +139,9 @@ async function submitIiif() {
     <div v-if="dataLoading">Loading Data...</div>
     <div v-else-if="Object.keys(pageTree).length === 0">
         <div class="empty-state">
-            No manuscripts with images found.
+            <strong>No page images yet.</strong>
+            <p>Pages can only be browsed and marked on images. They come from a IIIF manifest: a web address that lists the pages of a manuscript.</p>
+            <p>Add one with <em>+ IIIF</em> above, or in <RouterLink to="/manuscripts/images">Manuscripts → Images</RouterLink>, where manifests are suggested from the MMMO catalogue.</p>
         </div>
     </div>
     <div class="tree" v-else>
@@ -280,7 +283,9 @@ async function submitIiif() {
 .btn-primary:hover:not(:disabled) { background: var(--color-primary-hover); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.empty-state { padding: 10px; color: var(--color-text-light); }
+.empty-state { padding: 12px 15px; color: var(--color-text-muted); font-size: 0.88rem; }
+.empty-state strong { color: var(--color-text); }
+.empty-state p { margin: 6px 0 0; }
 .modal-actions { margin-top: 15px; display: flex; justify-content: flex-end; }
 
 @media (max-width: 768px) {

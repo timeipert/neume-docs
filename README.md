@@ -55,7 +55,7 @@ The same three-level logic drives the comparison table (*Public → Neume Table*
 
 ### Inherited from CM-Transcription-Equivalents
 
-Pattern equivalents with Reference IDs and variants, IIIF manuscript annotation (line regions and polygon snippets), the pattern library with MEI templates, custom manuscripts without IIIF, OMMR4all import, public manuscript pages, static site export, workspace folder autosave.
+Pattern equivalents with Reference IDs and variants, IIIF manuscript annotation (line regions and polygon snippets), the pattern library with MEI templates, screenshot projects without IIIF, OMMR4all import, public manuscript pages, static site export, workspace folder autosave.
 
 ## The MMMO catalogue
 

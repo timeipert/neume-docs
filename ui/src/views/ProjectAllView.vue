@@ -40,7 +40,7 @@ const groups = computed(() => groupSelected(library.value, codes.value));
 const rows = computed(() => projects.value.map(p => ({
     id: p.id,
     name: p.name,
-    sub: `${p.source} · ${describeRange(p.from, p.to)}`,
+    sub: [p.name === p.source ? '' : p.source, describeRange(p.from, p.to)].filter(Boolean).join(' · '),
     to: { name: p.columnsChosen ? 'project_standard' : 'project_columns', params: { id: p.id } },
     snippets: allSnippets.value.get(p.id) || new Map(),
     has: new Set(tableCodes(p, scope.value)),
@@ -70,7 +70,7 @@ function openCell({ row, code }) {
         empty-text="No project has chosen columns yet."
         @open-cell="openCell"
     >
-        <template #thumb="{ snippet }"><SnippetThumb :snippet="snippet" :width="64" :height="48" /></template>
+        <template #thumb="{ snippet }"><SnippetThumb :snippet="snippet" :width="64" :height="46" /></template>
     </ProjectTable>
 </div>
 </template>

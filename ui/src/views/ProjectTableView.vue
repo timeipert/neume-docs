@@ -11,6 +11,8 @@ import ProjectTable from '../components/projects/ProjectTable.vue';
 import SnippetThumb from '../components/projects/SnippetThumb.vue';
 import CellDrawer from '../components/projects/CellDrawer.vue';
 import LinesPanel from '../components/projects/LinesPanel.vue';
+import ScreenshotsPanel from '../components/projects/ScreenshotsPanel.vue';
+import IiifSetup from '../components/iiif/IiifSetup.vue';
 import LineEditor from '../components/projects/LineEditor.vue';
 import PatternSearch from '../components/neume-table/PatternSearch.vue';
 
@@ -28,7 +30,7 @@ const patterns = usePatternLibraryStore();
 const toast = useToast();
 const {
     project, library, glyphs, freq, snippets, occurrences, occurringCounts, annotatedCounts,
-    hasTranscription, occurrencesLoaded, standardCodes, extendedCodes
+    hasTranscription, occurrencesLoaded, standardCodes, extendedCodes, needsIiif
 } = useProjectContext();
 
 const extended = computed(() => props.scope === 'extended');
@@ -49,6 +51,15 @@ const close = () => router.replace({ query: { ...route.query, cell: undefined } 
 /** Screenshots of lines: the signs are marked on the line, in the line editor. */
 const onLines = computed(() => project.value.images === 'screenshots' && project.value.snippets === 'lines');
 const editor = ref(null); // { lineId, draft, code, focusSign }
+
+/** Screenshots of single signs: an inbox for those not yet filed under a code. */
+const onSigns = computed(() => project.value.images === 'screenshots' && project.value.snippets === 'signs');
+
+/** A screenshot was filed: its cell opens, in the extended table if the standard one has no column for the code. */
+function onFiled(code) {
+    if (orderedCodes.value.includes(code)) open(code);
+    else router.push({ name: 'project_extended', params: { id: project.value.id }, query: { cell: code } });
+}
 
 function openLine({ lineId = '', draft, code = '', focusSign = '' } = {}) {
     editor.value = { lineId, draft: draft || { attrs: {} }, code, focusSign };
@@ -102,7 +113,12 @@ const next = computed(() => (extended.value
 
     <div v-else class="layout" :class="{ 'layout--aside': extended || cell }">
         <div class="main">
+            <!-- A project of page images without any: say so, here, where cells would offer them. -->
+            <IiifSetup v-if="needsIiif && !cell" :source="project.source" purpose="mark snippets on the pages of this manuscript">
+                <template #alternative>To work from screenshots instead, change the project in its <em>Settings</em>.</template>
+            </IiifSetup>
             <LinesPanel v-if="onLines" @open="openLine({ lineId: $event })" @add="openLine({ draft: { attrs: { ...$event } } })" />
+            <ScreenshotsPanel v-if="onSigns" :codes="orderedCodes" :paused="!!cell" @filed="onFiled" />
 
             <ProjectTable
                 mode="fill"
@@ -115,7 +131,7 @@ const next = computed(() => (extended.value
                 @open="open"
                 @remove="removeColumn"
             >
-                <template #thumb="{ snippet }"><SnippetThumb :snippet="snippet" :width="56" :height="42" /></template>
+                <template #thumb="{ snippet }"><SnippetThumb :snippet="snippet" :width="84" :height="60" /></template>
             </ProjectTable>
 
             <footer class="next">
@@ -161,7 +177,7 @@ const next = computed(() => (extended.value
 .main { min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); }
 .aside { position: sticky; top: var(--space-3); min-width: 0; }
 .aside :deep(.panel) { max-height: calc(100vh - 150px); overflow: hidden; }
-.next { display: flex; justify-content: flex-end; }
+.next { display: flex; justify-content: flex-start; }
 
 @media (max-width: 1100px) {
     .layout--aside { grid-template-columns: 1fr; }

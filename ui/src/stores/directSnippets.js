@@ -30,18 +30,30 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
 
     // Persist after changes settle; image writes are chunky, so avoid a write per keystroke.
     let saveTimer = null
+    let pending = false
     watch(collections, () => {
         if (!loaded.value) return
+        pending = true
         clearTimeout(saveTimer)
-        saveTimer = setTimeout(() => {
-            saveCollections(JSON.parse(JSON.stringify(collections.value)))
+        saveTimer = setTimeout(async () => {
+            pending = false
+            await saveCollections(JSON.parse(JSON.stringify(collections.value)))
         }, 400)
     }, { deep: true })
 
     /** Immediate write, for use before export or navigation away. */
     async function flush() {
         clearTimeout(saveTimer)
+        pending = false
         await saveCollections(JSON.parse(JSON.stringify(collections.value)))
+    }
+
+    // A screenshot pasted a moment before the tab is closed or hidden is written first, not lost.
+    // (The pages that edit the collections used to do this themselves; now every page can.)
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+        const settle = () => { if (pending && loaded.value) flush() }
+        window.addEventListener('pagehide', settle)
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') settle() })
     }
 
     function getCollection(id) {

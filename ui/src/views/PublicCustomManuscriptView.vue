@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { useDirectSnippetsStore } from '../stores/directSnippets';
 import { useSettingsStore } from '../stores/settings';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
+import { arrangeFields } from '../utils/metadataSchema';
 import PatternDisplay from '../components/PatternDisplay.vue';
 import PatternCode from '../components/PatternCode.vue';
 
@@ -29,7 +30,7 @@ const collection = computed(() =>
     directStore.publishedCollections.find(c => c.source === sourceParam.value) || null
 );
 
-const metaFields = computed(() => settings.sourceMetaFields || []);
+const metaFields = computed(() => arrangeFields(settings.sourceMetaFields || [], settings.metadataSchema));
 const metaValues = computed(() => {
     if (!collection.value) return [];
     return metaFields.value

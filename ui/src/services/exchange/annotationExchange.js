@@ -221,7 +221,7 @@ export function buildExchange(sources, workspace, { now = new Date() } = {}) {
         counts.equivalents += record.equivalents.length;
     }
     return {
-        file: { format: EXCHANGE_FORMAT, version: EXCHANGE_VERSION, generator: 'neumen-editor', exportedAt: now.toISOString(), sources: records },
+        file: { format: EXCHANGE_FORMAT, version: EXCHANGE_VERSION, generator: 'neume-docs', exportedAt: now.toISOString(), sources: records },
         counts
     };
 }

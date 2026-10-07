@@ -1,16 +1,17 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { RouterLink, useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import PatternDisplay from '../PatternDisplay.vue';
 import PatternCode from '../PatternCode.vue';
 import SnippetThumb from './SnippetThumb.vue';
+import IiifSetup from '../iiif/IiifSetup.vue';
 import { useProjectContext } from '../../composables/useProject';
 import { useDirectSnippetsStore } from '../../stores/directSnippets';
 import { useAnnotationsStore } from '../../stores/annotations';
 import { useSettingsStore } from '../../stores/settings';
 import { useToast } from '../../composables/useToast';
 import { categoryOf } from '../../utils/projectTable';
-import { pageEditorQuery } from '../../utils/projectChoices';
+import { projectPageLocation } from '../../utils/projectChoices';
 import { CLEF_CODE, CUSTOS_CODE } from '../../utils/neumeTable';
 import { fileToSnippet, imageFromPaste, imagesFromDrop } from '../../utils/snippetImages';
 import { findLine, lineLabel, signsOfLine, sortedLines } from '../../utils/lineSigns';
@@ -37,6 +38,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'navigate', 'open-line']);
 
 const router = useRouter();
+const route = useRoute();
 const toast = useToast();
 const direct = useDirectSnippetsStore();
 const annotations = useAnnotationsStore();
@@ -86,7 +88,13 @@ function saveAttr(snippet, def, value) {
 
 function openPage(folio, region) {
     if (!folio) return;
-    router.push({ name: 'polygons', query: { ...pageEditorQuery(project.value, { folio, code: props.code }), ...(region ? { region } : {}) } });
+    // A project that marks signs on the page as a whole opens the page that way; the editor brings the person back here.
+    router.push(projectPageLocation(project.value.id, {
+        folio,
+        code: props.code,
+        line: region || (project.value.snippets === 'signs' ? 'legacy' : ''),
+        from: route.name === 'project_extended' ? 'extended' : 'standard'
+    }));
 }
 
 function openSnippet(s) {
@@ -327,12 +335,11 @@ onBeforeUnmount(() => {
             </form>
         </section>
 
-        <!-- IIIF -->
+        <!-- IIIF: nothing to open without page images, so what is missing is said instead -->
         <template v-else>
-            <p v-if="!iiifAvailable" class="ne-note ne-note--warn">
-                There are no page images for <strong>{{ project.source }}</strong> yet. Add its manifest under
-                <RouterLink to="/manuscripts/images">Manuscripts → Images</RouterLink> to mark snippets.
-            </p>
+            <IiifSetup v-if="!iiifAvailable" compact :source="project.source" purpose="mark this pattern on the pages">
+                <template #alternative>Without page images, choose <strong>screenshots</strong> in the project's <em>Settings</em>.</template>
+            </IiifSetup>
 
             <section v-if="hasTranscription">
                 <h3>Where the transcription has it</h3>
@@ -342,7 +349,7 @@ onBeforeUnmount(() => {
                         <span class="folio">f. {{ p.folio }}</span>
                         <span class="where">line{{ p.lines.length === 1 ? '' : 's' }} {{ p.lines.join(', ') }}<template v-if="p.count > p.lines.length"> · {{ p.count }}×</template></span>
                         <span v-if="p.drawn" class="ne-chip drawn" :title="`${p.drawn} snippet(s) drawn on this folio`">{{ p.drawn }} drawn</span>
-                        <button class="ne-btn ne-btn--sm" @click="openPage(p.folio)">Open page &rarr;</button>
+                        <button v-if="iiifAvailable" class="ne-btn ne-btn--sm" @click="openPage(p.folio)">Open page &rarr;</button>
                     </li>
                 </ul>
                 <button v-if="places.length > LIMIT" class="ne-btn ne-btn--ghost ne-btn--sm more" @click="showAllPlaces = !showAllPlaces">
@@ -350,7 +357,7 @@ onBeforeUnmount(() => {
                 </button>
             </section>
 
-            <section>
+            <section v-if="iiifAvailable">
                 <h3>Open a folio</h3>
                 <form class="open" @submit.prevent="openPage(folioChoice)">
                     <input v-model.trim="folioChoice" class="ne-input" list="cd-folios" placeholder="Folio, e.g. 12r" aria-label="Folio" autocomplete="off" />

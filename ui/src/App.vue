@@ -24,7 +24,7 @@ const isMenuOpen = ref(false);
  */
 const fromProject = computed(() => route.query.return_to === 'project');
 const inProjects = computed(() => route.path.startsWith('/projects') || fromProject.value);
-const inManuscripts = computed(() => !fromProject.value && ['/manuscripts', '/ommr', '/polygons', '/annotations', '/custom-manuscripts'].some(p => route.path.startsWith(p)));
+const inManuscripts = computed(() => !fromProject.value && ['/manuscripts', '/ommr', '/polygons', '/annotations'].some(p => route.path.startsWith(p)));
 const inPatterns = computed(() => route.path.startsWith('/patterns'));
 
 // A menu left open over the new page is disorienting, so close on navigation.

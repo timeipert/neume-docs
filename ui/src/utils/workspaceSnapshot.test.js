@@ -21,10 +21,25 @@ describe('capturing the workspace', () => {
         expect(data.manuscriptMeta.overrides['Aa 13'].herkunftsort).toBe('Aix');
         expect(data.settings.customSigns[0].key).toBe('V');
         expect(data.settings.displayMode).toBe('text');
+        // the arrangement of the manuscripts table travels with the settings
+        expect(data.settings.metadataSchema.categories).toEqual([{ key: 'notation_group', label: 'Notation' }]);
+        expect(data.settings.metadataSchema.checks['proj:notation'].values).toEqual(['Adiastematic', 'Staffless']);
         expect(data.directSnippets).toHaveLength(1);
         expect(data.projects.projects).toHaveLength(1);
         expect(data.projects.projects[0]).toMatchObject({ source: 'Aa 13', from: '1r', to: '9v', columns: ['*ud'], extended: ['*uud'] });
         expect(isEmptyWorkspace(data)).toBe(false);
+    });
+
+    it('is brought back with its categories and checks, and a file with a broken schema does no harm', async () => {
+        const stores = await freshStores();
+        fillStores(stores);
+        const data = captureWorkspace(stores);
+        const other = await freshStores();
+        applyWorkspace(other, data, { replace: true });
+        expect(other.settings.metadataSchema).toEqual(stores.settings.metadataSchema);
+
+        applyWorkspace(other, { settings: { metadataSchema: { categories: 'x', checks: 7, placement: [] } } });
+        expect(other.settings.metadataSchema).toEqual({ categories: [], placement: {}, order: [], checks: {} });
     });
 
     it('is not empty when projects are all there is', async () => {

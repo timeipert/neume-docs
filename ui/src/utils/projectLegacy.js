@@ -94,3 +94,14 @@ export function legacyDrafts({ tables = [], collections = [], projects = [], dis
 
     return drafts;
 }
+
+/**
+ * A collection of screenshots of the same manuscript that no project holds — left behind when its project
+ * was deleted. A new project for that manuscript takes it up again instead of starting another, so what
+ * was pasted in is never out of reach.
+ */
+export function freeCollectionFor(source, collections = [], projects = []) {
+    if (!source) return null;
+    const held = new Set(projects.map(p => p.collectionId).filter(Boolean));
+    return collections.find(c => c && c.source === source && !held.has(c.id)) || null;
+}

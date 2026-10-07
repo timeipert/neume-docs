@@ -5,9 +5,7 @@ import SettingsView from '../views/SettingsView.vue'
 import WorkspaceView from '../views/WorkspaceView.vue'
 import PatternLibraryView from '../views/PatternLibraryView.vue'
 import PolygonManagerView from '../views/PolygonManagerView.vue'
-import RegionEditorView from '../views/RegionEditorView.vue'
 import OmmrExplorerView from '../views/OmmrExplorerView.vue'
-import CustomManuscriptsView from '../views/CustomManuscriptsView.vue'
 import PublicManuscriptsView from '../views/PublicManuscriptsView.vue'
 import PublicNotationView from '../views/PublicNotationView.vue'
 import PublicNeumeTableView from '../views/PublicNeumeTableView.vue'
@@ -22,6 +20,7 @@ import ProjectShellView from '../views/ProjectShellView.vue'
 import ProjectColumnsView from '../views/ProjectColumnsView.vue'
 import ProjectTableView from '../views/ProjectTableView.vue'
 import ProjectAllView from '../views/ProjectAllView.vue'
+import ProjectPageView from '../views/ProjectPageView.vue'
 
 // Import storage for guard
 import { useWorkspaceStorage } from '../composables/useWorkspaceStorage';
@@ -30,6 +29,7 @@ import { useProjectsStore } from '../stores/projects';
 import { corpusReady } from '../composables/useTranscriptionData';
 import { adoptLegacyProjects } from '../composables/useProjectAdoption';
 import { getBaseCode } from '../utils/patternCode';
+import { projectPageLocation } from '../utils/projectChoices';
 
 /** Where a project is worked on first: choosing its columns, or — once chosen — filling the table. */
 function projectHome(id) {
@@ -47,6 +47,17 @@ function projectCellTarget(to) {
         params: { id: to.params.id },
         query: { cell: code || undefined }
     };
+}
+
+/**
+ * A page editor address that was made for a project (`return_to=project`, before the editor had a
+ * place in the project's frame) leads to the same page inside the project.
+ */
+function inProjectFrame(to) {
+    if (to.query.return_to !== 'project' || !to.query.return_id) return true;
+    return projectPageLocation(String(to.query.return_id), {
+        folio: String(to.query.folio || ''), code: String(to.query.highlight || ''), line: String(to.query.line || to.query.region || '')
+    });
 }
 
 const nothing = { render: () => null };
@@ -118,6 +129,8 @@ const router = createRouter({
         { path: 'standard', name: 'project_standard', component: ProjectTableView, props: { scope: 'standard' }, meta: { title: 'Standard table' } },
         { path: 'extended', name: 'project_extended', component: ProjectTableView, props: { scope: 'extended' }, meta: { title: 'Extended table' } },
         { path: 'all', name: 'project_all', component: ProjectAllView, meta: { title: 'All manuscripts' } },
+        // The page editor, inside the frame of the project.
+        { path: 'page', name: 'project_page', component: ProjectPageView, meta: { title: 'Page', fill: true } },
         // A link to one cell, from wherever the person was working on it.
         { path: 'cell', name: 'project_cell', redirect: projectCellTarget }
       ]
@@ -162,12 +175,8 @@ const router = createRouter({
       component: OmmrExplorerView,
       meta: { title: 'Import', requiresWorkspace: true }
     },
-    {
-      path: '/custom-manuscripts',
-      name: 'custom_manuscripts',
-      component: CustomManuscriptsView,
-      meta: { title: 'Custom Manuscripts', requiresWorkspace: true }
-    },
+    // Collections of screenshots belong to the projects that use them.
+    { path: '/custom-manuscripts', redirect: { name: 'projects' } },
     {
       path: '/workspace',
       name: 'workspace',
@@ -184,14 +193,11 @@ const router = createRouter({
       path: '/polygons',
       name: 'polygons',
       component: PolygonManagerView,
+      beforeEnter: inProjectFrame,
       meta: { title: 'Manuscripts', requiresWorkspace: true }
     },
-    {
-      path: '/polygons/edit-region',
-      name: 'region_editor',
-      component: RegionEditorView,
-      meta: { title: 'Edit Line Region', requiresWorkspace: true }
-    },
+    // Drawing a line's box is part of the page editor now.
+    { path: '/polygons/edit-region', redirect: (to) => ({ name: 'polygons', query: to.query }) },
     {
       path: '/public',
       name: 'public_directory',

@@ -31,6 +31,29 @@ if (!data) {
     process.exit(2);
 }
 
+/** A IIIF server inside the browser: one manifest of 300 pages, each an image with a few staves drawn on it. */
+async function mockIiif(page) {
+    const labels = [];
+    for (let n = 1; n <= 150; n++) labels.push(`${n}r`, `${n}v`);
+    const manifest = {
+        '@context': 'http://iiif.io/api/presentation/2/context.json', '@id': 'https://iiif.example.test/manifest.json', '@type': 'sc:Manifest', label: 'Mock',
+        sequences: [{ canvases: labels.map((label, i) => ({
+            '@id': `https://iiif.example.test/canvas/${i}`, '@type': 'sc:Canvas', label, width: 800, height: 1100,
+            images: [{ resource: { '@id': `https://iiif.mock/img/${i}/full/full/0/default.jpg`, service: { '@id': `https://iiif.mock/img/${i}` } } }]
+        })) }]
+    };
+    const cors = { 'access-control-allow-origin': '*' };
+    await page.route('https://iiif.example.test/**', r => r.fulfill({ status: 200, headers: cors, contentType: 'application/json', body: JSON.stringify(manifest) }));
+    const png = Buffer.from(await page.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = 800; c.height = 1100;
+        const g = c.getContext('2d'); g.fillStyle = '#efe6cf'; g.fillRect(0, 0, 800, 1100);
+        g.strokeStyle = '#8b5a2b';
+        for (let i = 0; i < 10; i++) { const y = 140 + i * 90; for (let k = 0; k < 4; k++) { g.beginPath(); g.moveTo(60, y + k * 12); g.lineTo(740, y + k * 12); g.stroke(); } g.fillStyle = '#222'; for (let j = 0; j < 9; j++) { g.beginPath(); g.arc(90 + j * 72, y + 10 + (j * 7) % 30, 7, 0, 7); g.fill(); } }
+        return c.toDataURL('image/png').split(',')[1];
+    }), 'base64');
+    await page.route('https://iiif.mock/**', r => r.fulfill({ status: 200, headers: cors, contentType: 'image/png', body: png }));
+}
+
 const STANDARD = ['*', '*d', '*u', '*e', '*dd', '*ud', '*uu', '*du', '*udd', '*uud', '*ddu', 'L', 'O', 'Q', ',', 'Clef', 'Custos'];
 
 const browser = await chromium.launch({ headless: true });
@@ -156,6 +179,78 @@ try {
     await page.waitForSelector('.drawer', { state: 'detached' });
     step('Standard table: a cell opens beside it, with an address, and closes with Esc');
 
+    // 5b. Without page images nothing of IIIF is offered: what is missing is said, and the address can be given right there.
+    await page.locator('.pt--fill .r-snip .cell').first().click();
+    await page.waitForSelector('.drawer');
+    assert.ok(await page.locator('.drawer .setup').count(), 'the cell says that page images are missing');
+    assert.equal(await page.locator('.drawer .places .ne-btn, .drawer .open').count(), 0, 'and offers no page to open');
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.setup');
+    await shot('no-page-images');
+    await mockIiif(page);
+    await page.getByLabel('Manifest address').fill('not an address');
+    await page.getByLabel('Manifest address').blur();
+    assert.match(await page.locator('.setup .error').innerText(), /not a web address/);
+    await page.getByLabel('Manifest address').fill('https://iiif.example.test/manifest.json');
+    await page.getByRole('button', { name: 'Use it' }).click();
+    await page.waitForSelector('.setup', { state: 'detached' });
+    step('a project of page images without any says what is missing, and takes the manifest address there');
+
+    // 5c. The page editor in the frame of the project, and the way back to the cell.
+    await page.locator('.pt--fill .r-snip .cell').first().click();
+    await page.waitForSelector('.drawer .places .ne-btn');
+    await page.locator('.drawer .places .ne-btn').first().click();
+    await page.waitForURL(/\/projects\/[^/]+\/page\?/);
+    assert.ok(await page.locator('a.tab', { hasText: 'Standard table' }).count(), 'the tabs of the project stay');
+    await page.waitForSelector('.tab.page');
+    await page.waitForSelector('img.page.on');
+    // the page opens on itself: nothing jumps ahead. A box around a line, a name, and the line is saved.
+    assert.ok(await page.locator('.bench .toolbar', { hasText: 'Lines on this page' }).count(), 'the page shows its lines, not an editor for one');
+    const dragOnPage = async (x1, y1, x2, y2) => {
+        const b = await page.locator('img.page').boundingBox();
+        await page.mouse.move(b.x + b.width * x1, b.y + b.height * y1);
+        await page.mouse.down();
+        await page.mouse.move(b.x + b.width * x2, b.y + b.height * y2, { steps: 8 });
+        await page.mouse.up();
+    };
+    await dragOnPage(0.06, 0.185, 0.94, 0.265);
+    await page.waitForSelector('.name-card');
+    assert.ok(await page.locator('.name-card .chip').count(), 'a new line is proposed a name');
+    await page.keyboard.press('Enter');
+    await page.waitForURL(/[?&]line=/);
+    await shot('page-in-project');
+    assert.ok(await page.locator('.bar').getByRole('button', { name: /Back to the cell/ }).count(), 'the way back to the cell is one click away');
+    assert.ok(await page.locator('.bar .looking').count(), 'the code the page was opened for is named, with its folios');
+    // the pattern the page was opened for is ready, on cards big enough to see
+    await page.waitForSelector('.palette .card.on');
+    const card = await page.locator('.palette .card').first().boundingBox();
+    assert.ok(card.width >= 80 && card.height >= 80, 'the patterns are cards, not a list');
+    // a box around a sign is saved at once
+    const area = await page.locator('.stage').boundingBox();
+    await page.mouse.move(area.x + area.width * 0.1, area.y + area.height / 2 - 40);
+    await page.mouse.down();
+    await page.mouse.move(area.x + area.width * 0.16, area.y + area.height / 2 + 40, { steps: 8 });
+    await page.mouse.up();
+    await page.waitForSelector('.pill.saved');
+    assert.match(await page.locator('.panel .tab', { hasText: 'Signs' }).innerText(), /1/, 'the sign is counted at once');
+    await page.getByRole('button', { name: /Back to the cell/ }).click();
+    await page.waitForSelector('.drawer');
+    assert.equal(await page.locator('.drawer .grid .snip').count(), 1, 'back at the cell, the snippet is there');
+    step('the page editor opens inside the project: tabs stay, a line region and a snippet are drawn, and the cell shows it');
+    await page.keyboard.press('Escape');
+
+    // An address made for a project before the editor had its place in the frame leads there now.
+    const projectId = page.url().match(/projects\/([^/?]+)/)[1];
+    await page.goto(`${base}/#/polygons?source=${encodeURIComponent(name)}&folio=1r&return_to=project&return_id=${projectId}`);
+    await page.waitForURL(/\/projects\/[^/]+\/page\?/);
+    await page.waitForSelector('.tab.page');
+    // seen on its own, the page leads to the projects of the manuscript
+    await page.goto(`${base}/#/polygons?source=${encodeURIComponent(name)}&folio=1r`);
+    await page.waitForSelector('.strip a');
+    assert.match(await page.locator('.strip a').first().getAttribute('href'), /\/projects\/[^/]+\/page/, 'on its own, the page opens inside the project of the manuscript');
+    step('the old address of a page made for a project, and the page on its own, lead into the project');
+    await page.goBack();
+
     await page.getByRole('link', { name: /Extended table/ }).first().click();
     await page.waitForSelector('.aside .panel');
     await page.locator('#pattern-search').fill('*ed');
@@ -270,12 +365,63 @@ try {
     await page.getByRole('button', { name: 'Done' }).click();
     await page.waitForSelector('.md-dialog', { state: 'detached' });
     assert.equal(await page.locator('.lines .card').count(), 1, 'the line is listed');
-    assert.ok(await page.locator('.pt--fill .r-snip .cell .n').first().innerText(), 'the sign is a snippet of its column');
+    await page.locator('.pt--fill .r-snip .cell .stack').first().waitFor();  // the sign is a snippet of its column
     await page.locator('.pt--fill .r-snip .cell').first().click();
     await page.waitForSelector('.drawer');
     await page.locator('.drawer .grid .snip').first().click();
     assert.match(await page.locator('.drawer .detail-head strong').innerText(), /f\. 118r · l\. 2 · sign 1/);
     step('Screenshots of lines: a line (folio and line checked), signs marked on it, each tied to its line');
+
+    // 6c. Screenshots of signs: pasted in, filed later ----------------------------
+    await page.goto(`${base}/#/projects/new`);
+    await page.waitForSelector('.cc-card');
+    await page.getByRole('radio', { name: /The manuscript/ }).click();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.locator('#w-source').fill('Sign codex');
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('radio', { name: /Screenshots/ }).click();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('radio', { name: /screenshot of the sign/ }).click();
+    await page.getByRole('button', { name: /Create project/ }).click();
+    await page.waitForSelector('.pt--select');
+    await page.locator('th[data-code="*"] input[type=checkbox]').check({ force: true });
+    await page.getByRole('button', { name: /^Standard table/ }).click();
+    await page.waitForSelector('.pt--fill');
+    await page.waitForSelector('.shots');
+    const signPng = Buffer.from(await page.evaluate(() => {
+        const c = document.createElement('canvas'); c.width = 60; c.height = 40;
+        const g = c.getContext('2d'); g.fillStyle = '#f6efdc'; g.fillRect(0, 0, 60, 40);
+        g.fillStyle = '#222'; g.beginPath(); g.arc(30, 20, 12, 0, 7); g.fill();
+        return c.toDataURL('image/png').split(',')[1];
+    }), 'base64');
+    await page.locator('.shots input[type=file]').setInputFiles({ name: 'sign.png', mimeType: 'image/png', buffer: signPng });
+    await page.waitForSelector('.shots .inbox li');
+    // an image pasted anywhere on the page lands in the inbox too
+    await page.evaluate(async () => {
+        const c = document.createElement('canvas'); c.width = 50; c.height = 50;
+        c.getContext('2d').fillRect(10, 10, 30, 30);
+        const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+        const dt = new DataTransfer();
+        dt.items.add(new File([blob], 'pasted.png', { type: 'image/png' }));
+        document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    });
+    await page.waitForFunction(() => document.querySelectorAll('.shots .inbox li').length === 2);
+    assert.match(await page.locator('.shots .count').innerText(), /2 to file/);
+    await page.locator('.shots .inbox li input').first().fill('xx');
+    assert.ok(await page.locator('.shots .inbox li .error').count(), 'a code that does not fit is refused');
+    assert.ok(await page.locator('.shots .inbox li').first().getByRole('button', { name: 'File' }).isDisabled());
+    await page.locator('.shots .inbox li input').first().fill('*');
+    await page.locator('.shots .inbox li').first().getByRole('button', { name: 'File' }).click();
+    await page.waitForSelector('.drawer');
+    assert.equal(await page.locator('.drawer .grid .snip').count(), 1, 'the screenshot is a snippet of its column, whose cell opens');
+    assert.equal(await page.locator('.shots .inbox li').count(), 1, 'one is still to file');
+    await page.locator('.drawer .nav .ne-btn').last().click();
+    await page.locator('.shots .inbox li input').first().fill('*uud');
+    await page.locator('.shots .inbox li').first().getByRole('button', { name: 'File' }).click();
+    await page.waitForURL(/project_extended|\/extended/);
+    await page.waitForSelector('.drawer');
+    assert.equal(await page.locator('.drawer .grid .snip').count(), 1, 'a code outside the standard table is filed in the extended table, and its cell opens there');
+    step('Screenshots of signs: pasted or chosen into an inbox, filed under a code that is checked and gets its column');
 
     // 7. The manuscript metadata table ---------------------------------------
     await page.goto(`${base}/#/manuscripts`);
@@ -353,7 +499,7 @@ try {
 
     const [download] = await Promise.all([
         page.waitForEvent('download'),
-        (async () => { await page.getByRole('button', { name: /Export/ }).click(); await page.getByRole('button', { name: 'Download CSV', exact: true }).click(); })()
+        (async () => { await page.getByRole('button', { name: /^Export ▾/ }).click(); await page.getByRole('button', { name: 'Download CSV', exact: true }).click(); })()
     ]);
     const { readFileSync } = await import('node:fs');
     const csv = readFileSync(await download.path(), 'utf8');
@@ -383,12 +529,54 @@ try {
     const ownHead = page.locator('th.head', { hasText: 'Notation type' });
     await ownHead.hover();
     await ownHead.locator('.col-menu').click({ force: true });
-    await page.getByRole('button', { name: /Edit this column/ }).click();
+    await page.getByRole('button', { name: /Category, check and more/ }).click();
     await page.waitForSelector('.md-dialog');
     await page.locator('.md-dialog input.ne-input').first().fill('Notation family');
     await page.locator('.md-dialog .md-foot .ne-btn--primary').click();
     await page.waitForSelector('th.head:has-text("Notation family")');
     step('an own column is renamed from its menu, in the table');
+
+    // 8b. Categories above the columns, and what a column may hold ---------------
+    await page.goto(`${base}/#/settings?section=manuscript-metadata`);
+    await page.waitForSelector('.schema');
+    await page.getByLabel('New category').fill('Notation');
+    await page.getByRole('button', { name: 'Add category' }).click();
+    await page.getByLabel('New column in Notation').fill('Ink');
+    await page.keyboard.press('Enter');
+    await page.getByLabel('Category of Notation family').selectOption({ label: 'Notation' });
+    const notation = page.locator('.cat').filter({ has: page.locator('input.name[value="Notation"]') });
+    assert.deepEqual(await notation.locator('.col .label').allInnerTexts(), ['Notation family', 'Ink'], 'both columns stand under Notation, as they were made');
+    await notation.locator('.col').filter({ hasText: 'Ink' }).getByRole('button', { name: 'Check…' }).click();
+    await page.getByRole('radio', { name: 'One of a list' }).click();
+    await page.locator('textarea.list').fill('Iron gall\nCarbon');
+    await page.locator('#column-settings').getByRole('button', { name: 'Save' }).or(page.locator('.md-foot .ne-btn--primary')).first().click();
+    await page.waitForSelector('.md-dialog', { state: 'detached' });
+    assert.equal(await notation.locator('.badge').innerText(), 'one of 2');
+    step('Settings: a category of your own, a column moved into it, a list as its check');
+
+    await page.goto(`${base}/#/manuscripts`);
+    await page.waitForSelector('.grid-scroller td');
+    assert.ok((await page.locator('.band-row .band').allInnerTexts()).some(t => /notation/i.test(t)), 'the category is a band above its columns');
+    const heads = await page.locator('.head .label').allInnerTexts();
+    assert.deepEqual(heads.slice(-2), ['Notation family', 'Ink'], 'its columns stand under it, in the order given');
+    const inkAt = heads.indexOf('Ink');
+    await page.locator(`td[data-r="0"][data-c="${inkAt}"]`).click();
+    await page.keyboard.press('Enter');
+    await page.waitForSelector('.choices');
+    assert.deepEqual(await page.locator('.choices li').allInnerTexts(), ['Iron gall', 'Carbon']);
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('Enter');
+    assert.equal((await page.locator(`td[data-r="0"][data-c="${inkAt}"]`).innerText()).trim(), 'Iron gall');
+    await page.locator(`td[data-r="1"][data-c="${inkAt}"]`).click();
+    await page.keyboard.type('Quill');
+    await page.keyboard.press('Enter');
+    const quill = page.locator(`td[data-r="1"][data-c="${inkAt}"]`);
+    assert.ok(await quill.evaluate(e => e.classList.contains('invalid')), 'a value that is not in the list is marked');
+    assert.match(await quill.getAttribute('title'), /Expected one of: Iron gall, Carbon/);
+    assert.equal((await quill.innerText()).trim(), 'Quill', 'and kept: a check never refuses');
+    await page.getByRole('radio', { name: 'Problems' }).click();
+    assert.equal(await page.locator('.grid-scroller tbody tr').count(), 1, 'the quick filter finds the manuscript with a marked value');
+    step('the list is a drop-down in the table, what does not fit is marked and kept, and found under Problems');
 
     // 9. Pattern library: where signs, variants and preferred IDs are set up --
     await page.goto(`${base}/#/patterns?setup=signs`);
@@ -406,7 +594,7 @@ try {
 
     await page.goto(`${base}/#/settings`);
     await page.waitForSelector('.panel');
-    assert.equal(await page.locator('.panel').count(), 3, 'Settings holds the global preferences and the snippet attributes');
+    assert.equal(await page.locator('.panel').count(), 4, 'Settings holds the global preferences, the manuscript metadata and the snippet attributes');
     // snippet attributes: a folio is a number and r or v, by default
     assert.ok(await page.locator('#snippet-attributes').count());
     assert.equal(await page.locator('#snippet-attributes tbody tr').count(), 3, 'folio, line and syllable');

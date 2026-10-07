@@ -111,6 +111,7 @@ defineExpose({ reveal });
             <tr class="l1">
                 <th class="corner" rowspan="2" scope="col">
                     <span class="corner-title">{{ matrix ? 'Projects' : 'Shapes' }}</span>
+                    <span class="corner-sub">{{ columnCount }} column{{ columnCount === 1 ? '' : 's' }}</span>
                 </th>
                 <th v-for="g in groups" :key="g.key" class="cat" :class="`cat--${kindOf(g)}`" :colspan="g.columns.length" scope="colgroup" :data-cat="g.key">
                     <div class="cat-inner">
@@ -149,7 +150,7 @@ defineExpose({ reveal });
                             />
                             <span v-if="isPseudo(c.code)" class="pseudo">{{ pseudoLabel(c.code) }}</span>
                             <template v-else>
-                                <span class="glyph"><PatternDisplay :pattern="c.code" :glyphs="glyphs" :scale="0.85" /></span>
+                                <span class="glyph"><PatternDisplay :pattern="c.code" :glyphs="glyphs" :scale="1.1" /></span>
                                 <PatternCode :pattern="c.code" class="code" />
                             </template>
                             <span v-if="c.variantOf" class="vtag" :title="`Variant of ${c.variantOf}`">variant{{ c.variantLabel ? ` · ${c.variantLabel}` : '' }}</span>
@@ -190,12 +191,10 @@ defineExpose({ reveal });
                                 :aria-label="`${r.name}, ${c.code}: ${(r.snippets.get(c.code) || []).length} snippets`"
                                 @click="emit('open-cell', { row: r, code: c.code })"
                             >
-                                <template v-if="(r.snippets.get(c.code) || []).length">
-                                    <span class="thumbs">
-                                        <span v-for="s in (r.snippets.get(c.code) || []).slice(0, 1)" :key="s.id" class="thumb"><slot name="thumb" :snippet="s" :code="c.code" /></span>
-                                    </span>
-                                    <span class="n">{{ (r.snippets.get(c.code) || []).length }}</span>
-                                </template>
+                                <span v-if="(r.snippets.get(c.code) || []).length" class="stack" :class="{ many: (r.snippets.get(c.code) || []).length > 1 }">
+                                    <span class="thumb"><slot name="thumb" :snippet="r.snippets.get(c.code)[0]" :code="c.code" /></span>
+                                    <span v-if="(r.snippets.get(c.code) || []).length > 1" class="n">{{ (r.snippets.get(c.code) || []).length }}</span>
+                                </span>
                                 <span v-else class="add" aria-hidden="true">+</span>
                             </button>
                             <span v-else class="off-mark" aria-hidden="true" title="Not a column of this project">·</span>
@@ -224,12 +223,10 @@ defineExpose({ reveal });
                             :aria-label="snippetsOf(c.code).length ? `${snippetsOf(c.code).length} snippets for ${c.code}: open` : `Add a snippet for ${c.code}`"
                             @click="emit('open', c.code)"
                         >
-                            <template v-if="snippetsOf(c.code).length">
-                                <span class="thumbs">
-                                    <span v-for="s in snippetsOf(c.code).slice(0, 4)" :key="s.id" class="thumb"><slot name="thumb" :snippet="s" :code="c.code" /></span>
-                                </span>
-                                <span class="n">{{ snippetsOf(c.code).length }}</span>
-                            </template>
+                            <span v-if="snippetsOf(c.code).length" class="stack" :class="{ many: snippetsOf(c.code).length > 1 }">
+                                <span class="thumb"><slot name="thumb" :snippet="snippetsOf(c.code)[0]" :code="c.code" /></span>
+                                <span v-if="snippetsOf(c.code).length > 1" class="n">{{ snippetsOf(c.code).length }}</span>
+                            </span>
                             <span v-else class="add" aria-hidden="true">+</span>
                         </button>
                     </td>
@@ -242,44 +239,49 @@ defineExpose({ reveal });
 </template>
 
 <style scoped>
-.pt-scroll { overflow: auto; max-width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-sm); }
+/* A table of equal columns that is as wide as its columns, in a card that is as wide as the table. */
+.pt-scroll { overflow: auto; width: fit-content; max-width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-sm); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.pt { border-collapse: separate; border-spacing: 0; font-size: 0.88rem; min-width: 100%; --line: #e6ebf1; --shape: #3b82f6; --sign: #8b5cf6; --other: #64748b; }
+.pt { --line: #e8edf3; --group: #cfd9e6; --shape: #3b82f6; --sign: #8b5cf6; --other: #64748b; --rowhead: 124px; --colw: 112px;
+      border-collapse: separate; border-spacing: 0; font-size: 0.88rem; width: max-content; min-width: 0; }
 .pt th, .pt td { border-bottom: 1px solid var(--line); padding: 0; background: var(--color-surface); }
 .pt tbody tr:last-child th, .pt tbody tr:last-child td { border-bottom: none; }
-.pt .first { border-left: 3px solid var(--line); }
+/* a hairline between columns, a stronger one between groups */
+.pt th.col, .pt td.snip, .pt td.tr { border-left: 1px solid var(--line); }
+.pt .first { border-left: 2px solid var(--group) !important; }
 
 /* the left column and the header stay put while the table scrolls */
-.corner, tbody th { position: sticky; left: 0; z-index: 3; min-width: 150px; max-width: 150px; text-align: left; padding: var(--space-3) var(--space-4); background: #f8fafc; border-right: 1px solid var(--color-border-hover); }
+.corner, tbody th { position: sticky; left: 0; z-index: 3; width: var(--rowhead); min-width: var(--rowhead); max-width: var(--rowhead); box-sizing: border-box; text-align: left; padding: var(--space-3); background: #f8fafc; border-right: 1px solid var(--color-border-hover); }
 .corner { top: 0; z-index: 5; vertical-align: bottom; }
-.corner-title { display: block; font-weight: 700; font-size: 0.95rem; }
-.corner-sub { display: block; margin-top: 2px; font-size: 0.74rem; color: var(--color-text-muted); font-weight: 500; }
-tbody th { font-size: 0.82rem; font-weight: 600; color: var(--color-text); }
-tbody th small { display: block; margin-top: 1px; font-size: 0.72rem; font-weight: 500; color: var(--color-text-muted); }
+.corner-title, tbody th { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--color-text-muted); }
+.corner-title { display: block; }
+.corner-sub { display: block; margin-top: 2px; font-size: 0.74rem; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--color-text-light); }
+tbody th { vertical-align: middle; }
+tbody th small { display: block; margin-top: 2px; font-size: 0.72rem; font-weight: 500; letter-spacing: 0; text-transform: none; color: var(--color-text-muted); }
 
 /* level 1: the group, tinted by what kind of group it is */
-.l1 th.cat { position: sticky; top: 0; z-index: 2; text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); border-left: 3px solid var(--line); }
-.cat--shape { background: #eef4ff !important; box-shadow: inset 0 3px 0 var(--shape); }
-.cat--other { background: #f1f5f9 !important; box-shadow: inset 0 3px 0 var(--other); }
-.cat-inner { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; position: sticky; left: 162px; width: max-content; max-width: 100%; }
+.l1 th.cat { position: sticky; top: 0; z-index: 2; text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
+.cat--shape { background: linear-gradient(180deg, #e8f0ff, #f3f7ff) !important; box-shadow: inset 0 3px 0 var(--shape); }
+.cat--other { background: linear-gradient(180deg, #e9eef4, #f4f7fa) !important; box-shadow: inset 0 3px 0 var(--other); }
+.cat-inner { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; position: sticky; left: calc(var(--rowhead) + var(--space-3)); width: max-content; max-width: 100%; }
 .cat-name { display: inline-flex; align-items: baseline; gap: var(--space-2); }
-.cat-name code { font-size: 1.15rem; font-weight: 800; background: transparent; padding: 0; }
-.cat-name small { color: var(--color-text-muted); font-weight: 500; font-size: 0.8rem; }
+.cat-name code { font-size: 1.2rem; font-weight: 800; background: transparent; padding: 0; color: var(--color-text); }
+.cat-name small { color: var(--color-text-muted); font-weight: 500; font-size: 0.78rem; }
 .cat-count { font-size: 0.72rem; color: var(--color-text-muted); background: rgba(255,255,255,0.8); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); }
 .cat-count.some { color: var(--color-primary-dark); background: var(--color-primary-light); border-color: var(--color-primary-muted); font-weight: 700; }
 .cat-more { font-size: 0.72rem; padding: 1px 9px; line-height: 1.6; border-radius: 999px; background: #fff; color: var(--color-primary-dark); border: 1px dashed var(--color-primary-muted); }
 .cat-more:hover { background: var(--color-primary-light); }
 
 /* level 2: the code, with its drawing */
-.l2 th.col { position: sticky; top: 0; min-width: 96px; vertical-align: top; text-align: center; background: var(--color-surface); }
-.col-inner { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: var(--space-3) var(--space-2) var(--space-2); position: relative; min-height: 112px; }
+.l2 th.col { position: sticky; top: 0; width: var(--colw); min-width: var(--colw); max-width: var(--colw); box-sizing: border-box; vertical-align: top; text-align: center; background: var(--color-surface); }
+.col-inner { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px; padding: var(--space-3) var(--space-2) var(--space-2); position: relative; min-height: 120px; }
 label.col-inner { cursor: pointer; }
 label.col-inner:hover { background: var(--color-primary-light); }
 .tick { position: absolute; top: 8px; left: 8px; margin: 0; width: 17px; height: 17px; accent-color: var(--color-primary); cursor: pointer; }
-.glyph { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; margin-top: 4px; }
-.col-inner :deep(.pattern-code) { font-size: 0.95rem; font-weight: 700; overflow-wrap: anywhere; letter-spacing: 0.01em; background: transparent; padding: 0; }
-.pseudo { font-weight: 700; font-size: 0.95rem; padding: var(--space-4) 0 var(--space-3); }
-.vtag { font-size: 0.66rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-accent-dark); background: var(--color-accent-light); padding: 0 6px; border-radius: 999px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.glyph { display: inline-flex; min-height: 60px; align-items: center; justify-content: center; margin-top: 2px; }
+.col-inner :deep(.pattern-code) { font-size: 0.92rem; font-weight: 700; overflow-wrap: anywhere; letter-spacing: 0.01em; background: transparent; padding: 0; text-align: center; }
+.pseudo { display: inline-flex; align-items: center; justify-content: center; min-height: 60px; margin-top: 2px; font-weight: 700; font-size: 0.95rem; }
+.vtag { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-accent-dark); background: var(--color-accent-light); padding: 0 6px; border-radius: 999px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vbtn { margin-top: auto; padding: 0 7px; font-size: 0.7rem; line-height: 1.7; font-weight: 600; color: var(--color-text-muted); background: transparent; border: 1px dashed var(--color-border-hover); border-radius: 999px; opacity: 0; transition: opacity 0.12s, color 0.12s, border-color 0.12s, background-color 0.12s; }
 th.col:hover .vbtn, .vbtn:focus-visible { opacity: 1; }
 .vbtn:hover { color: var(--color-accent-dark); border-color: var(--color-accent); background: var(--color-accent-light); }
@@ -287,55 +289,54 @@ th.col.on { background: #eaf2ff; box-shadow: inset 0 -3px 0 var(--color-primary)
 th.col.variant { background: #faf7ff; }
 th.col.variant.on { background: #efe8ff; box-shadow: inset 0 -3px 0 var(--color-accent); }
 th.col.added { background: var(--color-accent-light); }
-th.col.active { box-shadow: inset 0 -3px 0 var(--color-primary); }
+th.col.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-primary); }
 th.col.flash { animation: flash 1.4s ease-out; }
 @keyframes flash { 0% { background: var(--color-warning-muted); } 100% { background: transparent; } }
 .x { position: absolute; top: 2px; right: 2px; padding: 0 5px; line-height: 1.4; font-size: 0.72rem; border-color: transparent; background: transparent; color: var(--color-text-light); }
 .x:hover { color: var(--color-danger); background: var(--color-danger-light); }
 
 /* what the folios hold for a code */
-td.tr { text-align: center; padding: var(--space-2); vertical-align: middle; height: 46px; }
+td.tr { text-align: center; padding: var(--space-2); vertical-align: middle; height: 44px; }
 .tr-n { display: block; font-size: 0.84rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 td.tr.none .tr-n { color: var(--color-text-light); font-weight: 500; }
 .tr-bar { display: block; height: 3px; margin: 4px auto 0; width: 70%; background: var(--color-surface-muted); border-radius: 999px; overflow: hidden; }
 .tr-bar span { display: block; height: 100%; background: var(--color-primary-muted); border-radius: 999px; }
 
-td.snip { text-align: center; vertical-align: middle; height: 104px; }
-.pt--select td.snip { height: 42px; }
+/* the cells: one place to add a snippet, or the snippets that are there */
+td.snip { text-align: center; vertical-align: middle; height: 92px; }
+.pt--select td.snip { height: 40px; }
 td.snip.filled { background: #fafcff; }
-td.snip.active { box-shadow: inset 0 -3px 0 var(--color-primary); }
+td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-primary); }
 .made { font-weight: 600; color: var(--color-text-light); }
 .made.some { color: var(--color-accent-dark); }
-.cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 100%; min-height: 104px; padding: var(--space-2); border: none; border-radius: 0; background: transparent; color: var(--color-text-light); }
+.cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 100%; min-height: 92px; padding: var(--space-2); border: none; border-radius: 0; background: transparent; color: var(--color-text-light); transition: background-color 0.12s, color 0.12s; }
 .cell:hover { background: var(--color-primary-light); color: var(--color-primary); }
 .cell:focus-visible { box-shadow: inset var(--ring); }
-.add { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border: 1.5px dashed var(--color-border-hover); border-radius: 50%; font-size: 1.3rem; line-height: 1; }
-.cell:hover .add { border-color: var(--color-primary); border-style: solid; }
-.thumbs { display: grid; grid-template-columns: repeat(2, auto); gap: 4px; justify-content: center; }
-.thumb { display: inline-flex; width: 52px; height: 40px; overflow: hidden; border-radius: var(--radius-sm); border: 1px solid var(--color-border); background: var(--color-surface); }
+.add { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1.5px dashed var(--color-border-hover); border-radius: 50%; font-size: 1.25rem; line-height: 1; transition: border-color 0.12s, background-color 0.12s, transform 0.12s; }
+.cell:hover .add { border-color: var(--color-primary); border-style: solid; background: #fff; transform: scale(1.08); }
+/* the first snippet, with the number of the others as a badge; several are a small stack of cards */
+.stack { position: relative; display: inline-flex; }
+.thumb { display: inline-flex; width: 84px; height: 60px; overflow: hidden; border-radius: var(--radius-md); border: 1px solid var(--color-border-hover); background: #fff; position: relative; box-shadow: var(--shadow-sm); }
+.stack.many .thumb { box-shadow: 3px 3px 0 -1px #fff, 3px 3px 0 0 var(--color-border-hover), 6px 6px 0 -1px #fff, 6px 6px 0 0 var(--color-border); }
 .thumb :deep(img), .thumb :deep(canvas), .thumb :deep(svg) { max-width: 100%; max-height: 100%; object-fit: contain; }
-.n { font-size: 0.72rem; font-weight: 700; color: var(--color-primary-dark); background: var(--color-primary-light); border-radius: 999px; padding: 0 8px; }
+.n { position: absolute; top: -7px; right: -9px; min-width: 20px; box-sizing: border-box; text-align: center; font-size: 0.7rem; line-height: 1.5; font-weight: 700; color: #fff; background: var(--color-primary); border: 2px solid #fff; border-radius: 999px; padding: 0 5px; }
 
 .empty { margin: 0; padding: var(--space-5); text-align: center; color: var(--color-text-muted); }
 
 /* the matrix: a row per project */
-.pt--matrix .corner, .pt--matrix tbody th { min-width: 200px; max-width: 200px; }
-.pt--matrix .cat-inner { left: 212px; }
-.r-row th { font-size: 0.88rem; }
+.pt--matrix { --rowhead: 200px; }
+.r-row th { font-size: 0.88rem; text-transform: none; letter-spacing: 0; color: var(--color-text); }
 .row-link { display: block; font-weight: 700; overflow-wrap: anywhere; }
 .r-row.current th { background: var(--color-primary-light); }
-td.snip.m { height: 66px; }
-td.snip.m .cell { min-height: 66px; }
-td.snip.m .thumbs { grid-template-columns: auto; }
-td.snip.m .thumb { width: 64px; height: 48px; }
+td.snip.m { height: 64px; }
+td.snip.m .cell { min-height: 64px; }
+td.snip.m .thumb { width: 64px; height: 46px; }
 td.snip.off { background: repeating-linear-gradient(135deg, var(--color-surface) 0 6px, var(--color-surface-muted) 6px 12px); }
 .off-mark { color: var(--color-text-light); }
 
 /* a narrow screen gives the left column less */
 @media (max-width: 720px) {
-    .corner, tbody th { min-width: 96px; max-width: 96px; padding: var(--space-2); }
-    .cat-inner { left: 104px; }
-    .pt--matrix .corner, .pt--matrix tbody th { min-width: 130px; max-width: 130px; }
-    .pt--matrix .cat-inner { left: 138px; }
+    .pt { --rowhead: 92px; --colw: 100px; }
+    .pt--matrix { --rowhead: 130px; }
 }
 </style>

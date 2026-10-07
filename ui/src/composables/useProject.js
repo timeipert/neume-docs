@@ -4,12 +4,16 @@ import { useAnnotationsStore } from '../stores/annotations';
 import { useDirectSnippetsStore } from '../stores/directSnippets';
 import { useIiifStore } from '../stores/iiif';
 import { useSettingsStore } from '../stores/settings';
+import { usePatternLibraryStore } from '../stores/patternLibrary';
+import { useToast } from './useToast';
 import { getBaseCode } from '../utils/patternCode';
 import { useTranscriptionData } from './useTranscriptionData';
 import { usePatternCatalog } from './usePatternCatalog';
 import { buildLibrary, filledCount, tableCodes } from '../utils/projectTable';
 import { collectOccurrences, collectSnippets, collectionSnippets, foliosInRange } from '../utils/projectData';
 import { compareFolios } from '../utils/sorting';
+import { freeCollectionFor } from '../utils/projectLegacy';
+import { iiifStatus } from '../utils/iiifStatus';
 
 /** Whether pages can be shown for a manuscript: a manifest is linked, or its pages are known. */
 export function hasIiif(iiif, source) {
@@ -81,12 +85,18 @@ export function useProject(idRef) {
     const { rawData, loadSource, catalog, glyphs } = useTranscriptionData();
     const { freq } = usePatternCatalog();
     const library = useProjectLibrary();
+    const patterns = usePatternLibraryStore();
+    const toast = useToast();
 
     const project = computed(() => store.get(unref(idRef)));
     const record = computed(() => (project.value ? catalog.value[project.value.source] || null : null));
     /** The manuscript is in the loaded corpus, so its transcription is there to use. */
     const hasTranscription = computed(() => !!record.value);
-    const iiifAvailable = computed(() => !!project.value && hasIiif(iiif, project.value.source));
+    /** Whether the page images can be used right now: 'none', 'loading', 'error' or 'ready' (see utils/iiifStatus). */
+    const iiifInfo = computed(() => iiifStatus(iiif, project.value && project.value.source));
+    const iiifAvailable = computed(() => iiifInfo.value.state === 'ready');
+    /** A project of page images that has none to work on yet: what it offers must explain how to get them. */
+    const needsIiif = computed(() => !!project.value && project.value.images === 'iiif' && !iiifAvailable.value);
 
     watch(
         () => [project.value && project.value.source, hasTranscription.value, project.value && project.value.images],
@@ -141,17 +151,32 @@ export function useProject(idRef) {
         if (!p || p.images !== 'screenshots') return null;
         const existing = p.collectionId && direct.getCollection(p.collectionId);
         if (existing) return existing;
-        const made = direct.createCollection(p.source || p.name, p.name);
+        // Screenshots of the same manuscript that no project holds (their project was deleted) come back.
+        const made = freeCollectionFor(p.source, direct.collections, store.projects) || direct.createCollection(p.source || p.name, p.name);
         store.update(p.id, { collectionId: made.id });
         return made;
     }
 
+    /**
+     * A code a snippet is filed under has a place to show: it is in the pattern library, and — if the
+     * project's tables have no column for it — in the extended table.
+     */
+    function ensureColumn(code) {
+        const p = project.value;
+        if (!p || !code) return;
+        if (!library.value.byCode.has(code)) patterns.addManualPattern(code);
+        if (!tableCodes(p, 'extended').includes(code)) {
+            store.setExtended(p.id, [...p.extended, code]);
+            toast.show(`${code} added to the extended table, so its snippets show there.`);
+        }
+    }
+
     return {
         project, record, library, freq, glyphs,
-        hasTranscription, iiifAvailable, occurrences, occurrencesLoaded,
+        hasTranscription, iiifAvailable, iiifInfo, needsIiif, occurrences, occurrencesLoaded,
         collection, snippets, annotatedCounts, occurringCounts,
         manuscriptFolios, folios, standardCodes, extendedCodes, progress,
-        ensureCollection
+        ensureCollection, ensureColumn
     };
 }
 

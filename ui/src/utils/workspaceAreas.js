@@ -9,6 +9,7 @@
  * All functions take the stores: { settings, annotations, tables, iiif, registry, library, meta, direct, projects }
  */
 import { SETTING_GROUPS } from '../stores/settings';
+import { schemaChanges } from './metadataSchema';
 
 const sumLengths = (map) => Object.values(map || {}).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0);
 const plural = (n, one, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
@@ -79,19 +80,23 @@ export const AREAS = [
     {
         key: 'metadata',
         title: 'Manuscript metadata',
-        blurb: 'Your edits to the corpus metadata, and the columns you added yourself.',
+        blurb: 'Your edits to the corpus metadata, the columns you added yourself, and how the columns are arranged and checked.',
         to: '/manuscripts',
         goLabel: 'Manuscripts',
         measure({ meta, settings }) {
             const edits = meta.editedCount();
             const columns = settings.sourceMetaFields.length;
             const values = countOwnValues(settings.sourceMeta);
+            const layout = schemaChanges(settings.metadataSchema);
+            const arranged = layout.categories + layout.renamed + layout.placed + layout.moved;
             return {
-                count: edits + columns + values,
+                count: edits + columns + values + arranged + layout.checks,
                 text: describe([
                     edits && plural(edits, 'edited cell'),
                     columns && plural(columns, 'own column'),
-                    values && plural(values, 'own value')
+                    values && plural(values, 'own value'),
+                    layout.categories && plural(layout.categories, 'own category', 'own categories'),
+                    layout.checks && plural(layout.checks, 'value check')
                 ])
             };
         },
@@ -155,10 +160,10 @@ export const AREAS = [
     },
     {
         key: 'custom',
-        title: 'Custom manuscripts',
-        blurb: 'Collections of screenshots — lines and the signs cut from them — outside any corpus.',
-        to: '/custom-manuscripts',
-        goLabel: 'Custom manuscripts',
+        title: 'Screenshots',
+        blurb: 'The screenshots of projects without IIIF images — lines and the signs cut from them, and signs on their own.',
+        to: '/projects',
+        goLabel: 'Projects',
         measure({ direct }) {
             const snippets = direct.collections.reduce((n, c) => n + (c.snippets || []).length, 0);
             const lines = direct.collections.reduce((n, c) => n + (c.lines || []).length, 0);

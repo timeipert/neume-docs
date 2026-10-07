@@ -100,7 +100,7 @@ async function confirmMerge({ choices, importSettings }) {
         <div class="row">
             <div class="grow">
                 <h3>Export a backup</h3>
-                <p class="ne-muted">Annotations, neume tables and custom manuscripts. To send only some manuscripts, select them under “Manuscripts” above. “Configuration only” leaves the manuscript work out: the pattern library, metadata edits and preferences, for giving a colleague the same set-up.</p>
+                <p class="ne-muted">Projects, annotations and screenshots. To send only some manuscripts, select them under “Manuscripts” above. “Configuration only” leaves the manuscript work out: the pattern library, metadata edits and preferences, for giving a colleague the same set-up.</p>
             </div>
             <div class="controls">
                 <div class="ne-field label-field">

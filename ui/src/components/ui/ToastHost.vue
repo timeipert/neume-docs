@@ -1,8 +1,13 @@
 <script setup>
+import { computed } from 'vue';
 import { useToast } from '../../composables/useToast';
 
-/** Shows the messages from useToast, bottom centre. Mounted once, in App.vue. */
+/**
+ * Shows the messages from useToast, bottom centre. Mounted once, in App.vue.
+ * Never more than three at once: a run of quick actions would otherwise hide the page under its messages.
+ */
 const { toasts, dismiss } = useToast();
+const shown = computed(() => toasts.value.slice(-3));
 
 function run(toast) {
     const action = toast.action;
@@ -13,7 +18,7 @@ function run(toast) {
 
 <template>
 <div class="toast-host" aria-live="polite">
-    <div v-for="t in toasts" :key="t.id" class="toast" :class="`toast--${t.tone}`" role="status">
+    <div v-for="t in shown" :key="t.id" class="toast" :class="`toast--${t.tone}`" role="status">
         <span class="toast-msg">{{ t.message }}</span>
         <button v-if="t.action" class="toast-action" @click="run(t)">{{ t.action.label }}</button>
         <button class="toast-x" aria-label="Dismiss" @click="dismiss(t.id)">&times;</button>

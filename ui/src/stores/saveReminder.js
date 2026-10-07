@@ -4,6 +4,10 @@ import { useAnnotationsStore } from './annotations'
 import { usePersonalTablesStore } from './personalTables'
 import { useDirectSnippetsStore } from './directSnippets'
 import { useManuscriptMetaStore } from './manuscriptMeta'
+import { useProjectsStore } from './projects'
+import { usePatternLibraryStore } from './patternLibrary'
+import { useIiifStore } from './iiif'
+import { useSettingsStore } from './settings'
 
 /**
  * Tracks work done since the last local export and decides when to nudge.
@@ -64,14 +68,25 @@ export const useSaveReminderStore = defineStore('saveReminder', () => {
     const directStore = useDirectSnippetsStore()
     const metaStore = useManuscriptMetaStore()
 
-    // Count meaningful edits. Settings are cheap to recreate, so only the data
-    // stores drive the nudge.
+    const projectsStore = useProjectsStore()
+    const libraryStore = usePatternLibraryStore()
+    const iiifStore = useIiifStore()
+    const settings = useSettingsStore()
+
+    // Count meaningful edits. Display preferences are cheap to recreate, so they do not
+    // drive the nudge; the work does — projects, snippets, metadata and what is
+    // arranged around it (own columns and their values, categories and checks, the
+    // pattern library, code variants, manifest addresses).
     watch(
         [
             () => annotStore.$state,
             () => tablesStore.$state,
             () => metaStore.$state,
-            () => directStore.collections
+            () => directStore.collections,
+            () => projectsStore.projects,
+            () => libraryStore.$state,
+            () => iiifStore.links,
+            () => [settings.sourceMetaFields, settings.sourceMeta, settings.metadataSchema, settings.codeVariants, settings.customSigns, settings.snippetAttributes]
         ],
         () => {
             changeCount.value++

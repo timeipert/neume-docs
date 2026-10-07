@@ -5,9 +5,13 @@
 | What | Where |
 | --- | --- |
 | Signs, code variants, snippet variants, preferred IDs | **Patterns** (the pattern library) |
-| Your own metadata columns, renaming and describing them | **Manuscripts → Catalogue** (a column's menu → *Edit this column…*) |
+| The values of your own metadata columns, renaming and describing them | **Manuscripts → Catalogue** (a column's menu → *Category, check and more…*) |
 | Aligning a manuscript's scans with the folios of the transcription | the page editor (*Pages →* in the catalogue), the ⇄ button of a manuscript |
 | Backups, the project folder, restore points, deleting things | **Workspace** |
+
+## Manuscript metadata
+
+How the columns of the manuscripts table are arranged: the **categories** above them, the order, and what the cells of each column should look like (**one of a list**, or **a pattern**; a cell that does not fit is marked, never refused). See [Manuscript Metadata](./manuscript-metadata#categories-and-checks).
 
 ## What a snippet says about itself
 
@@ -17,9 +21,9 @@ The attributes of a **line snippet** (its folio and line) and of a **sign snippe
 
 The standard way a pattern code is drawn wherever it appears: **Graphic** (the neumes), **Arrows** (each step as ↗ ↘ →) or **Text** (the code letters u, d, e).
 
-## Ordering of the neume table
+## Order of the columns
 
-The neume table orders its columns by the number of tones, then by how often each pattern occurs in the Corpus Monodicum. Only the order uses that count; no frequency of the CM is shown in the tables. Here you choose what "the CM" means for it:
+The neume tables order their columns by the number of notes, then by how often each pattern occurs. Only the order uses that count; no frequency is shown in the tables. Here you choose where it comes from:
 
-- **Whole Corpus Monodicum** (recommended): a snapshot built into the editor. The order does not change with what you have loaded.
-- **The corpus I loaded**: counts only what is on the Corpus page. Useful for material outside the CM. Patterns the loaded data has never seen fall back to the CM snapshot.
+- **The corpus I loaded** (the default): the counts of what is on the Corpus page. A pattern your corpus has seen more often always comes first; a snapshot of the Corpus Monodicum that is built into the editor only orders the patterns your corpus counts equally or has never seen. Without a loaded corpus the snapshot alone orders the columns.
+- **Built-in snapshot of the CM**: only that snapshot, so the order does not change with what you have loaded.

@@ -39,12 +39,42 @@ A cell opens beside the table; the arrows move to the neighbouring column, **Esc
 
 | Images | Offers |
 | --- | --- |
-| **IIIF**, from the transcription | The places where the transcription has this code in the project's folios, by folio and line, with how many snippets are drawn there. **Open page →** opens the [page editor](./annotation); *Back to the project table* there returns to the same cell. With line snippets the editor goes to the line region (or asks you to draw it); with sign snippets it takes the whole folio. |
+| **IIIF**, from the transcription | The places where the transcription has this code in the project's folios, by folio and line, with how many snippets are drawn there. **Open page →** opens the [page editor](#the-page-editor-in-the-project). |
 | **IIIF**, without a transcription | The folios of the project, to open and mark by hand. |
+| **IIIF**, without page images | Nothing to open: the cell says that page images are missing and what to do (see below). The places of the transcription are still listed. |
 | **Screenshots of signs** | A place to paste (Ctrl/⌘ V), drop or choose an image of the sign, with where it is from (folio, line, and whatever else the settings ask for). |
 | **Screenshots of lines** | The lines of the project, to mark a sign of this code on, and — with a transcription — the lines the transcription has this code on, each with *Add the picture…* if the line has none yet. |
 
 Click a snippet in the cell to see and edit what it says about itself (its attributes), to open its page or line, or to delete it.
+
+## The page editor in the project
+
+**Open page →** in a cell opens the [page editor](./annotation) *inside the project*: its tabs stay above it, and a **Page** tab shows where you are. It is one picture and one panel — no pages to go between — and it works in two steps:
+
+1. **The page.** The lines drawn on it are boxes on the picture; the panel lists them with a small picture and the number of signs. **Drag a box around a line** to add one: name it (the lines the transcription has on this page and nobody has drawn are proposed first) and save. **Click a line** to work in it. Nothing opens by itself: the transcription helps, it does not decide where you go. If the page was opened for a code, the panel shows on which lines the transcription has it; a line that is drawn opens, one that is not is proposed as the name of the next box.
+2. **A line.** The picture is zoomed to it and the rest of the page is dimmed. The **pattern** the page was opened for is ready on large cards — *This project* (the columns of the tables), *On this page* (what the transcription has here), *All patterns* — with a search, and a code that is typed in full can be used even if the library lacks it. **Drag a box around each sign**: it is saved at once, with the pattern and the variant (a, b, c …) that are chosen, and **Undo** is at hand. A box drawn before a pattern is chosen waits for it. Several signs of one pattern in a row need no further click.
+
+The tabs of the panel: **Patterns** (choose), **Signs** (what is marked on this line: its picture, pattern, variant, and the link to the transcription, with ✕ to delete), **Transcription** (the neumes of the line in reading order — pick one, draw a box around it, and the sign is linked to it and the next neume is ready). A sign is linked to its neume by itself when the line has only one free neume of that pattern; otherwise *Link to a neume…* on the sign does it. Above the picture: **‹ ›** to the neighbouring lines, **Rename**, **Redraw the box**, **Delete line**; **All lines** (or <kbd>Esc</kbd>) goes back to the page, <kbd>[</kbd> and <kbd>]</kbd> to the previous and next line. Zoom with the wheel, move the page with <kbd>Alt</kbd> + drag, *Fit line* and *Whole page* are under the picture.
+
+With sign snippets and no lines, the project works on **the page as a whole**: choose the pattern, drag a box around each sign.
+
+A bar under the tabs holds **Back to the cell** (or the table), the **folio** with its neighbours (‹ ›) and a list of the project's folios with the neumes and lines on each, the code the page was opened for with **folio n of m** (‹ › to the next folio that has it), and **⇄ Scans and folios** for how the scans are matched with the folios. Without a code, the page opens on a list of the project's folios.
+
+The same workbench is reached on its own by *Pages →* in the [manuscript catalogue](./manuscript-metadata), with a list of every manuscript's folios on the left; a strip names the projects of the manuscript and opens the page inside one, or offers to start one.
+
+## When there are no page images
+
+A project of IIIF page images needs the pages of its manuscript. Without them nothing that works on a page is offered; a notice says so instead, above the table and in every cell:
+
+- **What is missing:** a IIIF manifest, a web address that lists the pages of a manuscript, usually given next to a library's digitised copy.
+- **What to do:** paste the address into the field of the notice. It is read at once; if it cannot be read, the notice says why and you can correct it or try again. Manifests are also suggested from the MMMO catalogue under *Manuscripts → Images*.
+- **Or** change the project to screenshots in its **Settings…**. Snippets already made stay where they are.
+
+The catalogue does the same: a manuscript without page images has *Add page images…* in place of *Pages →*, and the project list marks such a project with *no page images*.
+
+## Screenshots of signs: the inbox
+
+A project with screenshots of single signs has a **Screenshots** panel above its tables. Paste an image anywhere on the page (Ctrl/⌘ V), drop it onto the panel, or choose images — several at once. Each lands in the panel as *to file*. Type its **pattern code** and press **File**: the code is checked, the screenshot becomes a snippet of that column, and its cell opens. A code the project has no column for yet is added to the extended table (and, if the library does not know it, to the library), and the extended table opens on it. When you already know the code, open the cell and add the image there instead.
 
 ## Lines and signs (screenshots of lines)
 
@@ -69,4 +99,6 @@ What a snippet says about itself is set in **Settings → What a snippet says ab
 
 ## Work from before projects
 
-Neume tables and custom manuscripts made before projects existed appear as projects the first time you open Projects: a table's rows become the columns (the standard selection stays the standard selection, the expanded documentation becomes the extended table), a collection is linked as it is. Nothing is copied or deleted, and a project you delete is not made again. The old addresses (`#/table/…`, `#/compare`) lead to the matching project tab.
+Neume tables and custom manuscripts made before projects existed appear as projects the first time you open Projects: a table's rows become the columns (the standard selection stays the standard selection, the expanded documentation becomes the extended table), a collection of screenshots is linked as it is. Nothing is copied or deleted, and a project you delete is not made again. The old addresses (`#/table/…`, `#/compare`, `#/custom-manuscripts`) lead to Projects or the matching project tab; the page *Custom manuscripts* itself is gone, because everything it did a project does.
+
+Screenshots of a project you deleted are not lost: a new project for the same manuscript with screenshots takes them up again.

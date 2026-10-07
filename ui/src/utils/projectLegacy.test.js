@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { legacyDrafts, tableKey, collectionKey } from './projectLegacy';
+import { legacyDrafts, tableKey, collectionKey, freeCollectionFor } from './projectLegacy';
 
 const table = (source, rows) => ({ id: 't', source, rows: rows.map(([pattern, tier]) => ({ pattern, ...(tier ? { tier } : {}) })) });
 
@@ -65,5 +65,24 @@ describe('old custom collections as projects', () => {
 
     it('is adopted once', () => {
         expect(legacyDrafts({ collections: [collection], projects: [{ legacyKey: collectionKey('dc1') }] })).toEqual([]);
+    });
+});
+
+describe('screenshots left behind by a deleted project', () => {
+    const collections = [{ id: 'a', source: 'Mine' }, { id: 'b', source: 'Mine' }, { id: 'c', source: 'Other' }];
+
+    it('are taken up again by a new project for the same manuscript', () => {
+        expect(freeCollectionFor('Mine', collections, [])).toEqual({ id: 'a', source: 'Mine' });
+        expect(freeCollectionFor('Other', collections, [])).toEqual({ id: 'c', source: 'Other' });
+    });
+
+    it('are not taken from a project that holds them', () => {
+        expect(freeCollectionFor('Mine', collections, [{ collectionId: 'a' }])).toEqual({ id: 'b', source: 'Mine' });
+        expect(freeCollectionFor('Mine', collections, [{ collectionId: 'a' }, { collectionId: 'b' }])).toBeNull();
+    });
+
+    it('are not looked for without a manuscript', () => {
+        expect(freeCollectionFor('', collections, [])).toBeNull();
+        expect(freeCollectionFor('Unknown', collections, [])).toBeNull();
     });
 });

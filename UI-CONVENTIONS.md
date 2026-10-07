@@ -54,6 +54,8 @@ Use the `ne-btn` classes (`style.css`).
 
 `ne-input`, `ne-field` (label above), `ne-check` for check boxes and radios, `ne-table` for plain tables, `ne-chip` for small tags, `ne-note` (`--info`, `--warn`, `--error`, `--success`) for a notice inside a page, `ne-empty` when there is nothing yet.
 
+**What cannot work yet is not offered.** Without page images no cell offers *Open page*, and the catalogue offers *Add page images…* instead of *Pages →*: `IiifSetup` stands in the place of the missing thing and says what is missing, why, and what to do — with a field to give the manifest address right there. The same holds for anything else that needs something that is not there: explain, do not show a button that leads nowhere.
+
 An empty state says what will appear and how it gets there ("No manuscript has any work yet. Annotations, line regions and neume table rows will appear here.").
 
 ## Feedback
@@ -86,7 +88,7 @@ Anything that removes workspace data goes through `useWorkspaceManagement`, whic
 | **Patterns** | the pattern library (the vocabulary) |
 | **Project** | a range of folios in one manuscript (one scribe's pages, say) and the table that documents its neumes |
 | **Standard table** / **Extended table** | the project's table with the columns of the brief / with any further pattern of the library |
-| **Page editor** | a manuscript's IIIF folios, where line regions and signs are marked; reached from a cell or *Pages →* |
-| **Custom manuscripts** | collections with their own images, no IIIF |
+| **Page editor** | a manuscript's IIIF folios, where line regions and signs are marked. From a cell it opens inside the project (its tabs stay, with a *Page* tab); *Pages →* in the catalogue opens it on its own |
+| **Screenshots** | the images of a project that has no IIIF: lines and signs pasted in, kept in the editor |
 
 All text in the interface is English.

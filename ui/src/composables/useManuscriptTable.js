@@ -4,6 +4,7 @@ import { useSettingsStore } from '../stores/settings';
 import { useIiifStore } from '../stores/iiif';
 import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
 import { useProjectsStore } from '../stores/projects';
+import { arrangeColumns, checkProblem, placeColumn, resolveCategories } from '../utils/metadataSchema';
 
 /**
  * The manuscripts as a table: one row per manuscript, one column per piece of
@@ -13,6 +14,10 @@ import { useProjectsStore } from '../stores/projects';
  *   IIIF               the manifest address, kept by the IIIF store
  *   project fields     the attributes the project defines, used as filters on the public pages
  *   corpus statistics  documents, neumes, … (read-only)
+ *
+ * Which category a column stands under, in what order, and what its cells may hold is the
+ * user's to arrange (Settings → Manuscript metadata): a column is where it comes from until
+ * it is placed elsewhere.
  *
  * Every cell is read and written as text, so the grid, copy and paste, import
  * and undo can all treat them alike.
@@ -90,7 +95,8 @@ export function useManuscriptTable() {
         return [...known, ...others];
     });
 
-    const columns = computed(() => {
+    /** The columns as they come: each with the category it comes with (`group`). */
+    const baseColumns = computed(() => {
         const cols = [{ key: 'source', label: 'Siglum', group: 'id', type: 'text', readonly: true, width: 150, frozen: true }];
 
         for (const field of catalogueKeys.value) {
@@ -129,6 +135,24 @@ export function useManuscriptTable() {
         );
         return cols;
     });
+
+    // ---- categories, order and checks -------------------------------------------
+
+    const schema = computed(() => settings.metadataSchema);
+    const categories = computed(() => resolveCategories(schema.value));
+    const bandLabels = computed(() => Object.fromEntries(categories.value.map(c => [c.key, c.label])));
+
+    /** The columns as shown: arranged by category, and a list-check offers its values. */
+    const columns = computed(() => arrangeColumns(baseColumns.value, schema.value).map(col => {
+        const check = schema.value.checks[col.key];
+        return check && check.kind === 'list' && !col.readonly ? { ...col, suggest: true, choices: check.values } : col;
+    }));
+
+    /** Each category with its columns, for the pages that arrange and list them. */
+    const layout = computed(() => categories.value.map(cat => ({
+        ...cat,
+        columns: columns.value.filter(c => !c.frozen && c.band === cat.key)
+    })));
 
     const columnByKey = computed(() => new Map(columns.value.map(c => [c.key, c])));
 
@@ -213,13 +237,14 @@ export function useManuscriptTable() {
         return '';
     }
 
+    /** Why a cell is marked, or '' if it is not: the column's own rules first, then the check set for it. */
     function invalid(col, text) {
         const t = String(text ?? '').trim();
-        if (t === '') return false;
-        if (col.type === 'url') return !isUrl(t);
+        if (t === '') return '';
+        if (col.type === 'url' && !isUrl(t)) return 'Not a web address';
         // The CM writes it as a number or as an expression: 7, -1, pageNr+3
-        if (col.key === 'cat:foliooffset') return !/^(pageNr\s*)?[+-]?\s*\d+$/i.test(t);
-        return false;
+        if (col.key === 'cat:foliooffset' && !/^(pageNr\s*)?[+-]?\s*\d+$/i.test(t)) return 'Expected a number, or pageNr plus a number';
+        return checkProblem(schema.value.checks[col.key], t);
     }
 
     function isReadonly(col) { return !!col.readonly; }
@@ -250,22 +275,32 @@ export function useManuscriptTable() {
         }
     }
 
-    /** Distinct values already in a column, for type-ahead. */
-    function suggestions(col) {
-        if (!col.suggest) return [];
+    /** Distinct values already in a column. */
+    function usedValues(col) {
         const seen = new Set();
         for (const source of sources.value) {
             const v = value(source, col);
             if (v) seen.add(v);
-            if (seen.size >= 300) break;
         }
         return [...seen].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     }
 
+    /** What a column offers while it is edited: the values of its list, or those already in use. */
+    function suggestions(col) {
+        if (col.choices) return col.choices;
+        if (!col.suggest) return [];
+        return usedValues(col).slice(0, 300);
+    }
+
     // ---- columns of the project's own ---------------------------------------
 
-    function addProjectColumn(label, type = 'text') {
-        return settings.addSourceMetaField(label, '', type);
+    /** A column of your own, under a category if you name one. */
+    function addProjectColumn(label, type = 'text', category = '') {
+        const field = settings.addSourceMetaField(label, '', type);
+        if (field && category && category !== 'project') {
+            settings.setMetadataSchema(placeColumn(settings.metadataSchema, `proj:${field.key}`, category, 'project'));
+        }
+        return field;
     }
 
     function removeProjectColumn(col) {
@@ -293,7 +328,8 @@ export function useManuscriptTable() {
 
     return {
         sources, columns, columnByKey, visibleColumns, toggleColumn, showAllColumns,
-        value, write, isEdited, baseValue, invalid, isReadonly, suggestions, stats,
+        categories, bandLabels, layout,
+        value, write, isEdited, baseValue, invalid, isReadonly, suggestions, usedValues, stats,
         addProjectColumn, removeProjectColumn, copyToFilterColumn, revertColumn,
         editedCount: () => meta.editedCount()
     };

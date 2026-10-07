@@ -27,6 +27,16 @@ watch(id, (value) => store.markOpened(value), { immediate: true });
 
 const settingsOpen = ref(false);
 
+/** The page editor needs the whole height that is left: the frame keeps its header and tabs and gives the rest to it. */
+const fill = computed(() => !!route.meta.fill);
+
+/** The manuscript (unless the name already says it), the folios, the hand. */
+const subtitle = computed(() => {
+    const p = project.value;
+    if (!p) return '';
+    return [p.name === p.source ? '' : p.source, describeRange(p.from, p.to), p.scribe].filter(Boolean).join(' · ');
+});
+
 function remove() {
     const gone = store.remove(id.value);
     settingsOpen.value = false;
@@ -39,7 +49,7 @@ function remove() {
 </script>
 
 <template>
-<div class="shell">
+<div class="shell" :class="{ 'shell--fill': fill }">
     <div v-if="!project" class="missing ne-empty">
         <h2>This project does not exist (any more)</h2>
         <RouterLink :to="{ name: 'projects' }" class="ne-btn ne-btn--primary">All projects &rarr;</RouterLink>
@@ -48,16 +58,26 @@ function remove() {
     <template v-else>
         <div class="top">
             <div class="wrap">
+                <!-- the page editor needs the height: one line for the project, then the tabs -->
+                <div v-if="fill" class="line">
+                    <RouterLink :to="{ name: 'projects' }" class="back" title="All projects">&larr;</RouterLink>
+                    <strong class="name">{{ project.name }}</strong>
+                    <span class="sub">{{ subtitle }}</span>
+                    <span class="grow"></span>
+                    <button class="ne-btn ne-btn--sm" @click="settingsOpen = true">Settings…</button>
+                </div>
+                <template v-else>
                 <RouterLink :to="{ name: 'projects' }" class="back">&larr; Projects</RouterLink>
                 <PageHeader :title="project.name">
                     <template #badge><span v-if="project.published" class="tag" title="Shown in the public views">Public</span></template>
                     <template #subtitle>
-                        <p>{{ project.source }} · {{ describeRange(project.from, project.to) }}<template v-if="project.scribe"> · {{ project.scribe }}</template></p>
+                        <p>{{ subtitle }}</p>
                     </template>
                     <template #actions>
                         <button class="ne-btn" @click="settingsOpen = true">Settings…</button>
                     </template>
                 </PageHeader>
+                </template>
                 <ProjectTabs :id="id" :project="project" :progress="progress" :project-count="store.projects.length" />
             </div>
         </div>
@@ -83,13 +103,24 @@ function remove() {
 <style scoped>
 .shell { height: 100%; overflow-y: auto; box-sizing: border-box; }
 .top { background: var(--color-surface); border-bottom: 1px solid var(--color-border); padding: 0 var(--space-6); }
-.body { padding: var(--space-5) var(--space-6) var(--space-6); }
+.body { padding: var(--space-4) var(--space-6) var(--space-6); }
 .wrap { max-width: 1500px; margin: 0 auto; }
-.back { display: inline-block; margin-top: var(--space-3); font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); text-decoration: none; }
+.back { display: inline-block; margin-top: var(--space-2); font-size: 0.85rem; font-weight: 600; color: var(--color-text-muted); text-decoration: none; }
 .back:hover { color: var(--color-primary); }
-.top :deep(.page-header) { margin: var(--space-1) 0 var(--space-3); align-items: center; }
+.top :deep(.page-header) { margin: 2px 0 var(--space-2); align-items: center; }
+.top :deep(.ph-sub) { margin-top: 0; font-size: 0.9rem; }
 .top :deep(h1) { font-size: 1.5rem; }
 .tag { margin-left: var(--space-2); font-size: 0.7rem; font-weight: 700; vertical-align: middle; padding: 1px 9px; border-radius: 999px; background: var(--color-success-light); color: var(--color-success-dark); }
+.shell--fill { display: flex; flex-direction: column; overflow: hidden; }
+.shell--fill .top { flex: 0 0 auto; }
+.shell--fill .body { flex: 1; min-height: 0; padding: 0; }
+.shell--fill .wrap { max-width: none; height: 100%; }
+.shell--fill .top .wrap { height: auto; }
+.line { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0 0; }
+.line .back { margin: 0; font-size: 1.1rem; }
+.line .name { font-size: 1.1rem; }
+.line .sub { color: var(--color-text-muted); font-size: 0.86rem; }
+.line .grow { flex: 1; }
 .missing { max-width: 520px; margin: var(--space-6) auto; }
 .missing h2 { margin: 0 0 var(--space-3); color: var(--color-text); font-size: 1.2rem; }
 @media (max-width: 720px) { .top, .body { padding-left: var(--space-4); padding-right: var(--space-4); } }

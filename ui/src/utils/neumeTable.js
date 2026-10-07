@@ -167,13 +167,22 @@ export function buildFrequency(counts) {
     };
 }
 
-/** Combine two frequency sources: use `primary`, and `fallback` where it knows nothing. */
-export function withFallback(primary, fallback) {
+/**
+ * Your own counts first, a reference only for what yours cannot tell apart.
+ *
+ * `reference` adds a share of less than one to each number, so it never lifts a pattern
+ * over one that `primary` has seen more often — whole numbers of `primary` always win —
+ * and orders the patterns `primary` has never seen, or sees equally often. With nothing
+ * counted in `primary` the reference is used as it is.
+ */
+export function blendFrequency(primary, reference) {
+    if (!primary.total) return reference;
+    const share = (n) => n / (reference.total + 1);
     return {
-        code: (c) => primary.code(c) || fallback.code(c),
-        signature: (s) => primary.signature(s) || fallback.signature(s),
-        direction: (d) => primary.direction(d) || fallback.direction(d),
-        total: primary.total || fallback.total
+        code: (c) => primary.code(c) + share(reference.code(c)),
+        signature: (s) => primary.signature(s) + share(reference.signature(s)),
+        direction: (d) => primary.direction(d) + share(reference.direction(d)),
+        total: primary.total
     };
 }
 

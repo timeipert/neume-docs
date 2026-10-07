@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { defaultSnippetAttributes, cleanSnippetAttributes } from '../utils/snippetAttributes'
+import { cleanMetadataSchema, defaultMetadataSchema, forgetColumn } from '../utils/metadataSchema'
 
 /** Fresh default values for every persisted setting (new objects on every call). */
 export const settingDefaults = () => ({
@@ -16,9 +17,10 @@ export const settingDefaults = () => ({
     discriminateSigns: true,
     sourceMetaFields: [],
     sourceMeta: {},
+    metadataSchema: defaultMetadataSchema(),
     snippetVariants: [],
     snippetAttributes: defaultSnippetAttributes(),
-    frequencyBasis: 'cm'
+    frequencyBasis: 'corpus'
 })
 
 /**
@@ -33,8 +35,9 @@ export const SETTING_GROUPS = {
     library: ['globalDisplayIds', 'customSigns', 'codeVariants', 'discriminateSigns', 'snippetVariants'],
     // Hand-made folio pins and offsets: edited next to the page images.
     alignments: ['sourceAlignments'],
-    // The user's own metadata columns and their values: edited in the metadata table.
-    metadata: ['sourceMetaFields', 'sourceMeta']
+    // The user's own metadata columns and their values, and how the columns are arranged and checked:
+    // edited in the manuscripts table and in Settings.
+    metadata: ['sourceMetaFields', 'sourceMeta', 'metadataSchema']
 }
 
 /** The settings that travel in backups and configuration files (everything but the backup label). */
@@ -47,13 +50,16 @@ export const SHARED_SETTING_KEYS = [
 
 const KINDS = {
     displayMode: ['svg', 'arrow', 'text'],
-    frequencyBasis: ['cm', 'loaded'],
-    globalDisplayIds: 'object', sourceAlignments: 'object', codeVariants: 'object', sourceMeta: 'object', snippetAttributes: 'object',
+    frequencyBasis: ['corpus', 'snapshot'],
+    globalDisplayIds: 'object', sourceAlignments: 'object', codeVariants: 'object', sourceMeta: 'object', snippetAttributes: 'object', metadataSchema: 'object',
     customSigns: 'array', sourceMetaFields: 'array', snippetVariants: 'array',
     autoFillIds: 'boolean', discriminateSigns: 'boolean',
     snippetSize: 'number', snippetPadding: 'number',
     backupLabel: 'string'
 }
+
+/** Settings whose value is cleaned when it is taken from a file or storage. */
+const CLEANERS = { snippetAttributes: cleanSnippetAttributes, metadataSchema: cleanMetadataSchema }
 
 /** Whether a value read from a file or storage is usable for a setting. */
 function acceptable(key, value) {
@@ -92,10 +98,12 @@ export const useSettingsStore = defineStore('settings', () => {
     const sourceMetaFields = ref([])
     // sourceMeta: { [source]: { [fieldKey]: "value" } }
     const sourceMeta = ref({})
-    // Where "frequency in the CM" comes from when ordering the neume table:
-    // 'cm' = the built-in snapshot of the whole Corpus Monodicum (stable, the
-    // default), 'loaded' = whatever corpus is currently imported.
-    const frequencyBasis = ref('cm')
+    // How the columns of the manuscripts table are arranged in categories and what each may hold (see utils/metadataSchema).
+    const metadataSchema = ref(defaultMetadataSchema())
+    // What orders the columns of the neume tables, after the number of notes: 'corpus' = how often
+    // each pattern occurs in the corpus that is loaded (the built-in CM snapshot only settles
+    // what that cannot — the default), 'snapshot' = the snapshot alone, whatever is loaded.
+    const frequencyBasis = ref('corpus')
     // Snippet variants: the classifier letters offered when annotating a snippet
     // (same code, different graphical realisation). Empty = the built-in a–g.
     // Each: { key, label }
@@ -108,7 +116,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const fields = {
         displayMode, autoFillIds, globalDisplayIds, snippetSize, snippetPadding, backupLabel,
         sourceAlignments, customSigns, codeVariants, discriminateSigns, sourceMetaFields,
-        sourceMeta, snippetVariants, snippetAttributes, frequencyBasis
+        sourceMeta, metadataSchema, snippetVariants, snippetAttributes, frequencyBasis
     }
 
     /** A plain, detached copy of the given settings (all of them by default). */
@@ -127,7 +135,7 @@ export const useSettingsStore = defineStore('settings', () => {
         const defaults = settingDefaults()
         for (const key of keys) {
             const value = data ? data[key] : undefined
-            if (acceptable(key, value)) fields[key].value = key === 'snippetAttributes' ? cleanSnippetAttributes(value) : value
+            if (acceptable(key, value)) fields[key].value = CLEANERS[key] ? CLEANERS[key](value) : value
             else if (replace) fields[key].value = defaults[key]
         }
     }
@@ -242,6 +250,7 @@ export const useSettingsStore = defineStore('settings', () => {
             if (Object.keys(rest).length) next[src] = rest
         }
         sourceMeta.value = next
+        metadataSchema.value = forgetColumn(metadataSchema.value, `proj:${key}`)
     }
 
     function setSourceMetaValue(source, key, value) {
@@ -273,6 +282,11 @@ export const useSettingsStore = defineStore('settings', () => {
             if (v && String(v).trim()) set.add(String(v).trim())
         }
         return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    }
+
+    /** Replace how the manuscripts table is arranged and checked (see utils/metadataSchema). */
+    function setMetadataSchema(next) {
+        metadataSchema.value = cleanMetadataSchema(next)
     }
 
     // --- Snippet variants (classifier letters) ---
@@ -387,6 +401,8 @@ export const useSettingsStore = defineStore('settings', () => {
         discriminateSigns,
         sourceMetaFields,
         sourceMeta,
+        metadataSchema,
+        setMetadataSchema,
         snippetVariants,
         frequencyBasis,
         snippetAttributes,

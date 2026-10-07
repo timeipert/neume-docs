@@ -5,8 +5,6 @@ import PatternDisplay from '../PatternDisplay.vue';
 import { useProjectContext } from '../../composables/useProject';
 import { useLineNeumes } from '../../composables/useLineNeumes';
 import { useDirectSnippetsStore } from '../../stores/directSnippets';
-import { useProjectsStore } from '../../stores/projects';
-import { usePatternLibraryStore } from '../../stores/patternLibrary';
 import { useSettingsStore } from '../../stores/settings';
 import { useToast } from '../../composables/useToast';
 import { checkCode } from '../../utils/projectTable';
@@ -42,10 +40,8 @@ const emit = defineEmits(['close', 'update:lineId']);
 
 const toast = useToast();
 const direct = useDirectSnippetsStore();
-const projects = useProjectsStore();
-const patterns = usePatternLibraryStore();
 const settings = useSettingsStore();
-const { project, library, glyphs, collection, hasTranscription, ensureCollection } = useProjectContext();
+const { project, glyphs, collection, hasTranscription, ensureCollection, ensureColumn } = useProjectContext();
 
 const lineDefs = computed(() => settings.getSnippetAttributes('line'));
 const signDefs = computed(() => settings.getSnippetAttributes('sign'));
@@ -181,15 +177,6 @@ async function onUp() {
     if (!a || !box) return;
     if (a.type === 'draw') await createSign(box);
     else if (JSON.stringify(box) !== JSON.stringify(a.box0)) await commitBox(a.id, box);
-}
-
-function ensureColumn(code) {
-    if (!library.value.byCode.has(code)) patterns.addManualPattern(code);
-    const p = project.value;
-    if (!tableCodes(p, 'extended').includes(code)) {
-        projects.setExtended(p.id, [...p.extended, code]);
-        toast.show(`${code} added to the extended table, so its signs show there.`);
-    }
 }
 
 async function cut(box) {

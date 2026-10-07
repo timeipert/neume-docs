@@ -20,7 +20,7 @@ describe('the parts of the workspace', () => {
         expect(byKey(areas, 'projects').text).toBe('1 project');
         expect(byKey(areas, 'annotations').text).toBe('3 snippets · 1 line region · 2 manual lines');
         expect(byKey(areas, 'tables').text).toBe('1 table · 2 pattern rows');
-        expect(byKey(areas, 'metadata').text).toBe('1 edited cell · 1 own column · 1 own value');
+        expect(byKey(areas, 'metadata').text).toBe('1 edited cell · 1 own column · 1 own value · 1 own category · 1 value check');
         expect(byKey(areas, 'library').text).toBe('1 described pattern · 1 custom sign · 1 code variant · 1 preferred ID');
         expect(byKey(areas, 'images').text).toBe('1 manifest link · 1 IIIF table row · 1 folio alignment');
         expect(byKey(areas, 'custom').text).toBe('1 collection · 1 snippet');

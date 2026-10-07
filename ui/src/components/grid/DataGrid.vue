@@ -15,12 +15,17 @@ import {
  * from anywhere (an import, a find and replace) and undo them as one step.
  */
 const props = defineProps({
-    /** [{ key, label, group, width, readonly, frozen, type, hint }] */
+    /**
+     * [{ key, label, group, band, tone, width, readonly, frozen, type, hint, suggest, choices }]
+     * `band` (else `group`) is the band above the header the column stands under; `choices` is a
+     * list the cell is edited from, as a drop-down — a value that is not in it can still be typed.
+     */
     columns: { type: Array, required: true },
     /** the rows shown, in order */
     rowIds: { type: Array, required: true },
     get: { type: Function, required: true },
     isEdited: { type: Function, default: () => false },
+    /** whether a cell is marked as not fitting; a text is shown on hover as the reason */
     isInvalid: { type: Function, default: () => false },
     isReadonly: { type: Function, default: () => false },
     suggest: { type: Function, default: () => [] },
@@ -146,15 +151,64 @@ function startEdit(initial = null) {
         tell('This column is read-only.');
         return;
     }
-    editing.value = { r, c, text: initial === null ? getCell(r, c) : initial, original: getCell(r, c) };
+    editing.value = {
+        r, c, text: initial === null ? getCell(r, c) : initial, original: getCell(r, c),
+        // a drop-down: which choice is highlighted, whether anything was typed yet, where it hangs
+        pick: -1, touched: initial !== null, box: null
+    };
     nextTick(() => {
-        const input = Array.isArray(editor.value) ? editor.value[0] : editor.value;
+        const input = editorInput();
         if (input) {
             input.focus();
             if (initial === null) input.select();
             else input.setSelectionRange(input.value.length, input.value.length);
+            placeDropdown();
         }
     });
+}
+
+const editorInput = () => (Array.isArray(editor.value) ? editor.value[0] : editor.value);
+
+// ---- a column with a list: its values as a drop-down ------------------------------------
+
+const shownChoices = computed(() => {
+    const e = editing.value;
+    const col = e && props.columns[e.c];
+    if (!col || !col.choices) return [];
+    // All of them until something is typed, then those that contain it.
+    const q = e.touched ? e.text.trim().toLowerCase() : '';
+    return q ? col.choices.filter(o => o.toLowerCase().includes(q)) : col.choices;
+});
+
+/** The drop-down hangs under the cell being edited, outside the table so no cell clips it. */
+function placeDropdown() {
+    const e = editing.value;
+    const input = editorInput();
+    if (!e || !input) return;
+    const box = input.getBoundingClientRect();
+    e.box = { left: box.left, top: box.bottom, width: Math.max(box.width, 200) };
+}
+
+const dropdownStyle = computed(() => {
+    const box = editing.value && editing.value.box;
+    return box ? { left: `${box.left}px`, top: `${box.top}px`, minWidth: `${box.width}px` } : { display: 'none' };
+});
+
+function pickChoice(delta) {
+    const e = editing.value;
+    const n = shownChoices.value.length;
+    if (!e || !n) return;
+    e.pick = delta > 0 ? (e.pick + 1) % n : (e.pick <= 0 ? n - 1 : e.pick - 1);
+    nextTick(() => {
+        const item = document.querySelector('.choices li.pick');
+        if (item) item.scrollIntoView({ block: 'nearest' });
+    });
+}
+
+function choose(option) {
+    if (!editing.value) return;
+    editing.value.text = option;
+    finishEdit(true);
 }
 
 function finishEdit(save, move = null) {
@@ -169,6 +223,18 @@ function finishEdit(save, move = null) {
 }
 
 function onEditKey(ev) {
+    const e = editing.value;
+    const choices = e && props.columns[e.c].choices;
+    if (choices && (ev.key === 'ArrowDown' || ev.key === 'ArrowUp')) {
+        ev.preventDefault();
+        pickChoice(ev.key === 'ArrowDown' ? 1 : -1);
+        ev.stopPropagation();
+        return;
+    }
+    // Enter or Tab on a highlighted choice takes it; with none highlighted, what was typed stands.
+    if (choices && (ev.key === 'Enter' || ev.key === 'Tab') && e.pick >= 0 && shownChoices.value[e.pick] !== undefined) {
+        e.text = shownChoices.value[e.pick];
+    }
     if (ev.key === 'Enter') { ev.preventDefault(); finishEdit(true, { dr: ev.shiftKey ? -1 : 1, dc: 0 }); }
     else if (ev.key === 'Tab') { ev.preventDefault(); finishEdit(true, { dr: 0, dc: ev.shiftKey ? -1 : 1 }); }
     else if (ev.key === 'Escape') { ev.preventDefault(); finishEdit(false); }
@@ -328,16 +394,32 @@ onBeforeUnmount(() => {
 
 // ---- drawing -----------------------------------------------------------------------
 
-/** The bands above the headers: one per run of columns of the same group. */
+/** The bands above the headers: one per run of columns under the same category. */
+const bandOf = (col) => (col.band !== undefined ? col.band : col.group);
 const bands = computed(() => {
     const out = [];
     props.columns.forEach((col, c) => {
         const last = out[out.length - 1];
-        if (last && last.group === col.group) { last.span++; last.width += col.width || 140; }
-        else out.push({ group: col.group, span: 1, first: c, width: col.width || 140 });
+        const group = bandOf(col);
+        if (last && last.group === group) { last.span++; last.width += col.width || 140; }
+        else out.push({ group, span: 1, first: c, width: col.width || 140, tone: col.tone });
     });
     return out;
 });
+
+/** Why a cell is marked, if it is (a check can say it). */
+function reason(r, c) {
+    const found = props.isInvalid(props.rowIds[r], props.columns[c], getCell(r, c));
+    return typeof found === 'string' ? found : '';
+}
+
+/** What hovering a cell tells: why it is marked, else the whole text if it is cut short. */
+function cellTitle(r, c) {
+    const why = reason(r, c);
+    if (why) return why;
+    const text = getCell(r, c);
+    return text.length > 28 ? text : null;
+}
 
 function cellClass(r, c) {
     const id = props.rowIds[r];
@@ -385,6 +467,7 @@ defineExpose({
     @copy="onCopy"
     @cut="onCut"
     @paste="onPaste"
+    @scroll="placeDropdown"
 >
     <table class="grid" :style="{ width: tableWidth + 'px' }">
         <colgroup>
@@ -399,7 +482,7 @@ defineExpose({
                     :key="b.first"
                     :colspan="b.span"
                     class="band"
-                    :class="[`band--${b.group}`, { frozen: columns[b.first].frozen }]"
+                    :class="[`band--${b.group}`, b.tone !== undefined ? `band--tone${b.tone}` : '', { frozen: columns[b.first].frozen }]"
                     :style="columns[b.first].frozen ? { left: frozenLeft[b.first] + 'px' } : null"
                 >{{ groupLabels[b.group] || '' }}</th>
             </tr>
@@ -447,7 +530,7 @@ defineExpose({
                     :data-c="c"
                     :class="cellClass(r, c)"
                     :style="col.frozen ? { left: frozenLeft[c] + 'px' } : null"
-                    :title="getCell(r, c).length > 28 ? getCell(r, c) : null"
+                    :title="cellTitle(r, c)"
                     @mousedown="onCellDown($event, r, c)"
                     @mouseenter="onCellEnter(r, c)"
                     @dblclick="select(r, c); startEdit()"
@@ -457,13 +540,28 @@ defineExpose({
                             ref="editor"
                             v-model="editing.text"
                             class="cell-input"
-                            :list="col.suggest ? `dg-list-${col.key}` : null"
+                            :list="col.suggest && !col.choices ? `dg-list-${col.key}` : null"
+                            :role="col.choices ? 'combobox' : null"
+                            :aria-expanded="col.choices ? shownChoices.length > 0 : null"
+                            @input="editing.touched = true; editing.pick = -1"
                             @keydown="onEditKey"
                             @blur="finishEdit(true)"
                         />
-                        <datalist v-if="col.suggest" :id="`dg-list-${col.key}`">
+                        <datalist v-if="col.suggest && !col.choices" :id="`dg-list-${col.key}`">
                             <option v-for="s in suggest(col)" :key="s" :value="s"></option>
                         </datalist>
+                        <Teleport v-if="col.choices && shownChoices.length" to="body">
+                            <ul class="choices" role="listbox" :style="dropdownStyle" @mousedown.prevent>
+                                <li
+                                    v-for="(o, i) in shownChoices"
+                                    :key="o"
+                                    role="option"
+                                    :aria-selected="i === editing.pick"
+                                    :class="{ pick: i === editing.pick, current: o === editing.original }"
+                                    @mousedown.prevent="choose(o)"
+                                >{{ o }}</li>
+                            </ul>
+                        </Teleport>
                     </template>
                     <template v-else>
                         <span class="text">{{ getCell(r, c) }}</span>
@@ -507,6 +605,11 @@ thead th { position: sticky; z-index: 3; background: var(--color-surface-muted);
 .band--iiif { background: #ecfeff; color: #155e75; }
 .band--project { background: var(--color-accent-light); color: var(--color-accent-dark); }
 .band--corpus { background: var(--color-surface-muted); }
+/* categories of your own: four tints, so neighbouring bands can be told apart */
+.band--tone0 { background: #fef3c7; color: #92400e; }
+.band--tone1 { background: #fce7f3; color: #9d174d; }
+.band--tone2 { background: #dcfce7; color: #166534; }
+.band--tone3 { background: #ede9fe; color: #5b21b6; }
 .head-row th { top: 22px; height: 34px; border-bottom: 1px solid var(--color-border-hover); }
 .filter-row th { top: 56px; height: 30px; background: var(--color-surface); z-index: 3; }
 thead th.frozen, thead th.corner { z-index: 6; }
@@ -553,6 +656,12 @@ td.number .text { text-align: right; }
 td:has(.open) .text { padding-right: 20px; }
 
 .cell-input { position: absolute; inset: 0; width: 100%; height: 100%; box-sizing: border-box; padding: 0 9px; border: 2px solid var(--color-primary); border-radius: 0; background: var(--color-surface); font: inherit; outline: none; z-index: 5; }
+
+/* the drop-down of a column with a list; it is outside the table, so it needs its own look */
+.choices { position: fixed; z-index: 1000; margin: 2px 0 0; padding: 4px; list-style: none; max-height: 240px; overflow-y: auto; background: var(--color-surface); border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); font-size: 0.84rem; }
+.choices li { padding: 0.35em 0.7em; border-radius: var(--radius-sm); cursor: pointer; white-space: nowrap; }
+.choices li:hover, .choices li.pick { background: var(--color-primary-light); }
+.choices li.current { font-weight: 700; }
 
 .empty-row td { padding: var(--space-5); text-align: center; color: var(--color-text-muted); font-style: italic; background: transparent; cursor: default; height: 80px; }
 </style>

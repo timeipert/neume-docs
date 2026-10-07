@@ -6,6 +6,7 @@ import { useAnnotationsStore } from '../stores/annotations';
 import { useSettingsStore } from '../stores/settings';
 import { useDirectSnippetsStore } from '../stores/directSnippets';
 import { parseDateRange, rangesOverlap, yearLabel } from '../utils/sourceMeta';
+import { arrangeFields } from '../utils/metadataSchema';
 import DateRangeTimeline from '../components/DateRangeTimeline.vue';
 
 const tableStore = usePersonalTablesStore();
@@ -22,7 +23,8 @@ const searchQuery = ref('');
 // { [fieldKey]: "selected value" } — empty string means "any".
 const metaFilters = ref({});
 
-const metaFields = computed(() => settings.sourceMetaFields || []);
+// In the order the columns were arranged in the manuscripts table.
+const metaFields = computed(() => arrangeFields(settings.sourceMetaFields || [], settings.metadataSchema));
 const dateFields = computed(() => metaFields.value.filter(f => f.type === 'century'));
 const choiceFields = computed(() => metaFields.value.filter(f => f.type !== 'century'));
 

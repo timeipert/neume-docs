@@ -221,6 +221,7 @@ export function useWorkspaceStorage() {
                 () => tablesStore.$state,
                 () => iiifStore.$state,
                 () => registryStore.entries,
+                () => libraryStore.$state,
                 () => metaStore.$state,
                 () => directStore.collections,
                 () => projectsStore.projects

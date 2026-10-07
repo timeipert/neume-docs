@@ -4,6 +4,8 @@ import ModalDialog from '../ui/ModalDialog.vue';
 import SegmentedControl from '../ui/SegmentedControl.vue';
 import { useProjectsStore } from '../../stores/projects';
 import { useSettingsStore } from '../../stores/settings';
+import { useIiifStore } from '../../stores/iiif';
+import { iiifStatus } from '../../utils/iiifStatus';
 import { useToast } from '../../composables/useToast';
 import { folioProblem } from '../../utils/snippetAttributes';
 import { compareFolios } from '../../utils/sorting';
@@ -24,6 +26,7 @@ const emit = defineEmits(['close', 'delete']);
 
 const store = useProjectsStore();
 const settings = useSettingsStore();
+const iiif = useIiifStore();
 const toast = useToast();
 
 const draft = reactive({ name: '', scribe: '', from: '', to: '', focus: '', images: '', snippets: '', published: false });
@@ -52,6 +55,9 @@ const IMAGES = [
     { value: 'iiif', label: 'IIIF', title: 'Page images from a manifest' },
     { value: 'screenshots', label: 'Screenshots', title: 'Images you paste in' }
 ];
+/** The project is set to work on page images and the manuscript has none: say what that means. */
+const noImages = computed(() => !!props.project && draft.images === 'iiif' && iiifStatus(iiif, props.project.source).state === 'none');
+
 const SNIPPETS = computed(() => (draft.images === 'screenshots'
     ? [{ value: 'lines', label: 'Lines', title: 'Screenshots of whole lines, with the signs marked on them' }, { value: 'signs', label: 'Signs', title: 'One screenshot per sign' }]
     : [{ value: 'lines', label: 'Lines', title: 'Line regions first, then the signs on them' }, { value: 'signs', label: 'Signs', title: 'Signs marked directly on the page' }]));
@@ -95,6 +101,7 @@ function save() {
             <div class="choice"><span class="label">Starts from</span><SegmentedControl v-model="draft.focus" :options="FOCUS.map(o => o.value === 'transcription' && !hasTranscription ? { ...o, title: 'This manuscript is not in the loaded corpus' } : o)" label="Starts from" size="sm" /></div>
             <div class="choice"><span class="label">Images</span><SegmentedControl v-model="draft.images" :options="IMAGES" label="Images" size="sm" /></div>
             <div class="choice"><span class="label">Snippets</span><SegmentedControl v-model="draft.snippets" :options="SNIPPETS" label="Snippets" size="sm" /></div>
+            <p v-if="noImages" class="ne-note ne-note--warn">There are no page images for {{ project.source }} yet. The project asks for a manifest address when you open its table, or you can choose screenshots.</p>
             <p class="hint">Snippets already made are not touched: they stay with the manuscript and its folios.</p>
         </div>
 

@@ -27,7 +27,7 @@ describe('settings: whole-store operations', () => {
         const { settings } = await freshStores();
         expect(settings.changedCount(SETTING_GROUPS.preferences)).toBe(0);
         settings.displayMode = 'text';
-        settings.frequencyBasis = 'loaded';
+        settings.frequencyBasis = 'snapshot';
         expect(settings.changedCount(SETTING_GROUPS.preferences)).toBe(2);
     });
 
@@ -90,5 +90,47 @@ describe('settings: snippet attributes', () => {
         settings.apply({ snippetAttributes: { line: 'nonsense', sign: [{ key: 'ink', label: 'Ink' }, null] } });
         expect(settings.getSnippetAttributes('line').map(d => d.key)).toEqual(['folio', 'line']);
         expect(settings.getSnippetAttributes('sign').map(d => d.key)).toEqual(['ink']);
+    });
+});
+
+describe('the arrangement of the manuscripts table', () => {
+    it('is kept in the browser and read back after a restart', async () => {
+        const first = await freshStores();
+        first.settings.setMetadataSchema({
+            categories: [{ key: 'notation', label: 'Notation' }],
+            placement: { 'proj:ink': 'notation' },
+            order: ['proj:ink'],
+            checks: { 'proj:ink': { kind: 'regex', pattern: '[CFG]', message: '' } }
+        });
+        await new Promise(r => setTimeout(r, 0));
+        const stored = JSON.parse(globalThis.localStorage.getItem('globalSettings'));
+        expect(stored.metadataSchema.categories).toEqual([{ key: 'notation', label: 'Notation' }]);
+
+        // a new start: the stores are made again over what the browser kept
+        const { createPinia, setActivePinia } = await import('pinia');
+        setActivePinia(createPinia());
+        const { useSettingsStore } = await import('./settings');
+        const again = useSettingsStore();
+        expect(again.metadataSchema.checks['proj:ink']).toMatchObject({ kind: 'regex', pattern: '[CFG]' });
+        expect(again.metadataSchema.placement).toEqual({ 'proj:ink': 'notation' });
+    });
+
+    it('is cleaned when what the browser kept is not a schema', async () => {
+        const { installStorage } = await import('../utils/workspaceTestKit');
+        installStorage();
+        globalThis.localStorage.setItem('globalSettings', JSON.stringify({ metadataSchema: { categories: [{ key: 'id', label: 'No' }, { key: 'ok', label: 'Fine' }], checks: { x: { kind: 'list', values: [] } } } }));
+        const { createPinia, setActivePinia } = await import('pinia');
+        setActivePinia(createPinia());
+        const { useSettingsStore } = await import('./settings');
+        const settings = useSettingsStore();
+        expect(settings.metadataSchema.categories).toEqual([{ key: 'ok', label: 'Fine' }]);
+        expect(settings.metadataSchema.checks).toEqual({});
+    });
+
+    it('goes back to nothing with the other settings of its group', async () => {
+        const { settings } = await freshStores();
+        settings.setMetadataSchema({ categories: [{ key: 'n', label: 'N' }] });
+        settings.reset(SETTING_GROUPS.metadata);
+        expect(settings.metadataSchema).toEqual({ categories: [], placement: {}, order: [], checks: {} });
     });
 });

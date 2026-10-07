@@ -24,7 +24,7 @@ function dismiss(id) {
 function show(message, { tone = 'info', action = null, timeout } = {}) {
     const id = nextId++;
     toasts.value = [...toasts.value, { id, message, tone, action }];
-    const ms = timeout ?? (tone === 'error' ? 12000 : action ? 12000 : 5000);
+    const ms = timeout ?? (tone === 'error' ? 12000 : action ? 8000 : 5000);
     if (ms > 0) timers.set(id, setTimeout(() => dismiss(id), ms));
     return id;
 }

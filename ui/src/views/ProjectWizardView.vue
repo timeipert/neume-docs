@@ -235,8 +235,9 @@ function chooseImages(value) {
                 <h2 :id="`step-${stepKey}`">Where do the images come from?</h2>
                 <ChoiceCards :model-value="draft.images" label="Images" :options="imageOptions" @update:model-value="chooseImages" />
                 <div v-if="draft.images === 'iiif' && iiifState === 'none'" class="ne-note ne-note--warn manifest">
+                    <p>There are no page images for <strong>{{ draft.source }}</strong> yet. They come from a <strong>IIIF manifest</strong>, a web address that lists the pages of the manuscript. Give it now, or later: until then the project says what is missing.</p>
                     <div class="ne-field">
-                        <label for="w-manifest">IIIF manifest of {{ draft.source }} <span class="ne-muted">(optional, or later under <RouterLink to="/manuscripts/images">Images</RouterLink>)</span></label>
+                        <label for="w-manifest">IIIF manifest <span class="ne-muted">(optional; more under <RouterLink to="/manuscripts/images">Manuscripts → Images</RouterLink>)</span></label>
                         <input id="w-manifest" v-model.trim="draft.manifest" class="ne-input" type="url" placeholder="https://…/manifest.json" />
                     </div>
                 </div>

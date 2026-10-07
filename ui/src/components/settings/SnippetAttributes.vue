@@ -76,7 +76,7 @@ function reset() {
         <h3>{{ level.title }}</h3>
         <p class="note">{{ level.note }}</p>
 
-        <table class="ne-table">
+        <div class="scroll"><table class="ne-table">
             <thead>
                 <tr><th>Attribute</th><th>Kind</th><th>Required</th><th>Check</th><th>Details</th><th></th></tr>
             </thead>
@@ -104,7 +104,7 @@ function reset() {
                     </td>
                 </tr>
             </tbody>
-        </table>
+        </table></div>
 
         <form class="add" @submit.prevent="add(level.key)">
             <input v-model="drafts[level.key]" class="ne-input" :placeholder="level.key === 'line' ? 'New attribute of a line, e.g. Hand' : 'New attribute of a sign, e.g. Ink'" :aria-label="`New attribute of ${level.title.toLowerCase()}`" />
@@ -120,6 +120,7 @@ function reset() {
 .attrs { display: flex; flex-direction: column; gap: var(--space-5); }
 h3 { margin: 0 0 var(--space-1); font-size: 1rem; }
 .note { margin: 0 0 var(--space-3); color: var(--color-text-muted); font-size: 0.88rem; max-width: 70ch; }
+.scroll { overflow-x: auto; }
 .ne-table td { vertical-align: top; }
 .ne-table .ne-input { width: 100%; }
 .key { display: block; margin-top: 2px; font-size: 0.72rem; color: var(--color-text-light); }

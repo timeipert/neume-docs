@@ -2,7 +2,7 @@
 
 **Workspace** in the navigation bar is where you look after everything you have made in the editor: what is in it, where it is kept, how to back it up, and how to clear it.
 
-Your *work* is the projects, the annotations, the neume tables, your metadata edits, the pattern library (labels, signs, variants, preferred IDs), IIIF links and the custom manuscripts. It is not the loaded corpus: that is loaded and removed on the [Corpus](./loading-data) page.
+Your *work* is the projects, the annotations, the neume tables, your metadata edits, the pattern library (labels, signs, variants, preferred IDs), IIIF links and the screenshots of your projects. It is not the loaded corpus: that is loaded and removed on the [Corpus](./loading-data) page.
 
 ## What is in your workspace
 
@@ -16,13 +16,15 @@ A table of the manuscripts you have worked on, with snippets, line regions and t
 
 ## Where your work is kept
 
-- **This browser.** Always on. The browser may clear it if you wipe site data, so keep a backup or a project folder.
-- **Project folder.** In Chrome and Edge you can connect a folder on your disk. Every change is then saved to a `workspace.json` in it, automatically. *Disconnect* stops this and leaves the folder as it is.
-- **Backup reminder.** Reminds you to export when you have unsaved work and have not exported for a while. You can turn it off here.
+- **This browser.** Always on, and at once: every change to a project, a snippet, a metadata value or the arrangement of the manuscripts table is written as it is made. Screenshots (and the lines cut from them) are images, so they go to the browser's database a moment later — and straight away when you switch to another tab or close the page. The browser may clear all of it if you wipe site data, so keep a backup or a project folder.
+- **Project folder.** In Chrome and Edge you can connect a folder on your disk. Every change is then saved to a `workspace.json` in it, automatically, about a second and a half after the last one. *Disconnect* stops this and leaves the folder as it is.
+- **Backup reminder.** Counts what you have changed since the last export — projects, snippets, metadata, the pattern library, manifest addresses — and reminds you to export when it is a lot and some time has passed. Without a project folder the export is the only copy outside the browser. You can turn the reminder off here.
+
+What is saved is the same everywhere — in the folder, in a backup, in a restore point: the projects with their columns, the snippets and line regions of every manuscript, the screenshots, the neume tables, the metadata edits and your own columns with their values, **how the columns are arranged** (categories, order, checks), the pattern library, signs and variants, the manifest addresses and the preferences. The loaded corpus is not part of it.
 
 ## Backup & share
 
-- **Download backup** writes your work to a JSON file. Only manuscripts that have work in them are included. Tick *Include pattern library, metadata edits and preferences* to take those along. The name you give the backup is part of the file name.
+- **Download backup** writes your work to a JSON file. Of the snippets and tables, only manuscripts that have work in them are included; the manifest address of a manuscript is kept even before it has any work. Tick *Include pattern library, metadata edits and preferences* to take those along. The name you give the backup is part of the file name.
 - **Configuration only** exports the pattern library, signs and variants, preferred IDs, metadata edits and preferences without any manuscript work: a way to give a colleague the same set-up.
 - **Import a file…** opens a backup, a single-manuscript export or a configuration file. If it holds work on manuscripts you have also worked on, you choose for each one whether to **skip** it, import it as a **copy**, or **overwrite** yours. Skipping is the default. A restore point is kept first.
 

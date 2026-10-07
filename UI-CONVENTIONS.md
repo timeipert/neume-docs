@@ -20,10 +20,16 @@ A function is reachable from one place, the place where it is *used*. Other page
 | Lines, the signs on them, snippets | the cell of a table (and the line editor it opens) | |
 | What a snippet says about itself: its attributes and how they are checked | Settings | the cell, the line editor |
 | Display mode, order of the neume table | Settings | |
+| Which columns readers can filter by, and how | Settings → Manuscript metadata (the *Filter* box of a column) and the column's menu | the Filter panel of the manuscripts table |
+| Title, authors, licence and metadata of a published documentation; downloading it | Workspace → Publish a documentation | the viewer's preview (*This browser*) |
+| Reading documentations; endpoints | View documentations (`#/docs`); the hosting's `endpoints.json` | the start page |
 
 Settings is for preferences that apply everywhere. If a setting belongs to one page, it goes on that page.
 
 ## Page structure
+
+- **Two ways in.** The start page (`#/`) offers *View documentations* and *Editor*. The viewer (`#/docs/…`) and the start page have no editor navigation: they are for readers, who need no workspace. Anything a reader sees is read from a documentation's files, never from the workspace, and nothing in the viewer changes anything.
+- **Everything a reader sees can be referenced.** A thing that has a place in a documentation has a link that opens it highlighted (`data-target` and the class `is-target`) and a *Link and cite* button (⛓) that opens `CiteDialog`. Links are built in one place (`useDocsContext`), so they have one form.
 
 - **One navigation, no drop-downs:** Projects · Manuscripts · Patterns · Workspace · Settings. A page that has several views shows them as tabs under its title (`PageTabs`: *Manuscripts* has Catalogue, Images, Corpus; *Patterns* has Library, In the corpus); each tab is a page with an address of its own.
 - **A row leads on:** where a table lists manuscripts (the catalogue), the selected row offers what can be done with it — *Project →* and *Pages →* — instead of another menu entry.

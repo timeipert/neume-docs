@@ -1,0 +1,138 @@
+{
+  "format": "neume-docs",
+  "version": 1,
+  "generated": "2026-10-07",
+  "info": {
+    "title": "Example documentation (made-up data)",
+    "description": "Four invented manuscripts, so you can try the viewer: browse them, filter by place or date, compare them in the neume table, and see how a link and a citation look. None of it is research.",
+    "authors": [
+      "neume-docs"
+    ],
+    "publisher": "",
+    "license": "CC0 1.0",
+    "doi": "",
+    "preferredCitation": "",
+    "url": "",
+    "year": "2026"
+  },
+  "columns": [
+    {
+      "key": "origin",
+      "label": "Place of origin",
+      "type": "location",
+      "filter": "values"
+    },
+    {
+      "key": "dating",
+      "label": "Dating",
+      "type": "century",
+      "filter": "years"
+    },
+    {
+      "key": "order",
+      "label": "Order",
+      "type": "text",
+      "filter": "values"
+    },
+    {
+      "key": "leaves",
+      "label": "Leaves",
+      "type": "number",
+      "filter": "number"
+    },
+    {
+      "key": "cat:bibliotheksort",
+      "label": "Library city",
+      "type": "location",
+      "filter": ""
+    },
+    {
+      "key": "cat:bibliothek",
+      "label": "Library",
+      "type": "text",
+      "filter": ""
+    },
+    {
+      "key": "cat:bibliothekssignatur",
+      "label": "Shelfmark",
+      "type": "text",
+      "filter": ""
+    }
+  ],
+  "signs": {},
+  "discriminateSigns": true,
+  "manuscripts": [
+    {
+      "id": "Example A",
+      "source": "Example A",
+      "name": "Example A (made-up)",
+      "kind": "iiif",
+      "meta": {
+        "origin": "Köln",
+        "dating": "s. XI",
+        "order": "OSB",
+        "leaves": "212",
+        "cat:bibliotheksort": "Köln",
+        "cat:bibliothek": "Erzbischöfliche Diözesan- und Dombibliothek",
+        "cat:bibliothekssignatur": "Cod. 1001 (made up)"
+      },
+      "file": "data/Example_A.json",
+      "patterns": 5,
+      "snippets": 4
+    },
+    {
+      "id": "Example B",
+      "source": "Example B",
+      "name": "Example B (made-up)",
+      "kind": "iiif",
+      "meta": {
+        "origin": "Trier",
+        "dating": "c. 1100",
+        "order": "OSB",
+        "leaves": "148",
+        "cat:bibliotheksort": "Trier",
+        "cat:bibliothek": "Stadtbibliothek",
+        "cat:bibliothekssignatur": "Hs. 1002 (made up)"
+      },
+      "file": "data/Example_B.json",
+      "patterns": 6,
+      "snippets": 5
+    },
+    {
+      "id": "Example C",
+      "source": "Example C",
+      "name": "Example C (made-up)",
+      "kind": "iiif",
+      "meta": {
+        "origin": "Cambrai",
+        "dating": "s. XII in.",
+        "order": "OCist",
+        "leaves": "96",
+        "cat:bibliotheksort": "Cambrai",
+        "cat:bibliothek": "Médiathèque",
+        "cat:bibliothekssignatur": "Ms. 1003 (made up)"
+      },
+      "file": "data/Example_C.json",
+      "patterns": 7,
+      "snippets": 6
+    },
+    {
+      "id": "Example D",
+      "source": "Example D",
+      "name": "Example D (made-up)",
+      "kind": "iiif",
+      "meta": {
+        "origin": "St. Gallen",
+        "dating": "s. XIII",
+        "order": "OSB",
+        "leaves": "301",
+        "cat:bibliotheksort": "St. Gallen",
+        "cat:bibliothek": "Stiftsbibliothek",
+        "cat:bibliothekssignatur": "Cod. Sang. 1004 (made up)"
+      },
+      "file": "data/Example_D.json",
+      "patterns": 8,
+      "snippets": 7
+    }
+  ]
+}

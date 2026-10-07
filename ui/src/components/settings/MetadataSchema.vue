@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useManuscriptTable } from '../../composables/useManuscriptTable';
+import { useManuscriptFilter } from '../../composables/useManuscriptFilter';
 import { useSettingsStore } from '../../stores/settings';
 import { useToast } from '../../composables/useToast';
 import ColumnSettingsDialog from '../metadata/ColumnSettingsDialog.vue';
@@ -16,6 +17,7 @@ import {
  * another), in the order you give them, and what the cells of each column should look like.
  */
 const table = useManuscriptTable();
+const mf = useManuscriptFilter(table);
 const settings = useSettingsStore();
 const toast = useToast();
 
@@ -24,7 +26,8 @@ const ORIGIN = { catalogue: 'Catalogue', iiif: 'IIIF', project: 'Yours', corpus:
 const schema = computed(() => settings.metadataSchema);
 const layout = computed(() => table.layout.value);
 const allKeys = computed(() => layout.value.flatMap(cat => cat.columns.map(c => c.key)));
-const changed = computed(() => Object.values(schemaChanges(schema.value)).some(Boolean));
+// saved filters are not undone by starting over, so they do not count as something to undo
+const changed = computed(() => { const { views, ...rest } = schemaChanges(schema.value); return Object.values(rest).some(Boolean); });
 
 const apply = (next) => settings.setMetadataSchema(next);
 
@@ -56,6 +59,12 @@ function removeCat(cat) {
 
 // ---- columns --------------------------------------------------------------------
 
+/** Offer a column as a filter, or not. Back to what the column's contents suggest when it is set to that. */
+function offer(col, on) {
+    const c = mf.configFor(col);
+    mf.configure(col.key, { on: on === c.defaultOffered ? null : on });
+}
+
 const moveCol = (cat, col, delta) => apply(moveColumn(schema.value, col.key, delta, cat.columns.map(c => c.key), allKeys.value));
 const place = (col, categoryKey) => apply(placeColumn(schema.value, col.key, categoryKey, col.group));
 
@@ -73,8 +82,8 @@ const settingsFor = ref('');
 
 function reset() {
     const before = schema.value;
-    apply(defaultMetadataSchema());
-    toast.show('Categories, order and checks are back to the start. Your columns and their values stay.', { action: { label: 'Undo', run: () => apply(before) } });
+    apply({ ...defaultMetadataSchema(), views: before.views });
+    toast.show('Categories, order, checks and filter choices are back to the start. Your columns, their values and your saved filters stay.', { action: { label: 'Undo', run: () => apply(before) } });
 }
 </script>
 
@@ -85,6 +94,8 @@ function reset() {
         band above its headings: make one — <em>Notation</em>, say — and put <em>Ink</em> and <em>Clef</em> beneath it.
         Any column can be moved, the columns of the corpus catalogue too. Each column can also say what its cells should look
         like, as a list of values or as a pattern; a cell that does not fit is marked, never refused, and a list becomes a drop-down.
+        Tick <strong>Filter</strong> to offer a column in the table's Filter panel; the columns with few different values, dates and numbers are
+        offered without being ticked.
     </p>
 
     <section v-for="(cat, i) in layout" :key="cat.key" class="cat">
@@ -103,6 +114,9 @@ function reset() {
                 <span class="origin">{{ ORIGIN[col.group] }}</span>
                 <span v-if="schema.checks[col.key]" class="badge" :title="`Cells that do not fit are marked`">{{ describeCheck(schema.checks[col.key]) }}</span>
                 <span class="grow"></span>
+                <label v-if="!col.frozen" class="offer" :title="`Offer ${col.label} as a filter in the table`">
+                    <input type="checkbox" :checked="mf.configFor(col).offered" @change="offer(col, $event.target.checked)" /> Filter
+                </label>
                 <select class="where" :value="col.band" :aria-label="`Category of ${col.label}`" @change="place(col, $event.target.value)">
                     <option v-for="c in layout" :key="c.key" :value="c.key">{{ c.label }}</option>
                 </select>
@@ -123,7 +137,7 @@ function reset() {
         <input v-model="newCategory" class="ne-input" placeholder="A new category, e.g. Notation" aria-label="New category" />
         <button type="submit" class="ne-btn" :disabled="!newCategory.trim()">Add category</button>
         <span class="grow"></span>
-        <button type="button" class="ne-btn ne-btn--ghost" :disabled="!changed" title="Back to the four categories, no checks, the original order" @click="reset">Start over</button>
+        <button type="button" class="ne-btn ne-btn--ghost" :disabled="!changed" title="Back to the four categories, no checks, the original order, the filters as the columns suggest them. Saved filters stay." @click="reset">Start over</button>
     </form>
 
     <p class="ne-muted note">Columns of the corpus catalogue appear here once a corpus is loaded; where you put them is kept.</p>
@@ -150,6 +164,7 @@ function reset() {
 .label { font-weight: 600; font-size: 0.9rem; }
 .origin { font-size: 0.7rem; padding: 0 6px; border-radius: 999px; background: var(--color-surface-muted); color: var(--color-text-muted); }
 .badge { font-size: 0.72rem; font-weight: 600; padding: 0 7px; border-radius: 999px; background: var(--color-primary-light); color: var(--color-primary-dark); }
+.offer { display: inline-flex; align-items: center; gap: 4px; font-size: 0.8rem; color: var(--color-text-muted); cursor: pointer; }
 .where { width: 10rem; padding: 0.25em 0.4em; border: 1px solid var(--color-border-hover); border-radius: var(--radius-sm); font-size: 0.8rem; background: var(--color-surface); }
 .empty { padding: var(--space-3); font-size: 0.84rem; color: var(--color-text-muted); font-style: italic; }
 

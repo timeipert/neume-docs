@@ -70,10 +70,12 @@ try {
     await page.goto(`${base}/#/setup`);
     await page.getByText('Continue without a folder').click();
     await page.goto(`${base}/#/`);
+    await page.getByRole('link', { name: /View documentations/ }).waitFor();
+    await page.getByRole('link', { name: /Editor/ }).click();
     await page.waitForURL(/#\/projects/);
     await page.waitForSelector('.empty');
     assert.equal(await page.locator('.card').count(), 0, 'there is no project at first');
-    step('starts empty: the home page is the (empty) list of projects');
+    step('starts at the two ways in; the editor opens on the (empty) list of projects');
 
     await page.goto(`${base}/#/projects/new`);
     await page.waitForSelector('.cc-card');

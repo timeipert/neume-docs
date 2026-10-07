@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     addCategory, arrangeColumns, arrangeFields, checkProblem, cleanMetadataSchema, compileCheck, defaultMetadataSchema,
     describeCheck, forgetColumn, fromDraft, misfits, moveCategory, moveColumn, normaliseCheck, parseList,
-    placeColumn, removeCategory, renameCategory, resolveCategories, schemaChanges, setCheck, toDraft
+    placeColumn, removeCategory, removeView, renameCategory, resolveCategories, saveView, schemaChanges, setCheck, setFilterConfig, toDraft
 } from './metadataSchema';
 
 const COLUMNS = [
@@ -253,10 +253,57 @@ describe('what is kept', () => {
     });
 
     it('counts what differs from a table nobody has arranged', () => {
-        expect(schemaChanges(defaultMetadataSchema())).toEqual({ categories: 0, renamed: 0, placed: 0, moved: 0, checks: 0 });
+        expect(schemaChanges(defaultMetadataSchema())).toEqual({ categories: 0, renamed: 0, placed: 0, moved: 0, checks: 0, filters: 0, views: 0 });
         let { schema } = addCategory(defaultMetadataSchema(), 'Notation');
         schema = setCheck(placeColumn(schema, 'proj:ink', 'notation', 'project'), 'proj:ink', { kind: 'list', values: ['x'] });
         schema = renameCategory(schema, 'project', 'Own');
-        expect(schemaChanges(schema)).toEqual({ categories: 1, renamed: 1, placed: 1, moved: 0, checks: 1 });
+        expect(schemaChanges(schema)).toEqual({ categories: 1, renamed: 1, placed: 1, moved: 0, checks: 1, filters: 0, views: 0 });
+    });
+});
+
+describe('which columns are offered as filters', () => {
+    it('keeps what is said, and goes back to the default when it is taken away', () => {
+        let s = setFilterConfig(defaultMetadataSchema(), 'cat:herkunftsort', { on: false });
+        expect(s.filters).toEqual({ 'cat:herkunftsort': { on: false } });
+        s = setFilterConfig(s, 'cat:herkunftsort', { kind: 'text' });
+        expect(s.filters['cat:herkunftsort']).toEqual({ on: false, kind: 'text' });
+        s = setFilterConfig(s, 'cat:herkunftsort', { on: null });
+        expect(s.filters['cat:herkunftsort']).toEqual({ kind: 'text' });
+        s = setFilterConfig(s, 'cat:herkunftsort', { kind: null });
+        expect(s.filters).toEqual({});
+    });
+
+    it('cleans what is read back and ignores kinds that do not exist', () => {
+        const s = cleanMetadataSchema({ filters: { a: { on: true, kind: 'years' }, b: { kind: 'nonsense' }, c: 5, d: { on: 'yes' } } });
+        expect(s.filters).toEqual({ a: { on: true, kind: 'years' } });
+    });
+
+    it('is forgotten with the column', () => {
+        const s = forgetColumn(setFilterConfig(defaultMetadataSchema(), 'proj:ink', { on: true }), 'proj:ink');
+        expect(s.filters).toEqual({});
+    });
+});
+
+describe('filters kept under a name', () => {
+    const filter = { mode: 'any', rules: { 'cat:herkunftsort': { kind: 'values', values: ['Köln'] } } };
+
+    it('saves, replaces by name (whatever the case) and removes', () => {
+        let s = saveView(defaultMetadataSchema(), 'Rhineland', filter);
+        expect(s.views.map(v => v.name)).toEqual(['Rhineland']);
+        s = saveView(s, 'rhineland', { mode: 'all', rules: { x: { kind: 'text', op: 'filled' } } });
+        expect(s.views).toHaveLength(1);
+        expect(s.views[0].name).toBe('rhineland');
+        expect(removeView(s, 'rhineland').views).toEqual([]);
+    });
+
+    it('does not keep a filter that filters nothing, or a name that is empty', () => {
+        expect(saveView(defaultMetadataSchema(), 'Nothing', { mode: 'all', rules: {} }).views).toEqual([]);
+        expect(saveView(defaultMetadataSchema(), '  ', filter).views).toEqual([]);
+    });
+
+    it('cleans the views it reads back', () => {
+        const s = cleanMetadataSchema({ views: [{ name: 'A', filter }, { name: 'a', filter }, { name: '', filter }, { name: 'B', filter: { rules: { x: { kind: 'bogus' } } } }, 7] });
+        expect(s.views.map(v => v.name)).toEqual(['A']);
+        expect(s.views[0].filter.mode).toBe('any');
     });
 });

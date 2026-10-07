@@ -30,7 +30,8 @@ export default defineConfig({
           { text: 'Manuscript Annotation', link: '/docs/annotation' },
           { text: 'Workspace & Backup', link: '/docs/workspace' },
           { text: 'Settings', link: '/docs/settings' },
-          { text: 'Public Documentation', link: '/docs/public-view' }
+          { text: 'Viewing & Publishing Documentations', link: '/docs/documentations' },
+          { text: 'Static Pages (older)', link: '/docs/public-view' }
         ]
       }
     ],

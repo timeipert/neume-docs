@@ -131,6 +131,6 @@ describe('the arrangement of the manuscripts table', () => {
         const { settings } = await freshStores();
         settings.setMetadataSchema({ categories: [{ key: 'n', label: 'N' }] });
         settings.reset(SETTING_GROUPS.metadata);
-        expect(settings.metadataSchema).toEqual({ categories: [], placement: {}, order: [], checks: {} });
+        expect(settings.metadataSchema).toEqual({ categories: [], placement: {}, order: [], checks: {}, filters: {}, views: [] });
     });
 });

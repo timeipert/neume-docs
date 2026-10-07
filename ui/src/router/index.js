@@ -21,6 +21,13 @@ import ProjectColumnsView from '../views/ProjectColumnsView.vue'
 import ProjectTableView from '../views/ProjectTableView.vue'
 import ProjectAllView from '../views/ProjectAllView.vue'
 import ProjectPageView from '../views/ProjectPageView.vue'
+import StartView from '../views/StartView.vue'
+import DocsHomeView from '../views/docs/DocsHomeView.vue'
+import DocsShellView from '../views/docs/DocsShellView.vue'
+import DocsCatalogueView from '../views/docs/DocsCatalogueView.vue'
+import DocsManuscriptView from '../views/docs/DocsManuscriptView.vue'
+import DocsTableView from '../views/docs/DocsTableView.vue'
+import DocsAboutView from '../views/docs/DocsAboutView.vue'
 
 // Import storage for guard
 import { useWorkspaceStorage } from '../composables/useWorkspaceStorage';
@@ -71,9 +78,31 @@ const router = createRouter({
       component: SetupView,
       meta: { title: 'Workspace Setup' }
     },
+    // The start: read documentations, or make your own in the editor.
     {
       path: '/',
-      redirect: '/projects'
+      name: 'start',
+      component: StartView,
+      meta: { title: 'neume-docs', bare: true }
+    },
+    // Documentations that others have published: read-only, no workspace needed.
+    {
+      path: '/docs',
+      name: 'docs',
+      component: DocsHomeView,
+      meta: { title: 'Documentations', bare: true }
+    },
+    {
+      path: '/docs/:endpoint',
+      component: DocsShellView,
+      props: true,
+      meta: { bare: true },
+      children: [
+        { path: '', name: 'docs_catalogue', component: DocsCatalogueView },
+        { path: 'm/:source', name: 'docs_manuscript', component: DocsManuscriptView, props: true },
+        { path: 'table', name: 'docs_table', component: DocsTableView },
+        { path: 'about', name: 'docs_about', component: DocsAboutView }
+      ]
     },
     // The manuscripts: their catalogue, their images, and the corpus they come from.
     {
@@ -252,6 +281,8 @@ router.beforeEach(async (to, from) => {
 })
 
 router.afterEach((to) => {
+  // A documentation names its own pages (see DocsShellView).
+  if (to.path.startsWith('/docs/')) return;
   let title = to.meta.title || '';
 
   if (typeof to.name === 'string' && to.name.startsWith('project') && to.params.id) {

@@ -7,6 +7,7 @@ import BackupPanel from '../components/workspace/BackupPanel.vue';
 import MonodiExchangePanel from '../components/workspace/MonodiExchangePanel.vue';
 import RestorePointsPanel from '../components/workspace/RestorePointsPanel.vue';
 import PublishPanel from '../components/workspace/PublishPanel.vue';
+import GithubPanel from '../components/workspace/GithubPanel.vue';
 import ResetPanel from '../components/workspace/ResetPanel.vue';
 </script>
 
@@ -22,6 +23,7 @@ import ResetPanel from '../components/workspace/ResetPanel.vue';
     <MonodiExchangePanel />
     <RestorePointsPanel />
     <PublishPanel />
+    <GithubPanel />
     <ResetPanel />
 </PageShell>
 </template>

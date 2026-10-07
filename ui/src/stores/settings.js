@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { defaultSnippetAttributes, cleanSnippetAttributes } from '../utils/snippetAttributes'
 import { cleanMetadataSchema, defaultMetadataSchema, forgetColumn } from '../utils/metadataSchema'
+import { cleanPublication, defaultPublication } from '../utils/publication'
 
 /** Fresh default values for every persisted setting (new objects on every call). */
 export const settingDefaults = () => ({
@@ -18,6 +19,7 @@ export const settingDefaults = () => ({
     sourceMetaFields: [],
     sourceMeta: {},
     metadataSchema: defaultMetadataSchema(),
+    publication: defaultPublication(),
     snippetVariants: [],
     snippetAttributes: defaultSnippetAttributes(),
     frequencyBasis: 'corpus'
@@ -37,7 +39,7 @@ export const SETTING_GROUPS = {
     alignments: ['sourceAlignments'],
     // The user's own metadata columns and their values, and how the columns are arranged and checked:
     // edited in the manuscripts table and in Settings.
-    metadata: ['sourceMetaFields', 'sourceMeta', 'metadataSchema']
+    metadata: ['sourceMetaFields', 'sourceMeta', 'metadataSchema', 'publication']
 }
 
 /** The settings that travel in backups and configuration files (everything but the backup label). */
@@ -51,7 +53,7 @@ export const SHARED_SETTING_KEYS = [
 const KINDS = {
     displayMode: ['svg', 'arrow', 'text'],
     frequencyBasis: ['corpus', 'snapshot'],
-    globalDisplayIds: 'object', sourceAlignments: 'object', codeVariants: 'object', sourceMeta: 'object', snippetAttributes: 'object', metadataSchema: 'object',
+    globalDisplayIds: 'object', sourceAlignments: 'object', codeVariants: 'object', sourceMeta: 'object', snippetAttributes: 'object', metadataSchema: 'object', publication: 'object',
     customSigns: 'array', sourceMetaFields: 'array', snippetVariants: 'array',
     autoFillIds: 'boolean', discriminateSigns: 'boolean',
     snippetSize: 'number', snippetPadding: 'number',
@@ -59,7 +61,7 @@ const KINDS = {
 }
 
 /** Settings whose value is cleaned when it is taken from a file or storage. */
-const CLEANERS = { snippetAttributes: cleanSnippetAttributes, metadataSchema: cleanMetadataSchema }
+const CLEANERS = { snippetAttributes: cleanSnippetAttributes, metadataSchema: cleanMetadataSchema, publication: cleanPublication }
 
 /** Whether a value read from a file or storage is usable for a setting. */
 function acceptable(key, value) {
@@ -100,6 +102,8 @@ export const useSettingsStore = defineStore('settings', () => {
     const sourceMeta = ref({})
     // How the columns of the manuscripts table are arranged in categories and what each may hold (see utils/metadataSchema).
     const metadataSchema = ref(defaultMetadataSchema())
+    // What is said about the documentation when it is published: title, authors, licence, the columns shown (see utils/publication).
+    const publication = ref(defaultPublication())
     // What orders the columns of the neume tables, after the number of notes: 'corpus' = how often
     // each pattern occurs in the corpus that is loaded (the built-in CM snapshot only settles
     // what that cannot — the default), 'snapshot' = the snapshot alone, whatever is loaded.
@@ -116,7 +120,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const fields = {
         displayMode, autoFillIds, globalDisplayIds, snippetSize, snippetPadding, backupLabel,
         sourceAlignments, customSigns, codeVariants, discriminateSigns, sourceMetaFields,
-        sourceMeta, metadataSchema, snippetVariants, snippetAttributes, frequencyBasis
+        sourceMeta, metadataSchema, publication, snippetVariants, snippetAttributes, frequencyBasis
     }
 
     /** A plain, detached copy of the given settings (all of them by default). */
@@ -284,6 +288,11 @@ export const useSettingsStore = defineStore('settings', () => {
         return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
     }
 
+    /** Replace what is said about the published documentation (see utils/publication). */
+    function setPublication(next) {
+        publication.value = cleanPublication(next)
+    }
+
     /** Replace how the manuscripts table is arranged and checked (see utils/metadataSchema). */
     function setMetadataSchema(next) {
         metadataSchema.value = cleanMetadataSchema(next)
@@ -403,6 +412,8 @@ export const useSettingsStore = defineStore('settings', () => {
         sourceMeta,
         metadataSchema,
         setMetadataSchema,
+        publication,
+        setPublication,
         snippetVariants,
         frequencyBasis,
         snippetAttributes,

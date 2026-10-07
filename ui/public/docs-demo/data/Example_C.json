@@ -1,0 +1,153 @@
+{
+  "id": "Example C",
+  "source": "Example C",
+  "name": "Example C (made-up)",
+  "notes": "A made-up manuscript, to try the viewer with.",
+  "kind": "iiif",
+  "rows": [
+    {
+      "pattern": "*u",
+      "refId": "1",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*d",
+      "refId": "2",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*e",
+      "refId": "3",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*ud",
+      "refId": "4",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*du",
+      "refId": "5",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*uu",
+      "refId": "6",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*dd",
+      "refId": "7",
+      "notes": "",
+      "tier": "standard"
+    }
+  ],
+  "snippets": [
+    {
+      "id": "ExampleC-u-9",
+      "pattern": "*u",
+      "variant": "",
+      "refId": "1",
+      "folio": "5r",
+      "line": "2",
+      "image": "images/Example_C/ExampleC-u-9.svg",
+      "zoom": "images/Example_C/ExampleC-u-9.svg",
+      "lineId": "r2"
+    },
+    {
+      "id": "ExampleC-d-10",
+      "pattern": "*d",
+      "variant": "",
+      "refId": "2",
+      "folio": "5r",
+      "line": "2",
+      "image": "images/Example_C/ExampleC-d-10.svg",
+      "zoom": "images/Example_C/ExampleC-d-10.svg",
+      "lineId": "r2"
+    },
+    {
+      "id": "ExampleC-e-11",
+      "pattern": "*e",
+      "variant": "",
+      "refId": "3",
+      "folio": "5r",
+      "line": "2",
+      "image": "images/Example_C/ExampleC-e-11.svg",
+      "zoom": "images/Example_C/ExampleC-e-11.svg",
+      "lineId": "r2"
+    },
+    {
+      "id": "ExampleC-ud-12",
+      "pattern": "*ud",
+      "variant": "",
+      "refId": "4",
+      "folio": "5r",
+      "line": "2",
+      "image": "images/Example_C/ExampleC-ud-12.svg",
+      "zoom": "images/Example_C/ExampleC-ud-12.svg",
+      "lineId": "r2"
+    },
+    {
+      "id": "ExampleC-du-13",
+      "pattern": "*du",
+      "variant": "",
+      "refId": "5",
+      "folio": "5r",
+      "line": "2",
+      "image": "images/Example_C/ExampleC-du-13.svg",
+      "zoom": "images/Example_C/ExampleC-du-13.svg",
+      "lineId": "r2"
+    },
+    {
+      "id": "ExampleC-uu-14",
+      "pattern": "*uu",
+      "variant": "",
+      "refId": "6",
+      "folio": "5r",
+      "line": "2",
+      "image": "images/Example_C/ExampleC-uu-14.svg",
+      "zoom": "images/Example_C/ExampleC-uu-14.svg",
+      "lineId": "r2"
+    }
+  ],
+  "lines": [
+    {
+      "id": "r2",
+      "folio": "5r",
+      "name": "2",
+      "image": "images/Example_C/line-r2.svg",
+      "items": [
+        {
+          "id": "ExampleC-u-9",
+          "points": "9.33,18.75 18.9,18.75 18.9,81.25 9.33,81.25"
+        },
+        {
+          "id": "ExampleC-d-10",
+          "points": "21.29,18.75 30.86,18.75 30.86,81.25 21.29,81.25"
+        },
+        {
+          "id": "ExampleC-e-11",
+          "points": "33.25,18.75 42.82,18.75 42.82,81.25 33.25,81.25"
+        },
+        {
+          "id": "ExampleC-ud-12",
+          "points": "45.22,18.75 54.78,18.75 54.78,81.25 45.22,81.25"
+        },
+        {
+          "id": "ExampleC-du-13",
+          "points": "57.18,18.75 66.75,18.75 66.75,81.25 57.18,81.25"
+        },
+        {
+          "id": "ExampleC-uu-14",
+          "points": "69.14,18.75 78.71,18.75 78.71,81.25 69.14,81.25"
+        }
+      ]
+    }
+  ]
+}

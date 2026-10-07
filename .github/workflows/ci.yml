@@ -51,8 +51,14 @@ jobs:
       - name: Build the manual
         run: npm run build:manual
 
+      # Signing in to GitHub is set up with repository variables (auth-proxy/README.md); without them the
+      # site builds and the panel says it is not set up.
       - name: Build the app
         working-directory: ./ui
+        env:
+          VITE_GITHUB_CLIENT_ID: ${{ vars.VITE_GITHUB_CLIENT_ID }}
+          VITE_AUTH_PROXY_URL: ${{ vars.VITE_AUTH_PROXY_URL }}
+          VITE_GITHUB_APP_URL: ${{ vars.VITE_GITHUB_APP_URL }}
         run: npm run build
 
       # Pages deployed by a workflow takes the address from its settings; the file keeps the

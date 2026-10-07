@@ -39,7 +39,7 @@ describe('capturing the workspace', () => {
         expect(other.settings.metadataSchema).toEqual(stores.settings.metadataSchema);
 
         applyWorkspace(other, { settings: { metadataSchema: { categories: 'x', checks: 7, placement: [] } } });
-        expect(other.settings.metadataSchema).toEqual({ categories: [], placement: {}, order: [], checks: {} });
+        expect(other.settings.metadataSchema).toEqual({ categories: [], placement: {}, order: [], checks: {}, filters: {}, views: [] });
     });
 
     it('is not empty when projects are all there is', async () => {

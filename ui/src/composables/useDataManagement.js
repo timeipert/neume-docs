@@ -37,8 +37,8 @@ export function useDataManagement() {
         };
     }
 
-    // Export whole workspace (filtering only manuscripts with data)
-    function exportData(options = {}) {
+    // The whole workspace as one backup object (filtering only manuscripts with data)
+    function backupPayload(options = {}) {
         const { includeSettings = true, onlyWithData = true } = options;
         const currentState = getLocalFullState();
         const allSources = extractSourcesFromContent(currentState);
@@ -63,7 +63,12 @@ export function useDataManagement() {
             }
         };
 
-        const json = JSON.stringify(payload, null, 2);
+        return payload;
+    }
+
+    // Export whole workspace as a file
+    function exportData(options = {}) {
+        const json = JSON.stringify(backupPayload(options), null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
 
@@ -371,7 +376,7 @@ export function useDataManagement() {
     }
 
     return { 
-        exportData, 
+        exportData, backupPayload, 
         exportManuscripts, 
         exportConfiguration, 
         importConfiguration, 

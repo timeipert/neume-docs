@@ -3,10 +3,11 @@ import { computed, reactive, ref, watch } from 'vue';
 import ModalDialog from '../ui/ModalDialog.vue';
 import ColumnCheckEditor from './ColumnCheckEditor.vue';
 import { useManuscriptTable } from '../../composables/useManuscriptTable';
+import { FILTER_KIND_OPTIONS, useManuscriptFilter } from '../../composables/useManuscriptFilter';
 import { useSettingsStore } from '../../stores/settings';
 import { useToast } from '../../composables/useToast';
 import { META_TYPES, parseCentury } from '../../utils/sourceMeta';
-import { fromDraft, placeColumn, setCheck, toDraft } from '../../utils/metadataSchema';
+import { fromDraft, placeColumn, setCheck, setFilterConfig, toDraft } from '../../utils/metadataSchema';
 
 /**
  * Everything about one column of the manuscripts table: what it is called and means (for the
@@ -20,6 +21,7 @@ const props = defineProps({
 const emit = defineEmits(['close']);
 
 const table = useManuscriptTable();
+const mf = useManuscriptFilter(table);
 const settings = useSettingsStore();
 const toast = useToast();
 
@@ -29,7 +31,10 @@ const own = computed(() => !!col.value && col.value.group === 'project');
 const field = computed(() => (own.value ? settings.sourceMetaFields.find(f => f.key === col.value.field) : null));
 const checkable = computed(() => !!col.value && !col.value.readonly);
 
-const draft = reactive({ label: '', description: '', type: 'text', category: '', check: toDraft(null) });
+const draft = reactive({ label: '', description: '', type: 'text', category: '', check: toDraft(null), filterOn: false, filterKind: '' });
+/** what the column was for filtering when the dialog opened: a change is only kept if it differs */
+const filterNow = computed(() => (col.value && props.open ? mf.configFor(col.value) : null));
+let offeredAtOpen = false;
 
 watch(() => [props.open, props.columnKey], () => {
     if (!props.open || !col.value) return;
@@ -38,8 +43,11 @@ watch(() => [props.open, props.columnKey], () => {
         description: field.value ? field.value.description || '' : '',
         type: field.value ? field.value.type || 'text' : 'text',
         category: col.value.band,
-        check: toDraft(settings.metadataSchema.checks[props.columnKey])
+        check: toDraft(settings.metadataSchema.checks[props.columnKey]),
+        filterOn: filterNow.value ? filterNow.value.offered : false,
+        filterKind: filterNow.value ? filterNow.value.saidKind : ''
     });
+    offeredAtOpen = draft.filterOn;
 }, { immediate: true });
 
 const values = computed(() => (col.value && props.open ? table.usedValues(col.value) : []));
@@ -56,6 +64,12 @@ function save() {
     }
     let next = placeColumn(settings.metadataSchema, props.columnKey, draft.category, col.value.group);
     if (checkable.value) next = setCheck(next, props.columnKey, fromDraft(draft.check));
+    // What is not changed here stays as it was: a column nobody said anything about keeps following what it holds.
+    const said = settings.metadataSchema.filters[props.columnKey] || {};
+    next = setFilterConfig(next, props.columnKey, {
+        on: draft.filterOn !== offeredAtOpen ? draft.filterOn : (typeof said.on === 'boolean' ? said.on : null),
+        kind: draft.filterKind || null
+    });
     settings.setMetadataSchema(next);
     toast.show(`Column “${draft.label.trim() || col.value.label}” saved.`, { tone: 'success' });
     emit('close');
@@ -98,6 +112,20 @@ function save() {
                 <option v-for="c in table.categories.value" :key="c.key" :value="c.key">{{ c.label }}</option>
             </select>
             <p class="hint">The band above the heading. Categories are made and ordered in Settings → Manuscript metadata.</p>
+        </div>
+
+        <div class="ne-field">
+            <span class="ne-label">Filter</span>
+            <label class="ne-check"><input v-model="draft.filterOn" type="checkbox" /> Offer this column as a filter in the Filter panel</label>
+            <select v-model="draft.filterKind" class="ne-input" aria-label="How the column is filtered" :disabled="!draft.filterOn">
+                <option value="">Automatic — {{ filterNow ? (FILTER_KIND_OPTIONS.find(o => o.value === filterNow.auto) || {}).label : '' }}</option>
+                <option v-for="o in FILTER_KIND_OPTIONS" :key="o.value" :value="o.value">{{ o.label }}</option>
+            </select>
+            <p class="hint">
+                <strong>Pick values</strong> lists what the column holds with how many manuscripts have each; <strong>Date range</strong> reads the cells as datings
+                (“s. XI/XII”, “c. 1100”) and draws them on a timeline; <strong>Number range</strong> takes a lowest and a highest; <strong>Text</strong> compares what you type.
+                <template v-if="filterNow">The column holds {{ filterNow.distinct }} different value{{ filterNow.distinct === 1 ? '' : 's' }} in {{ filterNow.filled }} manuscript{{ filterNow.filled === 1 ? '' : 's' }}.</template>
+            </p>
         </div>
 
         <div v-if="checkable" class="ne-field">

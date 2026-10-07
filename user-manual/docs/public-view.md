@@ -1,4 +1,8 @@
-# Public Documentation
+# Static Pages
+
+::: tip The viewer replaces this
+Publishing now means making a *documentation* that the viewer reads — see [Viewing & Publishing Documentations](./documentations). What follows describes the older, fixed pages (*Workspace → Publish → Also: finished web pages*).
+:::
 
 The ultimate goal of neume-docs is to publish your findings. The tool provides a built-in, static "Public View" that serves as an interactive documentation site for your notation system.
 

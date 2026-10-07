@@ -1,0 +1,11 @@
+name = "neume-docs-auth"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+# The pages that may use this helper. Not a secret.
+[vars]
+ALLOWED_ORIGINS = "https://neumedocs.monodi.app,http://localhost:5173"
+
+# Secrets are set with `npx wrangler secret put`, never written here:
+#   GITHUB_CLIENT_ID
+#   GITHUB_CLIENT_SECRET

@@ -3,6 +3,7 @@ import { computed, ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { useManuscriptTable } from '../composables/useManuscriptTable';
+import { useManuscriptFilter } from '../composables/useManuscriptFilter';
 import { useManuscriptMetaStore } from '../stores/manuscriptMeta';
 import { useIiifStore } from '../stores/iiif';
 import { useProjectsStore } from '../stores/projects';
@@ -17,6 +18,7 @@ import StateWrapper from '../components/StateWrapper.vue';
 import ModalDialog from '../components/ui/ModalDialog.vue';
 import ManuscriptsTabs from '../components/manuscripts/ManuscriptsTabs.vue';
 import AddManuscriptDialog from '../components/metadata/AddManuscriptDialog.vue';
+import FilterPanel from '../components/metadata/FilterPanel.vue';
 import ColumnSettingsDialog from '../components/metadata/ColumnSettingsDialog.vue';
 import IiifSetup from '../components/iiif/IiifSetup.vue';
 import { iiifStatus } from '../utils/iiifStatus';
@@ -28,6 +30,7 @@ const projectsStore = useProjectsStore();
 const route = useRoute();
 const { catalog, hasCorpus, loading, error } = useTranscriptionData();
 const table = useManuscriptTable();
+const mf = useManuscriptFilter(table);
 const meta = useManuscriptMetaStore();
 const iiif = useIiifStore();
 const settings = useSettingsStore();
@@ -38,8 +41,9 @@ const toast = useToast();
 // Other pages link here with ?q=<siglum> to land on one manuscript.
 const search = ref(typeof route.query.q === 'string' ? route.query.q : '');
 const quick = ref('all');
-const showFilters = ref(false);
+const showFilters = ref(false); // a text box in each column heading
 const filters = ref({});
+const filterOpen = ref(false);  // the filter panel
 const sort = ref({ key: 'source', dir: 'asc' });
 
 const QUICK = [
@@ -66,8 +70,10 @@ const rowIds = computed(() => {
     const textColumns = columns.value;
     const active = Object.entries(filters.value).filter(([, f]) => f && f.trim());
     const byKey = table.columnByKey.value;
+    const passes = mf.active.value ? new Set(mf.matching.value) : null;
 
     let ids = table.sources.value.filter(id => {
+        if (passes && !passes.has(id)) return false;
         if (q && !textColumns.some(col => table.value(id, col).toLowerCase().includes(q))) return false;
         for (const [key, expr] of active) {
             const col = byKey.get(key);
@@ -100,12 +106,29 @@ function setFilter(key, text) {
     filters.value = { ...filters.value, [key]: text };
 }
 
-const filterCount = computed(() => Object.values(filters.value).filter(f => f && f.trim()).length);
+const headingFilterCount = computed(() => Object.values(filters.value).filter(f => f && f.trim()).length);
+/** Everything that narrows the table besides the search box: the filter panel's rules and the headings' boxes. */
+const filterCount = computed(() => mf.chips.value.length + headingFilterCount.value);
 
 function clearFilters() {
     filters.value = {};
     search.value = '';
     quick.value = 'all';
+    mf.clear();
+}
+
+// ---- the filter panel ---------------------------------------------------------------------
+
+/** Keep only the manuscripts whose cell in the selected column says what the selected cell says. */
+function onlyThisValue(not = false) {
+    const col = activeColumn.value;
+    if (!col) return;
+    mf.onlyValue(col, sel.value.activeText, not);
+    filterOpen.value = true;
+}
+
+function settingsOfFilters() {
+    router.push({ name: 'settings', query: { section: 'manuscript-metadata' } });
 }
 
 // ---- cells ------------------------------------------------------------------
@@ -522,12 +545,21 @@ const fmt = (n) => n.toLocaleString('en-US');
                 <div class="tools-row">
                     <input v-model="search" type="search" class="search" placeholder="Search all columns…" aria-label="Search all columns" />
                     <SegmentedControl v-model="quick" :options="QUICK" label="Show" size="sm" />
-                    <button class="ne-btn ne-btn--sm" :class="{ on: showFilters || filterCount }" :aria-pressed="showFilters" @click="showFilters = !showFilters">
-                        Filters<template v-if="filterCount"> · {{ filterCount }}</template>
+                    <button class="ne-btn ne-btn--sm" :class="{ on: filterOpen || filterCount }" :aria-pressed="filterOpen" title="Show the manuscripts with certain values, dates or numbers" @click="filterOpen = !filterOpen">
+                        Filter<template v-if="filterCount"> · {{ filterCount }}</template>
                     </button>
                     <button v-if="filterCount || search || quick !== 'all'" class="ne-btn ne-btn--sm ne-btn--ghost" @click="clearFilters">Clear</button>
                     <span class="spacer"></span>
                     <span class="count">{{ fmt(rowIds.length) }} of {{ fmt(table.sources.value.length) }} manuscripts</span>
+                </div>
+
+                <div v-if="mf.chips.value.length" class="tools-row chips" role="list" aria-label="Filters that are set">
+                    <span v-if="mf.chips.value.length > 1" class="chips-join">{{ mf.filter.value.mode === 'any' ? 'Any of' : 'All of' }}</span>
+                    <button v-for="c in mf.chips.value" :key="c.key" type="button" class="chip" :class="{ bad: c.problem }" role="listitem" :title="c.problem || 'Open this filter'" @click="filterOpen = true">
+                        <span class="chip-key">{{ c.label }}</span>
+                        <span class="chip-val">{{ c.text }}</span>
+                        <span class="chip-x" role="button" tabindex="0" :aria-label="`Remove the filter on ${c.label}`" @click.stop="mf.setRule(c.key, null)" @keydown.enter.stop="mf.setRule(c.key, null)">×</span>
+                    </button>
                 </div>
 
                 <div class="tools-row">
@@ -618,6 +650,10 @@ const fmt = (n) => n.toLocaleString('en-US');
                         @keydown="onBarKey"
                     />
                     <datalist v-if="activeColumn && activeColumn.choices" id="bar-choices"><option v-for="o in activeColumn.choices" :key="o" :value="o" /></datalist>
+                    <span v-if="activeColumn && !activeColumn.frozen" class="row-actions">
+                        <button class="ne-btn ne-btn--sm" title="Keep only the manuscripts whose cell in this column says the same" @click="onlyThisValue(false)">Only this value</button>
+                        <button class="ne-btn ne-btn--sm" title="Leave out the manuscripts whose cell in this column says the same" @click="onlyThisValue(true)">Without it</button>
+                    </span>
                     <span v-if="activeSource" class="row-actions">
                         <button class="ne-btn ne-btn--sm" :title="`Projects on ${activeSource}`" @click="projectAction.go">{{ projectAction.label }}</button>
                         <button v-if="activeHasImages" class="ne-btn ne-btn--sm" :title="`Browse the pages of ${activeSource}`" @click="openPages">Pages →</button>
@@ -633,6 +669,18 @@ const fmt = (n) => n.toLocaleString('en-US');
                 <span v-if="summary.edited"><strong>{{ summary.edited }}</strong> edited value{{ summary.edited === 1 ? '' : 's' }}</span>
             </div>
 
+            <div class="work">
+            <FilterPanel
+                v-if="filterOpen"
+                :f="mf"
+                :shown="rowIds.length"
+                :total="table.sources.value.length"
+                :sigla="rowIds"
+                :headings="showFilters"
+                @update:headings="showFilters = $event"
+                @settings="settingsOfFilters"
+                @close="filterOpen = false"
+            />
             <div class="grid-wrap">
                 <DataGrid
                     ref="grid"
@@ -657,6 +705,7 @@ const fmt = (n) => n.toLocaleString('en-US');
                     @redo="redo"
                     @notice="say"
                 />
+            </div>
             </div>
 
             <div class="status">
@@ -790,7 +839,18 @@ kbd { font-family: inherit; font-size: 0.72rem; background: var(--color-surface-
 .iiif-note strong { color: var(--color-text); }
 .iiif-note .bad, .bad { color: var(--color-danger); }
 
-.grid-wrap { flex: 1; min-height: 0; }
+.work { flex: 1; min-height: 0; display: flex; gap: var(--space-3); }
+.grid-wrap { flex: 1; min-width: 0; min-height: 0; }
+
+.chips { gap: 6px; }
+.chips-join { font-size: 0.76rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.chip { display: inline-flex; align-items: center; gap: 6px; max-width: 24rem; padding: 2px 4px 2px 10px; border: 1px solid var(--color-primary-muted); border-radius: 999px; background: var(--color-primary-light); font-size: 0.8rem; cursor: pointer; }
+.chip:hover { background: var(--color-surface); }
+.chip.bad { border-color: var(--color-danger); }
+.chip-key { font-weight: 700; flex: none; }
+.chip-val { color: var(--color-primary-dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip-x { width: 1.3rem; height: 1.3rem; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-size: 1rem; line-height: 1; color: var(--color-text-muted); }
+.chip-x:hover { background: var(--color-danger-light); color: var(--color-danger); }
 .status { flex: 0 0 auto; display: flex; gap: var(--space-4); padding-top: var(--space-1); font-size: 0.78rem; color: var(--color-text-muted); }
 .status .grow { flex: 1; }
 .dim { color: var(--color-text-light); }

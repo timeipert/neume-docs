@@ -21,16 +21,19 @@ const props = defineProps({
     showCounts: { type: Boolean, default: true },
     emptyText: { type: String, default: 'No patterns.' },
     // Order of the codes inside a group; defaults to tones, then plainness, then alphabet
-    compare: { type: Function, default: null }
+    compare: { type: Function, default: null },
+    // The sign vocabulary to read the codes by, when it is not this browser's own (a documentation brings its own)
+    customSigns: { type: Array, default: null }
 });
 
 const settings = useSettingsStore();
 
 // The grouping needs the project's sign vocabulary to tell a custom sign letter
 // apart from a built-in note-shape suffix.
+const signs = computed(() => props.customSigns || settings.customSigns);
 const tree = computed(() => buildPatternHierarchy(props.codes, {
-    signKeys: settings.customSigns.map(s => s.key),
-    customSigns: settings.customSigns,
+    signKeys: signs.value.map(s => s.key),
+    customSigns: signs.value,
     compare: props.compare || undefined
 }));
 

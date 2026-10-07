@@ -1,0 +1,174 @@
+{
+  "id": "Example D",
+  "source": "Example D",
+  "name": "Example D (made-up)",
+  "notes": "A made-up manuscript, to try the viewer with.",
+  "kind": "iiif",
+  "rows": [
+    {
+      "pattern": "*u",
+      "refId": "1",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*d",
+      "refId": "2",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*e",
+      "refId": "3",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*ud",
+      "refId": "4",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*du",
+      "refId": "5",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*uu",
+      "refId": "6",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*dd",
+      "refId": "7",
+      "notes": "",
+      "tier": "standard"
+    },
+    {
+      "pattern": "*udd",
+      "refId": "8",
+      "notes": "",
+      "tier": "standard"
+    }
+  ],
+  "snippets": [
+    {
+      "id": "ExampleD-u-15",
+      "pattern": "*u",
+      "variant": "",
+      "refId": "1",
+      "folio": "6r",
+      "line": "2",
+      "image": "images/Example_D/ExampleD-u-15.svg",
+      "zoom": "images/Example_D/ExampleD-u-15.svg",
+      "lineId": "r3"
+    },
+    {
+      "id": "ExampleD-d-16",
+      "pattern": "*d",
+      "variant": "",
+      "refId": "2",
+      "folio": "6r",
+      "line": "2",
+      "image": "images/Example_D/ExampleD-d-16.svg",
+      "zoom": "images/Example_D/ExampleD-d-16.svg",
+      "lineId": "r3"
+    },
+    {
+      "id": "ExampleD-e-17",
+      "pattern": "*e",
+      "variant": "",
+      "refId": "3",
+      "folio": "6r",
+      "line": "2",
+      "image": "images/Example_D/ExampleD-e-17.svg",
+      "zoom": "images/Example_D/ExampleD-e-17.svg",
+      "lineId": "r3"
+    },
+    {
+      "id": "ExampleD-ud-18",
+      "pattern": "*ud",
+      "variant": "",
+      "refId": "4",
+      "folio": "6r",
+      "line": "2",
+      "image": "images/Example_D/ExampleD-ud-18.svg",
+      "zoom": "images/Example_D/ExampleD-ud-18.svg",
+      "lineId": "r3"
+    },
+    {
+      "id": "ExampleD-du-19",
+      "pattern": "*du",
+      "variant": "",
+      "refId": "5",
+      "folio": "6r",
+      "line": "2",
+      "image": "images/Example_D/ExampleD-du-19.svg",
+      "zoom": "images/Example_D/ExampleD-du-19.svg",
+      "lineId": "r3"
+    },
+    {
+      "id": "ExampleD-uu-20",
+      "pattern": "*uu",
+      "variant": "",
+      "refId": "6",
+      "folio": "6r",
+      "line": "2",
+      "image": "images/Example_D/ExampleD-uu-20.svg",
+      "zoom": "images/Example_D/ExampleD-uu-20.svg",
+      "lineId": "r3"
+    },
+    {
+      "id": "ExampleD-dd-21",
+      "pattern": "*dd",
+      "variant": "",
+      "refId": "7",
+      "folio": "6r",
+      "line": "2",
+      "image": "images/Example_D/ExampleD-dd-21.svg",
+      "zoom": "images/Example_D/ExampleD-dd-21.svg",
+      "lineId": "r3"
+    }
+  ],
+  "lines": [
+    {
+      "id": "r3",
+      "folio": "6r",
+      "name": "2",
+      "image": "images/Example_D/line-r3.svg",
+      "items": [
+        {
+          "id": "ExampleD-u-15",
+          "points": "9.33,18.75 18.9,18.75 18.9,81.25 9.33,81.25"
+        },
+        {
+          "id": "ExampleD-d-16",
+          "points": "21.29,18.75 30.86,18.75 30.86,81.25 21.29,81.25"
+        },
+        {
+          "id": "ExampleD-e-17",
+          "points": "33.25,18.75 42.82,18.75 42.82,81.25 33.25,81.25"
+        },
+        {
+          "id": "ExampleD-ud-18",
+          "points": "45.22,18.75 54.78,18.75 54.78,81.25 45.22,81.25"
+        },
+        {
+          "id": "ExampleD-du-19",
+          "points": "57.18,18.75 66.75,18.75 66.75,81.25 57.18,81.25"
+        },
+        {
+          "id": "ExampleD-uu-20",
+          "points": "69.14,18.75 78.71,18.75 78.71,81.25 69.14,81.25"
+        },
+        {
+          "id": "ExampleD-dd-21",
+          "points": "81.1,18.75 90.67,18.75 90.67,81.25 81.1,81.25"
+        }
+      ]
+    }
+  ]
+}

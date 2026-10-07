@@ -53,6 +53,15 @@ The neume table orders and fills the columns of a table of neumes:
 
 The same three-level logic drives the comparison table (*Public → Neume Table*): manuscripts as rows, neume columns in the fixed order.
 
+### Reading and publishing documentations (new)
+
+The app starts with two ways in: **View documentations** and **Editor**.
+
+- **View documentations** (`#/docs`) reads what others have published — read-only, no corpus and no workspace folder needed. The *endpoints* it offers are listed in `ui/public/endpoints.json` (a GitHub repository, or any web address, each with a name); whoever hosts a copy of the app edits that list. A reader can also open any public GitHub repository by its address (`owner/name`). An endpoint holds plain files: `neume-docs.json` (who made it, the metadata columns and which of them can be filtered, the list of manuscripts) and one file per manuscript in `data/`. The viewer lists the manuscripts with the metadata the authors chose to show, with a filter panel (pick values, date ranges drawn on a timeline, number ranges, text; "match all" or "match any"), compares them in the neume table, and shows a manuscript's patterns and snippets. **Everything can be referenced:** a manuscript, a pattern of a manuscript, a cell of the neume table, a column, a snippet and a filtered selection each have a link that opens exactly that, softly highlighted, and a suggestion for citing it (short, author–date, BibTeX).
+- **Editor** is the editor as before. *Workspace → Publish a documentation* says who made the documentation and under which licence, chooses which metadata readers are shown, previews it as readers see it (*This browser* in the viewer) and downloads it as a ZIP: the files to commit to a GitHub repository. Which columns of the manuscripts table can be filtered by readers is set there too (the *Filter* box of a column, in *Settings → Manuscript metadata*).
+
+The file format is `ui/src/utils/documentation.js`; the files are built by `ui/src/utils/buildDocumentation.js` — the same function for the preview and the download. `ui/public/docs-demo/` is an invented example documentation (`node ui/scripts/make-demo-docs.mjs` makes it).
+
 ### Inherited from CM-Transcription-Equivalents
 
 Pattern equivalents with Reference IDs and variants, IIIF manuscript annotation (line regions and polygon snippets), the pattern library with MEI templates, screenshot projects without IIIF, OMMR4all import, public manuscript pages, static site export, workspace folder autosave.
@@ -70,7 +79,7 @@ Without it the editor works as before and says that no catalogue is available. C
 
 ## Interface
 
-Everything you document is a **project** (see above); the navigation is *Projects · Manuscripts · Patterns · Workspace · Settings*. *Manuscripts* has three tabs — the catalogue (where the selected row leads on to its project and its pages), the images (IIIF sources) and the corpus (loading); *Patterns* has the library and what the corpus makes of it. The page editor and the custom collections are reached from a project's cell, the catalogue or the Workspace. Each function has one place: signs and preferred IDs are set up in the pattern library, own metadata columns in the metadata table, backups and deleting on the Workspace page, and Settings keeps only the two global preferences. The conventions every page follows (page structure, buttons, how deleting works, naming) are in [UI-CONVENTIONS.md](UI-CONVENTIONS.md).
+The app starts at a page with two choices, *View documentations* and *Editor*; the viewer has its own slim frame, without the editor's navigation. In the editor, everything you document is a **project** (see above); the navigation is *Projects · Manuscripts · Patterns · Workspace · Settings*. *Manuscripts* has three tabs — the catalogue (where the selected row leads on to its project and its pages), the images (IIIF sources) and the corpus (loading); *Patterns* has the library and what the corpus makes of it. The page editor and the custom collections are reached from a project's cell, the catalogue or the Workspace. Each function has one place: signs and preferred IDs are set up in the pattern library, own metadata columns in the metadata table, backups and deleting on the Workspace page, and Settings keeps only the two global preferences. The conventions every page follows (page structure, buttons, how deleting works, naming) are in [UI-CONVENTIONS.md](UI-CONVENTIONS.md).
 
 ## Running it
 
@@ -115,7 +124,10 @@ ui/                          the Vue 3 app
   src/composables/           useTranscriptionData (the loaded corpus), usePatternCatalog (library + frequencies)
   src/utils/project*.js      projects: the two-level table, folio ranges and snippets, old work as projects, publishing (pure, tested)
   src/stores/projects.js     the projects (saved with the workspace)
-  src/views/                 ProjectsView, ProjectWizardView, ProjectShellView and its tabs, CorpusView, PublicNeumeTableView, WorkspaceView, …
+  src/views/                 StartView, ProjectsView, ProjectWizardView, ProjectShellView and its tabs, CorpusView, WorkspaceView, …
+  src/views/docs/            the viewer: the list of documentations, one documentation (manuscripts, manuscript, neume table, about)
+  src/utils/documentation*.js, buildDocumentation.js, citation.js, publication.js   the documentation format, reading it, building it, citing it (pure, tested)
+  src/utils/manuscriptFilter.js, composables/useRowFilter.js   the filter of the manuscripts table, shared by the editor and the viewer
   src/components/ui/         the shared building blocks: Panel, PageShell, ModalDialog, ConfirmDialog, toasts, …
   src/components/workspace/  the panels of the Workspace page
   src/services/mmmo/         matching a manuscript against the MMMO catalogue (pure, tested)

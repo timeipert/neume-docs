@@ -11,7 +11,8 @@ import { useProjectPublishing } from './composables/useProjectPublishing';
 useProjectPublishing();
 
 const route = useRoute();
-const isPublic = computed(() => route.path.startsWith('/public'));
+// The start page, the documentations and the old public pages stand alone: they have no editor navigation.
+const isPublic = computed(() => route.path.startsWith('/public') || !!route.meta.bare);
 const isSetup = computed(() => route.path === '/setup');
 // The page editor, when a project's cell sent you there, still belongs to that project.
 const isProjectPage = computed(() => route.path.startsWith('/projects') || route.query.return_to === 'project');
@@ -34,7 +35,7 @@ watch(() => route.path, () => { isMenuOpen.value = false; });
 <template>
   <div class="app-shell">
     <nav v-if="!isPublic && !isSetup" class="top-nav">
-      <RouterLink to="/projects" class="nav-brand" aria-label="neume-docs home">
+      <RouterLink to="/" class="nav-brand" aria-label="neume-docs start">
         <span class="brand-mark" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="20" height="20"><ellipse cx="8" cy="8" rx="4.2" ry="3.2" transform="rotate(-18 8 8)" fill="currentColor"/><ellipse cx="16" cy="16" rx="4.2" ry="3.2" transform="rotate(-18 16 16)" fill="currentColor"/></svg>
         </span>
@@ -57,7 +58,7 @@ watch(() => route.path, () => { isMenuOpen.value = false; });
         <span class="nav-sep" aria-hidden="true"></span>
         <SaveReminder />
         <a href="manual/index.html" target="_blank" class="nav-util manual-link">Manual</a>
-        <a href="#/public" target="_blank" rel="noopener" class="nav-util public-ext-link">Public&nbsp;↗</a>
+        <RouterLink to="/docs" class="nav-util public-ext-link" @click="isMenuOpen = false">Documentations</RouterLink>
       </div>
     </nav>
     

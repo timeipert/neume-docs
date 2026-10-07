@@ -80,7 +80,7 @@ export const AREAS = [
     {
         key: 'metadata',
         title: 'Manuscript metadata',
-        blurb: 'Your edits to the corpus metadata, the columns you added yourself, and how the columns are arranged and checked.',
+        blurb: 'Your edits to the corpus metadata, the columns you added yourself, how the columns are arranged, checked and filtered, and the filters you saved.',
         to: '/manuscripts',
         goLabel: 'Manuscripts',
         measure({ meta, settings }) {
@@ -88,15 +88,16 @@ export const AREAS = [
             const columns = settings.sourceMetaFields.length;
             const values = countOwnValues(settings.sourceMeta);
             const layout = schemaChanges(settings.metadataSchema);
-            const arranged = layout.categories + layout.renamed + layout.placed + layout.moved;
+            const arranged = layout.categories + layout.renamed + layout.placed + layout.moved + layout.filters;
             return {
-                count: edits + columns + values + arranged + layout.checks,
+                count: edits + columns + values + arranged + layout.checks + layout.views,
                 text: describe([
                     edits && plural(edits, 'edited cell'),
                     columns && plural(columns, 'own column'),
                     values && plural(values, 'own value'),
                     layout.categories && plural(layout.categories, 'own category', 'own categories'),
-                    layout.checks && plural(layout.checks, 'value check')
+                    layout.checks && plural(layout.checks, 'value check'),
+                    layout.views && plural(layout.views, 'saved filter')
                 ])
             };
         },

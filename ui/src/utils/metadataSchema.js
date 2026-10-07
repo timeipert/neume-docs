@@ -8,11 +8,16 @@
  *   order        the place of columns that were moved by hand
  *   checks       what the cells of a column should look like: one of a list, or a pattern.
  *                A cell that does not fit is marked, never refused.
+ *   filters      which columns are offered as filters, and how: { on?, kind? } — what is not said
+ *                is decided from what the column holds (see utils/manuscriptFilter)
+ *   views        filters kept under a name: [{ name, filter }]
  *
  * A column is named by its key in the table: `cat:herkunftsort`, `proj:ink`, `iiif:manifest`.
  * Everything here is plain functions over plain data, so what is stored, imported
  * and restored can be cleaned the same way.
  */
+
+import { FILTER_KINDS, cleanFilter, ruleCount } from './manuscriptFilter';
 
 export const BUILTIN_CATEGORIES = [
     { key: 'catalogue', label: 'Corpus catalogue' },
@@ -29,8 +34,9 @@ export const MAX_CATEGORIES = 30;
 const MAX_LIST = 500;
 const MAX_TEXT = 200;
 const MAX_PATTERN = 500;
+export const MAX_VIEWS = 50;
 
-export const defaultMetadataSchema = () => ({ categories: [], placement: {}, order: [], checks: {} });
+export const defaultMetadataSchema = () => ({ categories: [], placement: {}, order: [], checks: {}, filters: {}, views: [] });
 
 const text = (v, max = MAX_TEXT) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const plainObject = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -180,7 +186,30 @@ export function cleanMetadataSchema(raw) {
             if (c) out.checks[col] = c;
         }
     }
+    if (plainObject(raw.filters)) {
+        for (const [col, conf] of Object.entries(raw.filters)) {
+            const c = normaliseFilterConfig(conf);
+            if (c) out.filters[col] = c;
+        }
+    }
+    const names = new Set();
+    for (const v of Array.isArray(raw.views) ? raw.views : []) {
+        const name = text(v && v.name, 60);
+        const filter = cleanFilter(v && v.filter);
+        if (!name || names.has(name.toLowerCase()) || !ruleCount(filter) || out.views.length >= MAX_VIEWS) continue;
+        names.add(name.toLowerCase());
+        out.views.push({ name, filter });
+    }
     return out;
+}
+
+/** What is said about filtering a column, or null if nothing. */
+function normaliseFilterConfig(conf) {
+    if (!plainObject(conf)) return null;
+    const out = {};
+    if (typeof conf.on === 'boolean') out.on = conf.on;
+    if (FILTER_KINDS.includes(conf.kind)) out.kind = conf.kind;
+    return Object.keys(out).length ? out : null;
 }
 
 /** The categories in order: the stored list, then any of the four the table started with that it lacks. */
@@ -312,13 +341,42 @@ export function setCheck(schema, colKey, check) {
     return { ...schema, checks };
 }
 
-/** A column is gone for good: nothing is kept of its place or its check. */
+/**
+ * Say whether a column is offered as a filter, and how. `on` and `kind` each take a value, or
+ * null to go back to what the column's contents decide.
+ */
+export function setFilterConfig(schema, colKey, patch) {
+    const filters = { ...schema.filters };
+    const next = normaliseFilterConfig({ ...(filters[colKey] || {}), ...Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== null)) });
+    const kept = { ...(next || {}) };
+    for (const [k, v] of Object.entries(patch)) if (v === null) delete kept[k];
+    if (Object.keys(kept).length) filters[colKey] = kept;
+    else delete filters[colKey];
+    return { ...schema, filters };
+}
+
+/** A filter kept under a name; the same name (whatever its case) is replaced. */
+export function saveView(schema, name, filter) {
+    const clean = text(name, 60);
+    const f = cleanFilter(filter);
+    if (!clean || !ruleCount(f)) return schema;
+    const others = (schema.views || []).filter(v => v.name.toLowerCase() !== clean.toLowerCase());
+    return { ...schema, views: [...others, { name: clean, filter: f }].slice(-MAX_VIEWS) };
+}
+
+export function removeView(schema, name) {
+    return { ...schema, views: (schema.views || []).filter(v => v.name !== name) };
+}
+
+/** A column is gone for good: nothing is kept of its place, its check or how it is filtered. */
 export function forgetColumn(schema, colKey) {
     const placement = { ...schema.placement };
     const checks = { ...schema.checks };
+    const filters = { ...(schema.filters || {}) };
     delete placement[colKey];
     delete checks[colKey];
-    return { ...schema, placement, checks, order: schema.order.filter(k => k !== colKey) };
+    delete filters[colKey];
+    return { ...schema, placement, checks, filters, order: schema.order.filter(k => k !== colKey) };
 }
 
 /** What differs from a table nobody has arranged: for counting and for "nothing to reset". */
@@ -331,6 +389,8 @@ export function schemaChanges(schema) {
         renamed,
         placed: Object.keys(s.placement || {}).length,
         moved: (s.order || []).length ? 1 : 0,
-        checks: Object.keys(s.checks || {}).length
+        checks: Object.keys(s.checks || {}).length,
+        filters: Object.keys(s.filters || {}).length,
+        views: (s.views || []).length
     };
 }

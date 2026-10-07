@@ -1,0 +1,10 @@
+{
+  "endpoints": [
+    {
+      "id": "example",
+      "name": "Example documentation",
+      "description": "Made-up manuscripts that ship with the app, to try the viewer with.",
+      "url": "./docs-demo/"
+    }
+  ]
+}

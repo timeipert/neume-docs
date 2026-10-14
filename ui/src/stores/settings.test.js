@@ -60,6 +60,23 @@ describe('settings: whole-store operations', () => {
     });
 });
 
+describe('settings: what is said about a publication', () => {
+    it('is replaced when it says something different', async () => {
+        const { settings } = await freshStores();
+        settings.setPublication({ title: 'Mine', authors: ['A. Author'] });
+        expect(settings.publication).toMatchObject({ title: 'Mine', authors: ['A. Author'] });
+    });
+
+    it('is left as it is, object and all, when the same thing is said again', async () => {
+        const { settings } = await freshStores();
+        settings.setPublication({ title: 'Mine', authors: ['A. Author'] });
+        const kept = settings.publication;
+        // whatever watches the setting must not be set off by a save that changes nothing
+        settings.setPublication({ title: ' Mine ', authors: ['A. Author'], columns: null });
+        expect(settings.publication).toBe(kept);
+    });
+});
+
 describe('settings: snippet attributes', () => {
     it('start as a folio and a line for a line, a syllable for a sign', async () => {
         const { settings } = await freshStores();

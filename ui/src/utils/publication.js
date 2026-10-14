@@ -29,6 +29,17 @@ export function cleanPublication(raw) {
     return out;
 }
 
+/**
+ * Whether what is being typed and what is stored say the same. Text is compared as it will be
+ * stored (a space at the end is still being written), anything else by its content — never by
+ * identity: a cleaned copy is always a new object, and two copies that are told apart by
+ * identity set each other off for ever.
+ */
+export function samePublicationValue(typed, stored) {
+    if (typeof typed === 'string' && typeof stored === 'string') return typed.trim() === stored;
+    return JSON.stringify(typed) === JSON.stringify(stored);
+}
+
 /** Authors as typed, one on each line (or separated by semicolons). */
 export function parseAuthors(source) {
     return String(source ?? '').split(/[\r\n;]+/).map(a => a.trim()).filter(Boolean).slice(0, 40);

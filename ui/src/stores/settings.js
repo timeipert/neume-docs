@@ -290,7 +290,10 @@ export const useSettingsStore = defineStore('settings', () => {
 
     /** Replace what is said about the published documentation (see utils/publication). */
     function setPublication(next) {
-        publication.value = cleanPublication(next)
+        const clean = cleanPublication(next)
+        // Saying what is already said is not a change: it would only set off whatever watches it.
+        if (JSON.stringify(clean) === JSON.stringify(publication.value)) return
+        publication.value = clean
     }
 
     /** Replace how the manuscripts table is arranged and checked (see utils/metadataSchema). */

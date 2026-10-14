@@ -59,11 +59,12 @@ const STANDARD = ['*', '*d', '*u', '*e', '*dd', '*ud', '*uu', '*du', '*udd', '*u
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
 const problems = [];
-page.on('console', m => { if (m.type() === 'error') problems.push(m.text()); });
-page.on('pageerror', e => problems.push(`page error: ${e.message}`));
+let lastStep = 'before the first step';
+page.on('console', m => { if (m.type() === 'error') problems.push(`${m.text()} (after: ${lastStep})`); });
+page.on('pageerror', e => problems.push(`page error: ${e.message} (after: ${lastStep})`));
 
 const shot = (name) => (shots ? page.screenshot({ path: `${shots}/${name}.png` }) : null);
-const step = (name) => console.log(`✓ ${name}`);
+const step = (name) => { lastStep = name; console.log(`✓ ${name}`); };
 
 try {
     // 1. Starts empty --------------------------------------------------------

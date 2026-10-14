@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cleanPublication, defaultPublication, parseAuthors, publicationGaps, publishedColumns } from './publication';
+import { cleanPublication, defaultPublication, parseAuthors, publicationGaps, publishedColumns, samePublicationValue } from './publication';
 
 const COLUMNS = [
     { key: 'source', group: 'id' },
@@ -41,5 +41,21 @@ describe('what is missing', () => {
     it('says so in a sentence each', () => {
         expect(publicationGaps(defaultPublication(), 0)).toHaveLength(4);
         expect(publicationGaps({ ...defaultPublication(), title: 'T', authors: ['A'], license: 'CC BY' }, 2)).toEqual([]);
+    });
+});
+
+describe('telling what is typed from what is stored', () => {
+    it('compares text as it will be stored: a space at the end is still being written', () => {
+        expect(samePublicationValue('CC BY 4.0 ', 'CC BY 4.0')).toBe(true);
+        expect(samePublicationValue('CC BY', 'CC BY 4.0')).toBe(false);
+    });
+
+    it('compares lists by their content, never by identity', () => {
+        // a cleaned copy is always a new array: telling them apart by identity made two watchers answer each other for ever
+        const typed = ['A. Author', 'B. Author'];
+        expect(samePublicationValue(typed, cleanPublication({ authors: typed }).authors)).toBe(true);
+        expect(samePublicationValue(typed, ['A. Author'])).toBe(false);
+        expect(samePublicationValue(null, cleanPublication({}).columns)).toBe(true);
+        expect(samePublicationValue(null, ['a'])).toBe(false);
     });
 });

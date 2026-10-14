@@ -11,7 +11,7 @@ import { usePersonalTablesStore } from '../../stores/personalTables';
 import { useAnnotationsStore } from '../../stores/annotations';
 import { useDirectSnippetsStore } from '../../stores/directSnippets';
 import { useSettingsStore } from '../../stores/settings';
-import { cleanPublication, parseAuthors, publicationGaps, publishedColumns } from '../../utils/publication';
+import { cleanPublication, parseAuthors, publicationGaps, publishedColumns, samePublicationValue } from '../../utils/publication';
 
 /**
  * Making a documentation others can read: say who made it and under which licence, choose which
@@ -30,20 +30,16 @@ direct.load();
 
 const draft = reactive({ ...settings.publication });
 const authorsText = ref(settings.publication.authors.join('\n'));
-let saving = false;
 
 watch([draft, authorsText], () => {
-    saving = true;
     settings.setPublication({ ...draft, authors: parseAuthors(authorsText.value), columns: settings.publication.columns });
-    saving = false;
 }, { deep: true });
 
-// a restore or a backup changes it from outside
+// A restore or a backup changes it from outside. What was typed is kept as typed; only a real change
+// replaces it — compared by content, or the two watchers would answer each other for ever.
 watch(() => settings.publication, (p) => {
-    if (saving) return;
-    // What was typed is kept as typed (a space at the end is still being written); only a real change replaces it.
     for (const [key, value] of Object.entries(p)) {
-        if (typeof value === 'string' && typeof draft[key] === 'string' && draft[key].trim() === value) continue;
+        if (samePublicationValue(draft[key], value)) continue;
         draft[key] = value;
     }
     if (parseAuthors(authorsText.value).join('\n') !== p.authors.join('\n')) authorsText.value = p.authors.join('\n');

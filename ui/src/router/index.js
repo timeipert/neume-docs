@@ -103,6 +103,13 @@ const router = createRouter({
         { path: 'about', name: 'docs_about', component: DocsAboutView }
       ]
     },
+    // Tools that nothing in the editor links to. Their data is third-party and kept on the computer that uses it.
+    {
+      path: '/tools/neuma',
+      name: 'tool_neuma',
+      component: () => import('../views/tools/NeumaReviewView.vue'),
+      meta: { title: 'Hungarian Neume Catalogue', bare: true }
+    },
     // The manuscripts: their catalogue, their images, and the corpus they come from.
     {
       path: '/manuscripts',

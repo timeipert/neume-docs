@@ -24,6 +24,7 @@ A function is reachable from one place, the place where it is *used*. Other page
 | Which columns readers can filter by, and how | Settings → Manuscript metadata (the *Filter* box of a column) and the column's menu | the Filter panel of the manuscripts table |
 | Title, authors, licence and metadata of a published documentation; downloading it | Workspace → Publish a documentation | the viewer's preview (*This browser*) |
 | Reading documentations; endpoints | View documentations (`#/docs`); the hosting's `endpoints.json` | the start page |
+| Going through the snippets of the Hungarian Neume Catalogue (`neuma-import/`): accepting or correcting what each is | `#/tools/neuma` — a tool, linked from nowhere, that works with the development server and the data collected on that computer | |
 
 Settings is for preferences that apply everywhere. If a setting belongs to one page, it goes on that page.
 

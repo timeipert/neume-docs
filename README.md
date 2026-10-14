@@ -62,6 +62,10 @@ The app starts with two ways in: **View documentations** and **Editor**.
 
 The file format is `ui/src/utils/documentation.js`; the files are built by `ui/src/utils/buildDocumentation.js` — the same function for the preview and the download. `ui/public/docs-demo/` is an invented example documentation (`node ui/scripts/make-demo-docs.mjs` makes it).
 
+### The Hungarian Neume Catalogue (new)
+
+`neuma-import/` is a module of its own that opens up the [Hungarian Neume Catalogue](https://neuma.zti.hu/en_attekinto.asp) — 246 sources, thirteen kinds of neume, each cell a picture with several snippets pasted onto white — as a documentation the viewer can read. It collects the table (polite and resumable, kept out of git like the MMMO catalogue: it is third-party data, quoted by the catalogue under the right to quote, with credit), takes every picture apart into snippets of their own **without any loss** (the pictures exist in no larger size), and proposes each snippet's pattern from the column it stands in. The catalogue says nothing of the virga and nothing about what a *Combination* is, so a hidden page of the editor — `#/tools/neuma` in the development server, linked from nowhere — shows every snippet with its proposal, to be accepted, corrected (the virga on any note, the library searched, a code typed), set aside or discarded; what is decided is written as a documentation (`neume-docs.json`, `data/`, `images/`) that opens in the viewer. See `neuma-import/README.md`.
+
 ### Inherited from CM-Transcription-Equivalents
 
 Pattern equivalents with Reference IDs and variants, IIIF manuscript annotation (line regions and polygon snippets), the pattern library with MEI templates, screenshot projects without IIIF, OMMR4all import, public manuscript pages, static site export, workspace folder autosave.

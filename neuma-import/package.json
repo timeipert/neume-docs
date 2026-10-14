@@ -1,0 +1,16 @@
+{
+  "name": "neuma-import",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Opens up the Hungarian Neume Catalogue (neuma.zti.hu) as data that neume-docs can read",
+  "type": "module",
+  "scripts": {
+    "crawl": "node bin/crawl.mjs",
+    "split": "node bin/split.mjs",
+    "export": "node bin/export.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "pngjs": "^7.0.0"
+  }
+}

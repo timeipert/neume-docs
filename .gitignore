@@ -38,3 +38,8 @@ ui/scripts/_*.mjs
 
 # Third-party reference data collected by scripts/crawl-mmmo.mjs; see the README before committing it
 /ui/src/data/mmmo/
+
+# The Hungarian Neume Catalogue: pictures and text collected by neuma-import/bin/crawl.mjs (third-party data,
+# see neuma-import/README.md before committing any of it). The module's code is tracked.
+/neuma-import/data/
+/neuma-import/node_modules/

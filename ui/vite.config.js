@@ -19,9 +19,11 @@ const scriptPolicy = {
   }]
 }
 
-// The review tool for the Hungarian Neume Catalogue (../neuma-import) gets its data from the development
-// server: the plugin serves the module's data folder and keeps the decisions made in the tool. It is not
-// part of a build, and a copy of the app without that folder simply has no such tool.
+// The review tool for the Hungarian Neume Catalogue (../neuma-import): in development its plugin serves the
+// module's data folder and keeps the decisions made in the tool; on the site the tool reads the same files
+// from hung/ and keeps the decisions in the browser. The plugin is not part of a build. The tool itself
+// uses two plain files of the module (how a documentation is made, how decisions are read), which lie
+// outside this folder, so the development server is allowed to serve from the folder above.
 async function neumaImport() {
   const file = fileURLToPath(new URL('../neuma-import/vite-plugin.mjs', import.meta.url))
   if (!existsSync(file)) return null
@@ -31,6 +33,7 @@ async function neumaImport() {
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [vue(), scriptPolicy, await neumaImport()].filter(Boolean),
+  server: { fs: { allow: ['..'] } },
   base: './',
   build: {
     outDir: '../dist',

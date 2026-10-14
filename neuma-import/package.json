@@ -8,7 +8,8 @@
     "crawl": "node bin/crawl.mjs",
     "split": "node bin/split.mjs",
     "export": "node bin/export.mjs",
-    "test": "node --test test/*.test.mjs"
+    "test": "node --test test/*.test.mjs",
+    "publish-site": "node bin/publish.mjs"
   },
   "dependencies": {
     "pngjs": "^7.0.0"

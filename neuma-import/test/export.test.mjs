@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDocumentation, readableDate, fileSlug, META_COLUMNS } from '../src/export.mjs';
+import { buildDocumentation, readableDate, fileSlug, META_COLUMNS } from '../src/documentation.mjs';
 import { ORIGIN } from '../src/origin.mjs';
 
 test('the catalogue\'s datings become ones the app can read as years', () => {

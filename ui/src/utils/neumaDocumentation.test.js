@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { cleanIndex, cleanManuscript } from './documentation';
-import { buildDocumentation, META_COLUMNS } from '../../../neuma-import/src/export.mjs';
+import { buildDocumentation, META_COLUMNS, virgaSign } from '../../../neuma-import/src/documentation.mjs';
 import { ORIGIN } from '../../../neuma-import/src/origin.mjs';
 import { COLUMNS } from '../../../neuma-import/src/columns.mjs';
 import { checkCode } from './neumaReview';
@@ -27,7 +27,7 @@ const decisions = {
     '007b-2': { status: 'corrected', code: '[*uVd]' },
     '007a-1': { status: 'corrected', code: '*V' }
 };
-const V = { viewBox: GLYPHS.note.viewBox, d: GLYPHS.note.d, label: 'Virga', abbrev: 'v' };
+const V = virgaSign(GLYPHS.note).V;
 
 describe('what neuma-import writes, the app reads', () => {
     const doc = buildDocumentation({ catalogue, snippets, decisions, signs: { V }, generated: '2026-10-14' });

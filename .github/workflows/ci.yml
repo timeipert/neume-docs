@@ -34,6 +34,7 @@ jobs:
           cache-dependency-path: |
             ui/package-lock.json
             user-manual/package-lock.json
+            neuma-import/package-lock.json
 
       - name: Install the app's dependencies
         working-directory: ./ui
@@ -41,6 +42,15 @@ jobs:
 
       - name: Run tests
         working-directory: ./ui
+        run: npm test
+
+      # The module that opens up the Hungarian Neume Catalogue (neuma-import/) has its own tests and its own dependency.
+      - name: Install the Neume Catalogue module's dependencies
+        working-directory: ./neuma-import
+        run: npm ci
+
+      - name: Test the Neume Catalogue module
+        working-directory: ./neuma-import
         run: npm test
 
       # The manual is part of the site (the app links to /manual/): build it first, into ui/public.

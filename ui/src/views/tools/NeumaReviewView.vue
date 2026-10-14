@@ -123,19 +123,39 @@ function onKey(e) {
     }
 }
 
-// ---- the documentation -----------------------------------------------------------------------------
+// ---- the decisions and the documentation -----------------------------------------------------------
 
 const includeProposed = ref(false);
 const building = ref(false);
+const progress = ref('');
 const built = ref(null);
 const buildError = ref('');
 const DOCS_ENDPOINT = 'url:/neuma-data/documentation/';
+const nothingYet = computed(() => !summary.value.accepted && !summary.value.corrected && !includeProposed.value);
 
-async function build() {
+/** The documentation as a ZIP: made in this browser, from the decisions and the snippets' pictures. */
+async function downloadZip() {
     building.value = true;
     buildError.value = '';
+    built.value = null;
     try {
-        built.value = await review.buildDocumentation(includeProposed.value ? 'proposed' : 'reviewed');
+        const result = await review.downloadDocumentation(includeProposed.value ? 'proposed' : 'reviewed', (done, total) => { progress.value = `${done} of ${total} pictures`; });
+        built.value = { ...result, zip: true };
+    } catch (e) {
+        buildError.value = e.message;
+    } finally {
+        building.value = false;
+        progress.value = '';
+    }
+}
+
+/** With the development server: the documentation as a folder on that computer, to look at in the viewer. */
+async function writeFolder() {
+    building.value = true;
+    buildError.value = '';
+    built.value = null;
+    try {
+        built.value = { ...(await review.writeDocumentationFolder(includeProposed.value ? 'proposed' : 'reviewed')), zip: false };
     } catch (e) {
         buildError.value = e.message;
     } finally {
@@ -143,7 +163,25 @@ async function build() {
     }
 }
 
-const SAVE_TEXT = { saved: 'Saved', pending: 'Saving…', saving: 'Saving…', error: 'Not saved' };
+const loadInput = ref(null);
+async function onLoadFile(event) {
+    const file = event.target.files && event.target.files[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+        const { count, dropped } = await review.loadDecisionsFile(file);
+        toast.show(`Took ${count.toLocaleString()} decision${count === 1 ? '' : 's'} from the file${dropped ? `; ${dropped} could not be read` : ''}.`, { tone: 'success', action: { label: 'Undo', run: () => review.undo() } });
+    } catch (e) {
+        toast.show(e.message, { tone: 'error' });
+    }
+}
+
+const SAVE_TEXT = computed(() => ({
+    saved: review.mode.value === 'server' ? 'Saved' : 'Saved in this browser',
+    pending: 'Saving…', saving: 'Saving…',
+    error: review.mode.value === 'server' ? 'Not saved' : 'Not saved: this browser keeps nothing'
+}));
+const DEV = import.meta.env.DEV;
 
 onMounted(() => { review.load(); document.addEventListener('keydown', onKey); });
 onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
@@ -165,12 +203,15 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
     <p v-if="status === 'idle' || status === 'loading'" class="ne-empty">Loading the catalogue…</p>
 
     <div v-else-if="status === 'missing'" class="ne-empty missing">
-        <p><strong>There is no catalogue data here.</strong> It is third-party data, so it is collected on the computer that uses it (and this tool only works with the development server: <code>npm run dev</code>).</p>
-        <p>In the folder <code>neuma-import/</code>:</p>
-        <pre>npm install      # once
-npm run crawl    # the overview page, its sources and ≈ 3,200 pictures (a polite crawl; it can be stopped and run again)
+        <template v-if="DEV">
+            <p><strong>There is no catalogue data here.</strong> It is third-party data, so it is collected on the computer that uses it.</p>
+            <p>In the folder <code>neuma-import/</code>:</p>
+            <pre>npm install      # once
+npm run crawl    # the overview page, its sources and ≈ 3,400 files (a polite crawl; it can be stopped and run again)
 npm run split    # every snippet becomes a picture of its own</pre>
-        <p>Then reload this page. <code>neuma-import/README.md</code> says more.</p>
+            <p>Then reload this page. <code>neuma-import/README.md</code> says more.</p>
+        </template>
+        <p v-else><strong>The catalogue's snippets are not on this site.</strong> They are published under <code>hung/</code> by <code>npm run publish-site</code> in <code>neuma-import/</code>.</p>
     </div>
 
     <p v-else-if="status === 'error'" class="ne-note ne-note--error">The catalogue could not be read: {{ review.error.value }}. <button type="button" class="ne-btn ne-btn--sm" @click="review.load()">Try again</button></p>
@@ -242,20 +283,33 @@ npm run split    # every snippet becomes a picture of its own</pre>
             </nav>
         </template>
 
-        <Panel id="documentation" title="Documentation" description="What is accepted or corrected, by manuscript, as the files neume-docs reads. Discarded snippets and those not looked at are left out.">
+        <Panel id="documentation" title="Your decisions and the documentation" description="What is accepted or corrected, by manuscript, as the files neume-docs reads (neume-docs.json, data/, images/). Discarded snippets and those not looked at are left out.">
+            <p v-if="review.mode.value === 'static'" class="ne-note ne-note--info">Your decisions are kept in <strong>this browser</strong> only. Save them as a file now and then — and before you clear the browser's data — and load that file to go on somewhere else.</p>
             <div class="build">
-                <label class="ne-check"><input v-model="includeProposed" type="checkbox" /> Also take the proposals not looked at yet (to see how it will look)</label>
-                <button type="button" class="ne-btn ne-btn--primary" :disabled="building || (!summary.accepted && !summary.corrected && !includeProposed)" @click="build">{{ building ? 'Writing…' : 'Write the documentation' }}</button>
+                <div class="row">
+                    <button type="button" class="ne-btn" @click="review.saveDecisionsFile()">Save the decisions as a file</button>
+                    <button type="button" class="ne-btn" @click="loadInput.click()">Load decisions from a file…</button>
+                    <input ref="loadInput" type="file" accept="application/json,.json" class="hidden" aria-label="Decisions file" @change="onLoadFile" />
+                </div>
+            </div>
+            <div class="build">
+                <label class="ne-check"><input v-model="includeProposed" type="checkbox" /> Also take the proposals not looked at yet (they are only proposals)</label>
+                <div class="row">
+                    <button v-if="review.mode.value === 'server'" type="button" class="ne-btn" :disabled="building || nothingYet" @click="writeFolder">Write it to a folder</button>
+                    <button type="button" class="ne-btn ne-btn--primary" :disabled="building || nothingYet" @click="downloadZip">{{ building ? (progress || 'Writing…') : 'Download the documentation (ZIP)' }}</button>
+                </div>
             </div>
             <p v-if="buildError" class="ne-note ne-note--error">{{ buildError }}</p>
-            <div v-if="built" class="ne-note ne-note--success">
-                <p><strong>{{ built.manuscripts }}</strong> manuscripts with <strong>{{ built.snippets.toLocaleString() }}</strong> snippets written to <code>neuma-import/data/documentation/</code> —
-                    commit that folder to a GitHub repository to publish it.</p>
+            <div v-if="built && built.zip" class="ne-note ne-note--success">
+                <p><strong>{{ built.manuscripts }}</strong> manuscripts with <strong>{{ built.snippets.toLocaleString() }}</strong> snippets are in the ZIP. Unpack it into a folder of a GitHub repository (or any web server): that folder is a documentation the viewer can read.</p>
+            </div>
+            <div v-if="built && !built.zip" class="ne-note ne-note--success">
+                <p><strong>{{ built.manuscripts }}</strong> manuscripts with <strong>{{ built.snippets.toLocaleString() }}</strong> snippets written to <code>neuma-import/data/documentation/</code>.</p>
                 <p><RouterLink :to="{ name: 'docs_catalogue', params: { endpoint: DOCS_ENDPOINT } }" class="ne-btn ne-btn--sm">Look at it in the viewer →</RouterLink></p>
             </div>
         </Panel>
 
-        <p class="credit">Snippets, sources and everything said about them: <a href="https://neuma.zti.hu/" target="_blank" rel="noopener">Hungarian Neume Catalogue</a> — Gabriella Gilányi (content), Zsolt Kemecsei (programming), Adrienn Ádám (pictures). Cite them when you use a snippet.</p>
+        <p class="credit">Snippets, sources and everything said about them: <a href="https://neuma.zti.hu/" target="_blank" rel="noopener">Hungarian Neume Catalogue</a> — Gabriella Gilányi (content), Zsolt Kemecsei (programming), Adrienn Ádám (pictures). The snippets are excerpts from manuscripts, whose copyright remains with their holders; they are used here with the agreement of the catalogue's editors. Cite the catalogue (and the source of the snippet) when you use one.</p>
     </template>
 
     <NeumaFocusDialog
@@ -295,4 +349,6 @@ npm run split    # every snippet becomes a picture of its own</pre>
 .pager { display: flex; align-items: center; justify-content: center; gap: var(--space-3); flex-wrap: wrap; }
 .build { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); flex-wrap: wrap; }
 .credit { margin: 0; font-size: 0.78rem; color: var(--color-text-muted); }
+.hidden { display: none; }
+.build + .build { margin-top: var(--space-3); }
 </style>

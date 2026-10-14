@@ -13,7 +13,9 @@ It is a module of its own and knows nothing of the app, apart from the format it
 
 ## The data is not ours
 
-The snippets are excerpts from manuscripts. The catalogue publishes them under the right to quote for scientific purposes (Hungarian Act LXXVI of 1999, Section 34), *indicating the source and the author* — see its [Navigation page](https://neuma.zti.hu/en_honlap.asp). So, like the MMMO catalogue, **it is collected on the computer that uses it and kept out of git** (`neuma-import/data/` is ignored). Everything written from it carries the credit (`origin.mjs`: the documentation's description and its preferred citation). Check the catalogue's terms, and ask its editors, before you publish a documentation made from it; the contact is on its [Impressum](https://neuma.zti.hu/en_impresszum.asp).
+The snippets are excerpts from manuscripts, whose copyright remains with their holders. The catalogue publishes them under the right to quote for scientific purposes (Hungarian Act LXXVI of 1999, Section 34), *indicating the source and the author* — see its [Navigation page](https://neuma.zti.hu/en_honlap.asp) — and its editors have agreed that they are used here. Everything written from the data carries the credit (`src/origin.mjs`: the documentation's description, license and preferred citation; the tool's footer; the page at `hung/`).
+
+Like the MMMO catalogue, the data is **collected on the computer that uses it and kept out of git** (`neuma-import/data/` is ignored). What is committed is `ui/public/hung/` — the snippets and the catalogue, published on purpose with `npm run publish-site` — and nothing else of it.
 
 ## Use
 
@@ -26,7 +28,16 @@ npm run split        # 4,800 snippets as pictures of their own (a few seconds)
 cd ../ui && npm run dev       # then open  http://localhost:5173/#/tools/neuma
 ```
 
-The review tool needs the development server: it serves `neuma-import/data/` (`/neuma-data/…`) and keeps your decisions in `data/decisions.json`. It is not in the built site and nothing in the editor links to it.
+With the development server, the tool serves `neuma-import/data/` (`/neuma-data/…`) and keeps your decisions in `data/decisions.json`. It is not linked from the editor.
+
+### Online: `…/hung/`
+
+`npm run publish-site` copies the catalogue and the snippets (not the catalogue's pictures of whole cells: they would double the size) to `ui/public/hung/`; committed and pushed, the site's workflow publishes them, and **`<site>/hung/` leads to the tool**. There is no server there, so:
+
+- the decisions are kept **in the browser** (and *Save the decisions as a file* / *Load decisions from a file…* carry them from one browser to another or into `data/decisions.json`),
+- *Download the documentation (ZIP)* makes the documentation in the browser — `neume-docs.json`, `data/`, `images/` — with the same code as `npm run export` (`src/documentation.mjs`), to unpack into a folder of a GitHub repository.
+
+After a new `split`, run `publish-site` again; decisions that were made about snippets that have moved no longer count (see below), so do that before anybody starts, if you can.
 
 `npm run export` writes the documentation to `data/documentation/` (the *Write the documentation* button of the tool does the same). Open it in the viewer at
 `#/docs/url%3A%2Fneuma-data%2Fdocumentation%2F`, or commit the folder to a GitHub repository.
@@ -34,6 +45,7 @@ The review tool needs the development server: it serves `neuma-import/data/` (`/
 ```bash
 npm run export                      # only what was accepted or corrected
 npm run export -- --include proposed  # also what is merely proposed, to see how it will look
+npm run publish-site                # the website's folder: ../ui/public/hung/
 npm test                            # the module's own tests (node:test)
 ```
 
@@ -48,6 +60,7 @@ data/problems.json        what was left out, and what to look at
 data/decisions.json       what the review decided (the tool writes it)
 data/info.json            optional: overrides of the documentation's title, authors, licence, …
 data/documentation/       the documentation (written by export)
+../ui/public/hung/        what goes on the website (written by publish-site): catalogue.json, snippets.json, snippets/, index.html
 ```
 
 A snippet's id is the catalogue's own name for the cell plus its number: `007b-2` is the second snippet of source 007's *Pes* cell (`img/b/007b.png`).
@@ -101,4 +114,4 @@ The catalogue does not tell a virga from a punctum; the review offers the virga 
 
 ## Tests
 
-`npm test` runs the module's tests (`node --test`): parsing, the columns, the splitting on synthetic pictures, the export, and the development-server plugin over real HTTP (including that another site's page cannot write, and that nothing but the data is served). The app's `npm test` holds the module and the app together: what is written must pass `cleanIndex` / `cleanManuscript`.
+`npm test` runs the module's tests (`node --test`; the site's workflow runs them too): parsing, the columns, the splitting on synthetic pictures, the documentation and its export, the decisions, publishing, and the development-server plugin over real HTTP (including that another site's page cannot write, and that nothing but the data is served). The app's `npm test` holds the module and the app together: what is written must pass `cleanIndex` / `cleanManuscript`, and the tool's own tests (`useNeumaReview.test.js`) run the online case — data from `hung/`, decisions in the browser, the ZIP.

@@ -1,7 +1,8 @@
 /**
  * Lets the app's development server (and `vite preview`) serve the catalogue's data to the review tool
- * and keep its decisions — on this computer only. It is not part of a build: the published site never
- * contains it, so the tool there says that it has no data.
+ * and keep its decisions on disk — on this computer only. It is not part of a build. The published site
+ * has no server: there the tool reads the same files from `hung/` (see `src/publish.mjs`) and keeps the
+ * decisions in the browser.
  *
  *   GET  /neuma-data/<path>      the files of ./data (catalogue.json, snippets.json, snippets/…, documentation/…)
  *   POST /neuma-data/decisions   merge decisions into data/decisions.json: { set: { id: { code, status, note } }, remove: [id] }
@@ -14,41 +15,15 @@ import { createReadStream, existsSync, mkdirSync, readFileSync, renameSync, stat
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { writeDocumentation } from './src/export.mjs';
+import { STATUSES, cleanDecision, mergeDecisions } from './src/decisions.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const MOUNT = '/neuma-data';
 
 const TYPES = { '.json': 'application/json; charset=utf-8', '.png': 'image/png', '.html': 'text/html; charset=utf-8' };
 const READABLE = [/^catalogue\.json$/, /^snippets\.json$/, /^decisions\.json$/, /^problems\.json$/, /^snippets\/[\w.-]+\/[\w.-]+\.png$/, /^raw\/composite\/[\w.-]+\.png$/, /^documentation\/.+/];
-export const STATUSES = ['accepted', 'corrected', 'later', 'discarded'];
+export { STATUSES, cleanDecision, mergeDecisions };
 const MAX_BODY = 8 * 1024 * 1024;
-
-/** The decisions that may be stored: only known statuses, short text, nothing else. */
-export function cleanDecision(raw) {
-    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
-    const status = STATUSES.includes(raw.status) ? raw.status : '';
-    const code = typeof raw.code === 'string' ? raw.code.trim().slice(0, 120) : '';
-    if (!status) return null;
-    if ((status === 'accepted' || status === 'corrected') && !code) return null;
-    const out = { status, at: new Date().toISOString() };
-    if (code && status !== 'discarded') out.code = code;
-    if (typeof raw.note === 'string' && raw.note.trim()) out.note = raw.note.trim().slice(0, 500);
-    // where the snippet was in its cell: a decision whose snippet has since moved (a new split) no longer counts
-    if (typeof raw.sig === 'string' && /^\d{1,5}(,\d{1,5}){3}$/.test(raw.sig)) out.sig = raw.sig;
-    return out;
-}
-
-/** The decisions file with a change merged in. */
-export function mergeDecisions(current, change) {
-    const decisions = { ...((current && current.decisions) || {}) };
-    for (const [id, raw] of Object.entries((change && change.set) || {})) {
-        if (!/^[\w.-]{1,40}$/.test(id)) continue;
-        const d = cleanDecision(raw);
-        if (d) decisions[id] = d;
-    }
-    for (const id of (change && Array.isArray(change.remove)) ? change.remove : []) delete decisions[id];
-    return { version: 1, updated: new Date().toISOString(), decisions };
-}
 
 function writeAtomic(path, text) {
     mkdirSync(dirname(path), { recursive: true });

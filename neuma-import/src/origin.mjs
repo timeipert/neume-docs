@@ -10,6 +10,6 @@ export const ORIGIN = {
     url: `${SITE}${OVERVIEW_PAGE}`,
     authors: ['Gabriella Gilányi (project idea, content)', 'Zsolt Kemecsei (web design, programming)', 'Adrienn Ádám (picture editing)'],
     publisher: 'Institute of Musicology, Research Centre for the Humanities, Budapest',
-    note: 'The snippets are excerpts from manuscripts, published by the catalogue under the right to quote for scientific purposes (Hungarian Act LXXVI of 1999, Section 34). Cite the catalogue and the source of the snippet.'
+    note: "The snippets are excerpts from manuscripts, whose copyright remains with their holders. They are used here with the agreement of the catalogue's editors: cite the catalogue (and the source of the snippet) when you use one."
 };
 

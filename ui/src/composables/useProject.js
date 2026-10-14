@@ -9,7 +9,7 @@ import { useToast } from './useToast';
 import { getBaseCode } from '../utils/patternCode';
 import { useTranscriptionData } from './useTranscriptionData';
 import { usePatternCatalog } from './usePatternCatalog';
-import { buildLibrary, filledCount, tableCodes } from '../utils/projectTable';
+import { buildLibrary, filledCount, selectColumn, tableCodes } from '../utils/projectTable';
 import { collectOccurrences, collectSnippets, collectionSnippets, foliosInRange } from '../utils/projectData';
 import { compareFolios } from '../utils/sorting';
 import { freeCollectionFor } from '../utils/projectLegacy';
@@ -159,16 +159,22 @@ export function useProject(idRef) {
 
     /**
      * A code a snippet is filed under has a place to show: it is in the pattern library, and — if the
-     * project's tables have no column for it — in the extended table.
+     * project's tables have no column for it — in the standard table when the rules allow it, else
+     * in the extended table.
      */
     function ensureColumn(code) {
         const p = project.value;
         if (!p || !code) return;
         if (!library.value.byCode.has(code)) patterns.addManualPattern(code);
-        if (!tableCodes(p, 'extended').includes(code)) {
-            store.setExtended(p.id, [...p.extended, code]);
-            toast.show(`${code} added to the extended table, so its snippets show there.`);
+        if (tableCodes(p, 'extended').includes(code)) return;
+        const standard = selectColumn(p.columns, code, undefined, library.value.variantOf);
+        if (standard.ok) {
+            store.setColumns(p.id, standard.columns);
+            toast.show(`${code} added to the standard table, so its snippets show there.`);
+            return;
         }
+        store.setExtended(p.id, [...p.extended, code]);
+        toast.show(`${code} added to the extended table, so its snippets show there.`);
     }
 
     return {

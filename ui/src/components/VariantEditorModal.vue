@@ -114,7 +114,9 @@ function save() {
 
             <template v-else>
                 <p class="hint">Apply a sign to any note. The sign changes the code itself
-                    (e.g. <code>*uudd</code> → <code>*uuVdd</code>).</p>
+                    (e.g. <code>*uudd</code> → <code>*uuVdd</code>, with the virga).
+                    More signs are defined in the
+                    <router-link :to="{ path: '/patterns', query: { setup: 'signs' } }" @click="$emit('close')">Pattern library</router-link>.</p>
 
                 <div class="notes-grid">
                     <div v-for="(t, idx) in noteItems" :key="idx" class="note-cell">

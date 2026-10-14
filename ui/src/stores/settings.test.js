@@ -77,6 +77,35 @@ describe('settings: what is said about a publication', () => {
     });
 });
 
+describe('settings: the virga sign', () => {
+    it('is there from the start, and after a reset', async () => {
+        const { settings } = await freshStores();
+        expect(settings.customSigns.map(s => s.key)).toEqual(['V']);
+        settings.addCustomSign({ key: 'W', label: 'Wavy' });
+        settings.reset(SETTING_GROUPS.library);
+        expect(settings.customSigns.map(s => s.key)).toEqual(['V']);
+        expect(settings.changedCount(SETTING_GROUPS.library)).toBe(0);
+    });
+
+    it('cannot be removed, and a sign of the same key replaces it instead of doubling', async () => {
+        const { settings } = await freshStores();
+        settings.removeCustomSign('V');
+        expect(settings.customSigns.map(s => s.key)).toEqual(['V']);
+        settings.addCustomSign({ key: 'V', label: 'Virga', glyph: 'note' });
+        expect(settings.customSigns.filter(s => s.key === 'V')).toHaveLength(1);
+    });
+
+    it('comes back when a file or an old storage has no signs, and keeps the other signs', async () => {
+        const { settings } = await freshStores();
+        settings.apply({ customSigns: [] });
+        expect(settings.customSigns.map(s => s.key)).toEqual(['V']);
+        settings.apply({ customSigns: [{ key: 'W', label: 'Wavy' }] });
+        expect(settings.customSigns.map(s => s.key)).toEqual(['V', 'W']);
+        settings.apply({}, { replace: true });
+        expect(settings.customSigns.map(s => s.key)).toEqual(['V']);
+    });
+});
+
 describe('settings: snippet attributes', () => {
     it('start as a folio and a line for a line, a syllable for a sign', async () => {
         const { settings } = await freshStores();

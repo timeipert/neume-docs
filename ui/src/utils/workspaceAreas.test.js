@@ -21,7 +21,7 @@ describe('the parts of the workspace', () => {
         expect(byKey(areas, 'annotations').text).toBe('3 snippets · 1 line region · 2 manual lines');
         expect(byKey(areas, 'tables').text).toBe('1 table · 2 pattern rows');
         expect(byKey(areas, 'metadata').text).toBe('1 edited cell · 1 own column · 1 own value · 1 own category · 1 value check');
-        expect(byKey(areas, 'library').text).toBe('1 described pattern · 1 custom sign · 1 code variant · 1 preferred ID');
+        expect(byKey(areas, 'library').text).toBe('1 described pattern · 1 code variant · 1 preferred ID');
         expect(byKey(areas, 'images').text).toBe('1 manifest link · 1 IIIF table row · 1 folio alignment');
         expect(byKey(areas, 'custom').text).toBe('1 collection · 1 snippet');
         expect(byKey(areas, 'preferences').text).toBe('1 setting changed from the default');
@@ -38,7 +38,8 @@ describe('the parts of the workspace', () => {
         clearAreas(stores, ['library']);
         const areas = measureAreas(stores);
         expect(byKey(areas, 'library').count).toBe(0);
-        expect(stores.settings.customSigns).toEqual([]);
+        // the virga is a sign of every workspace: clearing the library leaves just that one
+        expect(stores.settings.customSigns.map(s => s.key)).toEqual(['V']);
         expect(stores.settings.globalDisplayIds).toEqual({});
         expect(byKey(areas, 'tables').count).toBe(1);
         expect(byKey(areas, 'metadata').count).toBeGreaterThan(0);

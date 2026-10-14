@@ -3,9 +3,9 @@ import { computed } from 'vue';
 import { RouterLink, useRoute } from 'vue-router';
 
 /**
- * The four steps of a project as tabs, always in view: choose the columns, fill
- * the standard table, extend it, compare all manuscripts. Any of them can be
- * entered at any time; the order only says what usually comes next.
+ * The steps of a project as tabs, always in view: the standard table (where the columns
+ * are chosen and filled), the extended table, all manuscripts side by side. Any of them
+ * can be entered at any time; the order only says what usually comes next.
  */
 const props = defineProps({
     id: { type: String, required: true },
@@ -22,7 +22,6 @@ const onPage = computed(() => route.name === 'project_page');
 const pageLabel = computed(() => (route.query.folio ? `Page f. ${route.query.folio}` : 'Page'));
 
 const tabs = computed(() => [
-    { name: 'project_columns', label: 'Columns', count: props.project.columns.length || '' },
     { name: 'project_standard', label: 'Standard table', count: props.progress.columns ? `${props.progress.filled}/${props.progress.columns}` : '' },
     { name: 'project_extended', label: 'Extended table', count: props.progress.extended ? `+${props.progress.extended}` : '' },
     { name: 'project_all', label: 'All manuscripts', count: props.projectCount > 1 ? props.projectCount : '' }

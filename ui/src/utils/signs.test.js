@@ -6,8 +6,41 @@ import {
     stripSignKeys,
     extractSignKeys,
     splitCodeBySigns,
-    signMarker
+    signMarker,
+    DEFAULT_SIGNS,
+    isDefaultSign,
+    ownSigns,
+    withDefaultSigns
 } from './signs';
+
+describe('the signs every workspace has', () => {
+    it('are the virga, drawn with the note', () => {
+        expect(DEFAULT_SIGNS.map(s => s.key)).toEqual(['V']);
+        expect(DEFAULT_SIGNS[0]).toMatchObject({ label: 'Virga', glyph: 'note', glyphSvg: '' });
+    });
+
+    it('are added to a list that lacks them, in front, and never twice', () => {
+        expect(withDefaultSigns([]).map(s => s.key)).toEqual(['V']);
+        expect(withDefaultSigns([{ key: 'W', label: 'Wavy' }]).map(s => s.key)).toEqual(['V', 'W']);
+        expect(withDefaultSigns(withDefaultSigns([{ key: 'W' }])).map(s => s.key)).toEqual(['V', 'W']);
+        expect(withDefaultSigns(null).map(s => s.key)).toEqual(['V']);
+    });
+
+    it('stay as the person has them, when the list has a sign of that key', () => {
+        const own = { key: 'V', label: 'Virga (long)', glyph: '', glyphSvg: '<svg/>' };
+        expect(withDefaultSigns([own])).toEqual([own]);
+    });
+
+    it('are told from the signs somebody defined', () => {
+        expect(isDefaultSign({ key: 'V' })).toBe(true);
+        expect(isDefaultSign({ key: 'W' })).toBe(false);
+        expect(ownSigns(withDefaultSigns([{ key: 'W' }])).map(s => s.key)).toEqual(['W']);
+    });
+
+    it('cannot be defined again as a sign of one\'s own', () => {
+        expect(validateSignKey('V', withDefaultSigns([]).map(s => s.key))).toMatch(/already in use/);
+    });
+});
 
 describe('validateSignKey', () => {
     it('accepts a fresh uppercase letter', () => {

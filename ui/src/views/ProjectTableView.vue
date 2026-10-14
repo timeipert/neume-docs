@@ -5,9 +5,13 @@ import { useProjectsStore } from '../stores/projects';
 import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useToast } from '../composables/useToast';
 import { useProjectContext } from '../composables/useProject';
+import { useColumnChoice } from '../composables/useColumnChoice';
 import { getBaseCode } from '../utils/patternCode';
 import { groupSelected } from '../utils/projectTable';
 import ProjectTable from '../components/projects/ProjectTable.vue';
+import SegmentedControl from '../components/ui/SegmentedControl.vue';
+import AddPatternDialog from '../components/projects/AddPatternDialog.vue';
+import VariantEditorModal from '../components/VariantEditorModal.vue';
 import SnippetThumb from '../components/projects/SnippetThumb.vue';
 import CellDrawer from '../components/projects/CellDrawer.vue';
 import LinesPanel from '../components/projects/LinesPanel.vue';
@@ -17,9 +21,14 @@ import LineEditor from '../components/projects/LineEditor.vue';
 import PatternSearch from '../components/neume-table/PatternSearch.vue';
 
 /**
- * Steps 2 and 3: the table of the project, with one cell per column to put
- * snippets in. The standard table is the columns chosen in step 1; the extended
- * table is those and whatever the pattern library has beyond them.
+ * Steps 1 and 2: the table of the project, with one cell per column to put
+ * snippets in.
+ *
+ * The standard table is where a project starts. It offers every possibility —
+ * the standard shapes with their ways of writing and their variants (the virga
+ * among them), a group for each special sign, clef and custos — and the person
+ * chooses the columns right in it: tick a header, or fill a cell. The extended
+ * table is those columns and whatever the pattern library has beyond them.
  */
 const props = defineProps({ scope: { type: String, default: 'standard' } });
 
@@ -28,21 +37,39 @@ const router = useRouter();
 const store = useProjectsStore();
 const patterns = usePatternLibraryStore();
 const toast = useToast();
+const context = useProjectContext();
 const {
     project, library, glyphs, freq, snippets, occurrences, occurringCounts, annotatedCounts,
     hasTranscription, occurrencesLoaded, standardCodes, extendedCodes, needsIiif
-} = useProjectContext();
+} = context;
 
 const extended = computed(() => props.scope === 'extended');
-const codes = computed(() => (extended.value ? extendedCodes.value : standardCodes.value));
-const groups = computed(() => groupSelected(library.value, codes.value));
-const orderedCodes = computed(() => groups.value.flatMap(g => g.columns.map(c => c.code)));
+const table = ref(null);
+
+// ---- what the table shows ----------------------------------------------------
+
+// The standard table offers every possibility and the person chooses in it (see useColumnChoice).
+const {
+    selected, view, VIEWS, query, groups: possibilities, emptyText, expanded, toggleExpanded,
+    choose, toggle, suggested, addSuggested, clearColumns,
+    unknown, adding, addInitial, addCode, chooseNew, variantFor
+} = useColumnChoice(context, { table, active: () => !extended.value });
+
+/** The columns the project has, in the order of the library: what the extended table shows, and what the arrows step through. */
+const chosenGroups = computed(() => groupSelected(library.value, extended.value ? extendedCodes.value : standardCodes.value));
+const groups = computed(() => (extended.value ? chosenGroups.value : possibilities.value));
+const orderedCodes = computed(() => chosenGroups.value.flatMap(g => g.columns.map(c => c.code)));
 const removable = computed(() => (extended.value ? new Set(project.value.extended) : new Set()));
 
 // ---- the open cell ---------------------------------------------------------
 
 const cell = computed(() => (route.query.cell ? getBaseCode(String(route.query.cell)) : ''));
 const open = (code) => router.push({ query: { ...route.query, cell: code } });
+/** A cell of a column that is not chosen yet chooses it — unless the rules refuse, and then they say why. */
+function openCell(code) {
+    if (!extended.value && !choose(code)) return;
+    open(code);
+}
 const move = (code) => router.replace({ query: { ...route.query, cell: code } });
 const close = () => router.replace({ query: { ...route.query, cell: undefined } });
 
@@ -106,9 +133,9 @@ const next = computed(() => (extended.value
 
 <template>
 <div class="table-view">
-    <div v-if="!groups.length" class="ne-empty empty">
+    <div v-if="extended && !groups.length" class="ne-empty empty">
         <p>No columns yet.</p>
-        <RouterLink :to="{ name: 'project_columns', params: { id: project.id } }" class="ne-btn ne-btn--primary">Choose columns &rarr;</RouterLink>
+        <RouterLink :to="{ name: 'project_standard', params: { id: project.id } }" class="ne-btn ne-btn--primary">Choose columns in the standard table &rarr;</RouterLink>
     </div>
 
     <div v-else class="layout" :class="{ 'layout--aside': extended || cell }">
@@ -120,15 +147,38 @@ const next = computed(() => (extended.value
             <LinesPanel v-if="onLines" @open="openLine({ lineId: $event })" @add="openLine({ draft: { attrs: { ...$event } } })" />
             <ScreenshotsPanel v-if="onSigns" :codes="orderedCodes" :paused="!!cell" @filed="onFiled" />
 
+            <template v-if="!extended">
+                <div class="toolbar">
+                    <input v-model="query" type="search" class="ne-input search" placeholder="Search codes, or type a new one" aria-label="Search codes" autocomplete="off" spellcheck="false" />
+                    <SegmentedControl v-model="view" :options="VIEWS" label="Which codes to show" size="sm" />
+                    <span class="spacer"></span>
+                    <button v-if="suggested.length" class="ne-btn" title="Columns with snippets in these folios, and the most frequent code of each shape in the transcription" @click="addSuggested">Add suggested · {{ suggested.length }}</button>
+                    <button class="ne-btn ne-btn--ghost" :disabled="!project.columns.length" @click="clearColumns">Clear</button>
+                </div>
+
+                <p v-if="unknown" class="ne-note ne-note--info unknown">
+                    <span><code>{{ unknown.code }}</code> is not in the pattern library.</span>
+                    <button class="ne-btn ne-btn--sm" @click="addCode(unknown.code)">Add it…</button>
+                </p>
+            </template>
+
             <ProjectTable
+                ref="table"
                 mode="fill"
+                :choose="!extended"
                 :groups="groups"
+                :selected="selected"
                 :snippets="snippets"
                 :occurrences="hasTranscription && occurrencesLoaded ? occurrences : null"
                 :glyphs="glyphs"
                 :removable="removable"
                 :active="cell"
-                @open="open"
+                :expanded="expanded"
+                :empty-text="emptyText"
+                @toggle="toggle"
+                @expand="toggleExpanded"
+                @variant="variantFor = $event"
+                @open="openCell"
                 @remove="removeColumn"
             >
                 <template #thumb="{ snippet }"><SnippetThumb :snippet="snippet" :width="84" :height="60" /></template>
@@ -154,6 +204,9 @@ const next = computed(() => (extended.value
         </aside>
     </div>
 
+    <AddPatternDialog v-if="!extended" :open="adding" :glyphs="glyphs" :library="library" :initial="addInitial" target="standard" @close="adding = false" @added="chooseNew($event.code)" />
+    <VariantEditorModal v-if="!extended" :visible="!!variantFor" :base-code="variantFor" :glyphs="glyphs" @close="variantFor = ''" @saved="chooseNew($event.code)" />
+
     <LineEditor
         v-if="editor"
         :open="true"
@@ -169,6 +222,10 @@ const next = computed(() => (extended.value
 
 <style scoped>
 .table-view { display: flex; flex-direction: column; gap: var(--space-4); }
+.toolbar { display: flex; align-items: center; gap: var(--space-2) var(--space-3); flex-wrap: wrap; }
+.search { width: 280px; max-width: 100%; }
+.spacer { flex: 1; }
+.unknown { display: flex; align-items: center; gap: var(--space-3); margin: 0; }
 .empty { max-width: 560px; margin: var(--space-5) auto; }
 .empty p { margin: 0 0 var(--space-3); }
 

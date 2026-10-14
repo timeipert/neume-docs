@@ -10,6 +10,7 @@
  */
 import { SETTING_GROUPS } from '../stores/settings';
 import { schemaChanges } from './metadataSchema';
+import { ownSigns } from './signs';
 
 const sumLengths = (map) => Object.values(map || {}).reduce((n, list) => n + (Array.isArray(list) ? list.length : 0), 0);
 const plural = (n, one, many = `${one}s`) => `${n.toLocaleString('en-US')} ${n === 1 ? one : many}`;
@@ -114,7 +115,7 @@ export const AREAS = [
         goLabel: 'Patterns',
         measure({ library, settings }) {
             const entries = Object.keys(library.patterns).length;
-            const signs = settings.customSigns.length;
+            const signs = ownSigns(settings.customSigns).length;
             const variants = countVariants(settings.codeVariants);
             const ids = Object.keys(settings.globalDisplayIds).length;
             const snippetVariants = settings.snippetVariants.length;

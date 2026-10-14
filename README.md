@@ -32,12 +32,11 @@ The file format and the reasoning are in `INTEGRATION-PLAN.md` of the monodi-lig
 
 ### Projects (new)
 
-Work happens in **projects**. A project is a range of folios in one manuscript — one scribe's pages, say — and the table that documents its neumes. **New project** asks four questions (start from the transcription or from the manuscript; which manuscript and folios; IIIF or screenshots; lines or signs), and the project then leads through four tabs:
+Work happens in **projects**. A project is a range of folios in one manuscript — one scribe's pages, say — and the table that documents its neumes. **New project** asks four questions (start from the transcription or from the manuscript; which manuscript and folios; IIIF or screenshots; lines or signs), and the project then leads through three tabs:
 
-1. **Columns** — the whole pattern library as one table: a top row of shapes (only up, down, equal) and under each every code with that movement — plain, in brackets, with signs, variants — all in one order: length, then frequency. Tick the columns of the standard table; snippets already drawn in these folios are loaded in.
-2. **Standard table** — one cell per chosen column. Open a cell to find the neume in the transcription and mark it on the page (IIIF, line or sign snippets), or to paste a screenshot.
-3. **Extended table** — the standard table plus any other pattern of the library.
-4. **All manuscripts** — the projects as rows, side by side.
+1. **Standard table** — where a project starts: every possibility for the standard patterns in one table. A top row of shapes (only up, down, equal) with under each every way of writing it — plain, in brackets, and its code variants (the virga is always there to make one with) — then a group for each special sign (L, O, Q, S) and Clef · Custos, all in one order: length, then frequency. Tick the columns of the project's table, or just open a cell: it chooses its column. Open a cell to find the neume in the transcription and mark it on the page (IIIF, line or sign snippets), or to paste a screenshot. Snippets already drawn in these folios are loaded in.
+2. **Extended table** — the standard table plus any other pattern of the library.
+3. **All manuscripts** — the projects as rows, side by side.
 
 With **screenshots of lines**, a project keeps the lines themselves (folio and line, validated), and the signs are marked on them in a line editor — each with its pattern code, its syllable and a link to the transcription's neume; a sign stays tied to its line. What a snippet says about itself (folio, line, syllable, and attributes of your own) is set in *Settings*. Variants and codes the library does not have are added from the tables.
 
@@ -48,7 +47,7 @@ Snippets stay keyed by manuscript and folio (or in a custom collection), so a pr
 The neume table orders and fills the columns of a table of neumes:
 
 1. **Order.** Columns are ordered by **number of tones**, then by **frequency in the CM** within that number. A direction's frequency counts every way of writing it — brackets and special signs ignored. (On the real corpus this reproduces the editorial order `*d > *u > *e`, `*dd > *ud > *uu > *du`, `*udd > *uud > *ddu` exactly.)
-2. **Standard table.** Fixed columns: `* | *d | *u | *e | *dd | *ud | *uu | *du | *udd | *uud | *ddu | L | O | Q | , | Clef | Custos`. Per directional column the pattern library offers the plain ways of writing it. The special columns L, O, Q and `,` (strophicus) each offer all patterns with that sign — a pattern with several signs goes to the column of its **first** sign — and a manuscript chooses **at most three** constellations per column.
+2. **Standard table.** Fixed columns: `* | *d | *u | *e | *dd | *ud | *uu | *du | *udd | *uud | *ddu | L | O | Q | , | Clef | Custos`. Per directional column the pattern library offers the plain ways of writing it, with its code variants (a virga on a note, say) right after the code they come from. The special columns L, O, Q and `,` (strophicus) are groups of their own, after the shapes and before Clef and Custos; each offers all patterns with that sign — a pattern with several signs goes to the group of its **first** sign — and a manuscript chooses **at most three** constellations per sign.
 3. **Expanded documentation.** Any pattern can be added by searching the whole library by code (`*udL`); each addition appears at its place in the ordering. *Show Standard Table* hides everything but the standard selection again.
 
 The same three-level logic drives the comparison table (*Public → Neume Table*): manuscripts as rows, neume columns in the fixed order.

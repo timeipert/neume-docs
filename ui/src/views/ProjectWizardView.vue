@@ -150,7 +150,7 @@ function create() {
     }
     const project = store.create({ ...summary.value, source });
     store.markOpened(project.id);
-    router.push({ name: 'project_columns', params: { id: project.id } });
+    router.push({ name: 'project_standard', params: { id: project.id } });
 }
 
 function chooseImages(value) {

@@ -4,7 +4,7 @@ import SvgPattern from '../SvgPattern.vue';
 import { useSettingsStore } from '../../stores/settings';
 import { useTranscriptionData } from '../../composables/useTranscriptionData';
 import { useToast } from '../../composables/useToast';
-import { validateSignKey } from '../../utils/signs';
+import { isDefaultSign, validateSignKey } from '../../utils/signs';
 
 /**
  * The project's own signs: single uppercase letters that mark one note of a
@@ -55,9 +55,9 @@ async function onSvgFile(e) {
 <template>
 <div class="signs">
     <p class="ne-muted intro">
-        A sign marks a single note, like the built-in O, Q, S and L. Add one here (for example
-        <span class="ne-code">V</span> for a virga), then open a pattern in the list below and press <strong>+ Variant</strong>
-        to make <span class="ne-code">*uudd</span> into <span class="ne-code">*uuVdd</span>.
+        A sign marks a single note, like the built-in O, Q, S and L. The virga (<span class="ne-code">V</span>) is always there:
+        press <strong>+ variant</strong> on a pattern to make <span class="ne-code">*uudd</span> into <span class="ne-code">*uuVdd</span>.
+        Add further signs here, and they can be set the same way.
     </p>
 
     <div class="form">
@@ -102,7 +102,10 @@ async function onSvgFile(e) {
                 <td class="ne-muted">{{ s.description }}</td>
                 <td>{{ s.glyphSvg ? 'own SVG' : (s.glyph || '—') }}</td>
                 <td><SvgPattern :pattern="'*u' + s.key + 'd'" :glyphs="glyphs" /></td>
-                <td class="actions"><button class="ne-btn ne-btn--sm ne-btn--danger" @click="remove(s)">Remove</button></td>
+                <td class="actions">
+                    <span v-if="isDefaultSign(s)" class="ne-chip" title="Every workspace has this sign">built in</span>
+                    <button v-else class="ne-btn ne-btn--sm ne-btn--danger" @click="remove(s)">Remove</button>
+                </td>
             </tr>
         </tbody>
     </table>

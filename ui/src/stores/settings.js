@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { defaultSnippetAttributes, cleanSnippetAttributes } from '../utils/snippetAttributes'
 import { cleanMetadataSchema, defaultMetadataSchema, forgetColumn } from '../utils/metadataSchema'
 import { cleanPublication, defaultPublication } from '../utils/publication'
+import { isDefaultSign, withDefaultSigns } from '../utils/signs'
 
 /** Fresh default values for every persisted setting (new objects on every call). */
 export const settingDefaults = () => ({
@@ -13,7 +14,7 @@ export const settingDefaults = () => ({
     snippetPadding: 0.3,
     backupLabel: 'My Backup',
     sourceAlignments: {},
-    customSigns: [],
+    customSigns: withDefaultSigns([]),
     codeVariants: {},
     discriminateSigns: true,
     sourceMetaFields: [],
@@ -61,7 +62,7 @@ const KINDS = {
 }
 
 /** Settings whose value is cleaned when it is taken from a file or storage. */
-const CLEANERS = { snippetAttributes: cleanSnippetAttributes, metadataSchema: cleanMetadataSchema, publication: cleanPublication }
+const CLEANERS = { snippetAttributes: cleanSnippetAttributes, metadataSchema: cleanMetadataSchema, publication: cleanPublication, customSigns: withDefaultSigns }
 
 /** Whether a value read from a file or storage is usable for a setting. */
 function acceptable(key, value) {
@@ -85,8 +86,9 @@ export const useSettingsStore = defineStore('settings', () => {
     const backupLabel = ref("My Backup")
     const sourceAlignments = ref({}) // { [source]: { iiifType: 'paginated'|'foliated', dataType: 'paginated'|'foliated', offset: 0 } }
     // Code-changing variants (project-wide):
-    // customSigns: the reusable sign vocabulary. Each: { key, label, abbrev, description, glyph, glyphSvg }
-    const customSigns = ref([])
+    // customSigns: the reusable sign vocabulary. Each: { key, label, abbrev, description, glyph, glyphSvg }.
+    // The virga is always in it (see utils/signs: DEFAULT_SIGNS), so a code variant can be made at once.
+    const customSigns = ref(withDefaultSigns([]))
     // codeVariants: per-base-pattern list of derived variant codes.
     // { [baseCode]: [ { id, code, label, description } ] }
     const codeVariants = ref({})
@@ -197,12 +199,14 @@ export const useSettingsStore = defineStore('settings', () => {
 
     // --- Custom signs (code-variant vocabulary) ---
     function addCustomSign(sign) {
-        customSigns.value = [...customSigns.value, sign]
+        // A sign of the same key is replaced, never doubled.
+        customSigns.value = [...customSigns.value.filter(s => s.key !== sign.key), sign]
     }
     function updateCustomSign(key, patch) {
         customSigns.value = customSigns.value.map(s => s.key === key ? { ...s, ...patch } : s)
     }
     function removeCustomSign(key) {
+        if (isDefaultSign({ key })) return
         customSigns.value = customSigns.value.filter(s => s.key !== key)
     }
 

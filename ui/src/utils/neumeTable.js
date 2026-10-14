@@ -293,7 +293,7 @@ export function canSelectForStandard(rows, code, max = MAX_SPECIAL_SIGNATURES) {
     if (chosen.includes(cl.signature) || chosen.length < max) return { ok: true };
     return {
         ok: false,
-        reason: `At most ${max} constellations per column — ${chosen.join(', ')} already chosen.`
+        reason: `At most ${max} constellations per sign — ${chosen.join(', ')} already chosen.`
     };
 }
 

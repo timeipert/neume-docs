@@ -10,8 +10,9 @@
  * http://localhost:5173). `--shots <dir>` saves screenshots.
  *
  * It walks the user story: the editor starts empty, a corpus is loaded and
- * survives a reload, a project is made with the wizard and its columns are chosen
- * (including the three-constellation limit), a cell opens, the extended table takes
+ * survives a reload, a project is made with the wizard and its columns are chosen in the
+ * standard table (including the three-constellation limit, and a virga variant made with
+ * nothing defined first), a cell opens, the extended table takes
  * an addition by code, the table of all manuscripts has the project as a row, and
  * publishing it fills the public comparison table in the fixed order.
  */
@@ -54,12 +55,16 @@ async function mockIiif(page) {
     await page.route('https://iiif.mock/**', r => r.fulfill({ status: 200, headers: cors, contentType: 'image/png', body: png }));
 }
 
-const STANDARD = ['*', '*d', '*u', '*e', '*dd', '*ud', '*uu', '*du', '*udd', '*uud', '*ddu', 'L', 'O', 'Q', ',', 'Clef', 'Custos'];
+const SHAPES = ['*', '*d', '*u', '*e', '*dd', '*ud', '*uu', '*du', '*udd', '*uud', '*ddu'];
+const SIGNS = ['L', 'O', 'Q', 'S'];
+// The columns of the public comparison table (the brief's header: the strophicus is a comma there).
+const STANDARD = [...SHAPES, 'L', 'O', 'Q', ',', 'Clef', 'Custos'];
 
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage({ viewport: { width: 1400, height: 1000 } });
 const problems = [];
 let lastStep = 'before the first step';
+
 page.on('console', m => { if (m.type() === 'error') problems.push(`${m.text()} (after: ${lastStep})`); });
 page.on('pageerror', e => problems.push(`page error: ${e.message} (after: ${lastStep})`));
 
@@ -118,27 +123,27 @@ try {
     await page.getByRole('radio', { name: /Lines, then signs/ }).click();
     await shot('wizard');
     await page.getByRole('button', { name: /Create project/ }).click();
-    await page.waitForSelector('.pt--select');
-    step(`a project for ${name} made with the four questions`);
+    await page.waitForSelector('.pt--choose');
+    step(`a project for ${name} made with the four questions, and it starts in the standard table`);
 
-    const groupLabels = await page.locator('.pt--select th.cat .cat-name code').allInnerTexts();
-    assert.deepEqual(groupLabels, [...STANDARD.slice(0, 11), 'Clef · Custos'], 'the first tab lays out the shapes, by length and then frequency');
-    step('Columns: * *d *u *e *dd *ud *uu *du *udd *uud *ddu, then Clef · Custos');
+    const groupLabels = await page.locator('.pt--choose th.cat .cat-name code').allInnerTexts();
+    assert.deepEqual(groupLabels, [...SHAPES, ...SIGNS, 'Clef · Custos'], 'the standard table lays out the shapes (by length, then frequency), a group for each sign, then clef and custos');
+    step('Standard table: * *d *u *e *dd *ud *uu *du *udd *uud *ddu, then L O Q S, then Clef · Custos');
 
     // The library writes a constellation in several ways (`*dL`, `[*dL]`, …): take the one Find shows first.
     const bare = (code) => code.replace(/[[\]]/g, '');
     const tick = async (signature) => {
         await page.locator('input[aria-label="Search codes"]').fill(signature);
         await page.waitForTimeout(400);
-        const code = await page.locator('.pt--select thead .l2 th').evaluateAll(
+        const code = await page.locator('.pt--choose thead .l2 th').evaluateAll(
             (ths, sig) => ths.map(t => t.dataset.code).find(c => c.replace(/[[\]]/g, '') === sig), signature);
         assert.ok(code, `the library has a column for ${signature}`);
         // click, not check(): a refused choice puts the box back, which check() would call a failure
         await page.locator(`th[data-code="${code}"] input[type=checkbox]`).click({ force: true });
         return code;
     };
-    // the number of chosen columns is the count of the Columns tab
-    const chosenCount = async () => Number((await page.locator('a.tab', { hasText: 'Columns' }).locator('.count').innerText().catch(() => '0')).trim() || 0);
+    // the number of chosen columns: the second figure of the count on the Standard table tab (filled/chosen)
+    const chosenCount = async () => Number(((await page.locator('a.tab', { hasText: 'Standard table' }).locator('.count').innerText().catch(() => '0/0')).split('/')[1] || '0').trim()) || 0;
     await page.getByRole('button', { name: /Add suggested/ }).click();
     const chosen = await chosenCount();
     assert.ok(chosen > 0, 'the most frequent codes of the transcription are chosen');
@@ -155,6 +160,31 @@ try {
     await shot('columns');
     step('L: three constellations chosen, the fourth is refused');
 
+    // The virga is a sign from the start: a variant is made at once, stands with its code, and is chosen.
+    await page.locator('input[aria-label="Search codes"]').fill('');
+    await page.getByRole('radio', { name: /^All/ }).click();
+    await page.locator('th[data-code="*dd"] .vbtn').click({ force: true });
+    await page.getByRole('button', { name: 'v', exact: true }).nth(1).click();
+    await page.getByRole('button', { name: 'Create variant' }).click();
+    await page.waitForSelector('th[data-code="*dVd"]');
+    assert.ok(await page.locator('th[data-code="*dVd"] input[type=checkbox]').isChecked(), 'the virga variant is chosen');
+    const dd = await page.locator('.pt--choose thead .l2 th').evaluateAll(ths => ths.map(t => t.dataset.code));
+    assert.equal(dd[dd.indexOf('*dd') + 1], '*dVd', 'a variant stands right after the code it comes from, among the patterns');
+    step('+ variant: the virga is there with nothing defined first; the variant stands with its pattern');
+
+    // A cell of a column that is not chosen yet chooses it.
+    const chosenBefore = await chosenCount();
+    await page.locator('th[data-code="*ud"]').scrollIntoViewIfNeeded();
+    const udColumn = await page.locator('.pt--choose thead .l2 th').evaluateAll(ths => ths.findIndex(t => t.dataset.code === '*ud'));
+    assert.equal(await page.locator('th[data-code="*ud"] input[type=checkbox]').isChecked(), false);
+    await page.locator('.pt--choose .r-snip td.snip').nth(udColumn).locator('.cell').click();
+    await page.waitForSelector('.drawer');
+    assert.ok(await page.locator('th[data-code="*ud"] input[type=checkbox]').isChecked(), 'a cell chooses its column');
+    assert.equal(await chosenCount(), chosenBefore + 1);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('.drawer', { state: 'detached' });
+    step('a cell of a column that is not chosen yet chooses it');
+
     // A code the library does not have is added from the table, checked, and chosen.
     await page.locator('input[aria-label="Search codes"]').fill('ux');
     assert.equal(await page.locator('.unknown').count(), 0, 'a text that is not a code is not offered for adding');
@@ -169,9 +199,9 @@ try {
     await page.getByRole('button', { name: /Add suggested/ }).click();
     assert.ok(await chosenCount() > 3, 'the transcription adds columns for the other shapes');
 
-    // 5. The standard table, a cell, the extended table ------------------------
-    await page.getByRole('button', { name: /^Standard table/ }).click();
-    await page.waitForSelector('.pt--fill');
+    // 5. The standard table with the chosen columns, a cell, the extended table --
+    await page.getByRole('radio', { name: /^Chosen/ }).click();
+    await page.locator('input[aria-label="Search codes"]').fill('');
     const standardCodes = await page.locator('.pt--fill thead .l2 th').evaluateAll(ths => ths.map(t => t.dataset.code));
     assert.ok(chosenL.every(c => standardCodes.includes(c)) && !standardCodes.includes(refused), 'the standard table has the chosen columns');
     await page.locator('.pt--fill .r-snip .cell').first().click();
@@ -329,9 +359,8 @@ try {
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByRole('radio', { name: /screenshot of the line/ }).click();
     await page.getByRole('button', { name: /Create project/ }).click();
-    await page.waitForSelector('.pt--select');
+    await page.waitForSelector('.pt--choose');
     await page.locator('th[data-code="*"] input[type=checkbox]').check({ force: true });
-    await page.getByRole('button', { name: /^Standard table/ }).click();
     await page.waitForSelector('.pt--fill');
     await page.getByRole('button', { name: 'Add a line…' }).click();
     const linePng = Buffer.from(await page.evaluate(() => {
@@ -386,9 +415,8 @@ try {
     await page.getByRole('button', { name: 'Next' }).click();
     await page.getByRole('radio', { name: /screenshot of the sign/ }).click();
     await page.getByRole('button', { name: /Create project/ }).click();
-    await page.waitForSelector('.pt--select');
+    await page.waitForSelector('.pt--choose');
     await page.locator('th[data-code="*"] input[type=checkbox]').check({ force: true });
-    await page.getByRole('button', { name: /^Standard table/ }).click();
     await page.waitForSelector('.pt--fill');
     await page.waitForSelector('.shots');
     const signPng = Buffer.from(await page.evaluate(() => {
@@ -419,7 +447,25 @@ try {
     assert.equal(await page.locator('.drawer .grid .snip').count(), 1, 'the screenshot is a snippet of its column, whose cell opens');
     assert.equal(await page.locator('.shots .inbox li').count(), 1, 'one is still to file');
     await page.locator('.drawer .nav .ne-btn').last().click();
+    // a code of a standard shape is filed in the standard table, which takes it as a column
     await page.locator('.shots .inbox li input').first().fill('*uud');
+    await page.locator('.shots .inbox li').first().getByRole('button', { name: 'File' }).click();
+    await page.waitForSelector('.drawer');
+    assert.doesNotMatch(page.url(), /extended/, 'a code of a standard shape stays in the standard table');
+    assert.ok(await page.locator('th[data-code="*uud"] input[type=checkbox]').isChecked(), 'and becomes one of its columns');
+    assert.equal(await page.locator('.drawer .grid .snip').count(), 1, 'its cell opens with the screenshot');
+    await page.locator('.drawer .nav .ne-btn').last().click();
+    // a code outside the standard table is filed in the extended table
+    await page.evaluate(async () => {
+        const c = document.createElement('canvas'); c.width = 40; c.height = 40;
+        c.getContext('2d').fillRect(5, 5, 20, 20);
+        const blob = await new Promise(r => c.toBlob(r, 'image/png'));
+        const dt = new DataTransfer();
+        dt.items.add(new File([blob], 'third.png', { type: 'image/png' }));
+        document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true }));
+    });
+    await page.waitForSelector('.shots .inbox li');
+    await page.locator('.shots .inbox li input').first().fill('*ddd');
     await page.locator('.shots .inbox li').first().getByRole('button', { name: 'File' }).click();
     await page.waitForURL(/project_extended|\/extended/);
     await page.waitForSelector('.drawer');
@@ -584,10 +630,16 @@ try {
     // 9. Pattern library: where signs, variants and preferred IDs are set up --
     await page.goto(`${base}/#/patterns?setup=signs`);
     await page.waitForSelector('#sign-key');
+    assert.equal(await page.locator('.signs-table tbody tr').count(), 1, 'the virga is there from the start');
+    assert.ok(await page.locator('.signs-table tbody tr', { hasText: 'built in' }).count(), 'and cannot be removed');
     await page.locator('#sign-key').fill('v');
-    await page.locator('#sign-label').fill('Virga');
+    await page.locator('#sign-label').fill('Virga again');
     await page.getByRole('button', { name: 'Add sign' }).click();
-    assert.equal(await page.locator('.signs-table tbody tr').count(), 1, 'the sign was added');
+    assert.match(await page.locator('.signs .ne-note--error').innerText(), /already in use/, 'the key of the virga cannot be taken again');
+    await page.locator('#sign-key').fill('w');
+    await page.locator('#sign-label').fill('Wavy');
+    await page.getByRole('button', { name: 'Add sign' }).click();
+    assert.equal(await page.locator('.signs-table tbody tr').count(), 2, 'a sign of one\'s own was added');
     await page.getByRole('button', { name: /Preferred IDs/ }).click();
     await page.locator('input[aria-label="Pattern"]').fill('*dd');
     await page.locator('input[aria-label="Preferred ID"]').fill('Type A');

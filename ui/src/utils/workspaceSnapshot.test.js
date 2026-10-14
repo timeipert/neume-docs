@@ -118,7 +118,7 @@ describe('restoring a workspace', () => {
         applyWorkspace(stores, { settings: { displayMode: 'hologram', snippetSize: 'big', customSigns: 'V', autoFillIds: false } });
         expect(stores.settings.displayMode).toBe('svg');
         expect(stores.settings.snippetSize).toBe(60);
-        expect(stores.settings.customSigns).toEqual([]);
+        expect(stores.settings.customSigns.map(s => s.key)).toEqual(['V']);
         expect(stores.settings.autoFillIds).toBe(false);
     });
 });

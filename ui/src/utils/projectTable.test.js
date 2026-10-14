@@ -33,10 +33,18 @@ describe('the category of a code', () => {
         expect(categoryOf('*[ud]').key).toBe('dir:*ud');
     });
 
-    it('is its movement too when it carries signs', () => {
-        expect(categoryOf('*dL')).toMatchObject({ key: 'dir:*d', label: '*d', standard: true });
-        expect(categoryOf('*uOd').key).toBe('dir:*ud');
-        expect(categoryOf('*uuS')).toMatchObject({ key: 'dir:*uu', standard: true });
+    it('is its sign when it carries a built-in one: L, O, Q and S have a group each', () => {
+        expect(categoryOf('*dL')).toMatchObject({ key: 'sign:L', label: 'L', title: 'Liquescent', group: 'sign', standard: true });
+        expect(categoryOf('*uOd').key).toBe('sign:O');
+        expect(categoryOf('*uuQ').key).toBe('sign:Q');
+        expect(categoryOf('*uuS')).toMatchObject({ key: 'sign:S', title: 'Strophicus', standard: true });
+        // the first sign decides
+        expect(categoryOf('*uOLd').key).toBe('sign:O');
+        expect(categoryOf('[*uL]').key).toBe('sign:L');
+    });
+
+    it('is a sign of the standard table only on a standard shape', () => {
+        expect(categoryOf('*dddL')).toMatchObject({ key: 'sign:L', standard: false });
     });
 
     it('is its movement for a sign of the project as well, but only an addition', () => {
@@ -62,6 +70,18 @@ describe('the library as two levels', () => {
         expect(movements.slice(4, 8)).toEqual(['*dd', '*ud', '*uu', '*du']);
     });
 
+    it('puts the signs after the shapes, in the order of the brief, and before clef and custos', () => {
+        const keys = library.categories.map(c => c.key);
+        const firstSign = keys.findIndex(k => k.startsWith('sign:'));
+        expect(keys.slice(0, firstSign).every(k => k.startsWith('dir:'))).toBe(true);
+        expect(keys.slice(firstSign)).toEqual(['sign:L', 'sign:O', 'sign:Q', 'other']);
+    });
+
+    it('has a group for a sign only when the library has a code with it', () => {
+        const none = buildLibrary(['*ud', '*dL'], freq);
+        expect(none.categories.map(c => c.key).filter(k => k.startsWith('sign:'))).toEqual(['sign:L']);
+    });
+
     it('puts clef and custos last, as one group', () => {
         const keys = library.categories.map(c => c.key);
         expect(keys[keys.length - 1]).toBe('other');
@@ -72,9 +92,13 @@ describe('the library as two levels', () => {
     it('has one rule for the shapes and for the codes under them: fewer notes first, then the more frequent', () => {
         const tones = library.categories.filter(c => c.group === 'direction').map(c => c.columns[0].tones);
         expect(tones).toEqual([...tones].sort((a, b) => a - b));
-        // under *u: the plain ways by how often the signature is written, then the signs by theirs
-        expect(codes('dir:*u')).toEqual(['*u', '[*u]', '[*uL]', '*uO']);
-        expect(codes('dir:*d')).toEqual(['[*d]', '*d', '*dL']);
+        // under *u: the plain ways by how often the signature is written
+        expect(codes('dir:*u')).toEqual(['*u', '[*u]']);
+        expect(codes('dir:*d')).toEqual(['[*d]', '*d']);
+        // under a sign: fewer notes first, then the more frequent signature
+        expect(codes('sign:L')).toEqual(['*dL', '[*uL]']);
+        expect(codes('sign:O')).toEqual(['*uO']);
+        expect(codes('sign:Q')).toEqual(['*uuQ']);
     });
 
     it('lists every way of writing a movement, the most frequent first', () => {
@@ -121,6 +145,13 @@ describe('code variants', () => {
         expect(codes.indexOf('[*u]d') + 1).toBe(codes.indexOf('*uVuVd'));
     });
 
+    it('of a code with a built-in sign stand in the group of that sign, right after it', () => {
+        const v = new Map([['*dVL', { base: '*dL', label: 'virga' }]]);
+        const lib = buildLibrary(['*dL', '*dVL', '*uL'], freq, { variants: v });
+        expect(lib.byKey.get('sign:L').columns.map(c => c.code)).toEqual(['*dL', '*dVL', '*uL']);
+        expect(lib.byCode.get('*dVL')).toMatchObject({ categoryKey: 'sign:L', variantOf: '*dL', standard: true });
+    });
+
     it('are told apart from their code by variantOf', () => {
         expect(withVariants.variantOf('*uVd')).toBe('*ud');
         expect(withVariants.variantOf('*ud')).toBe('');
@@ -163,8 +194,9 @@ describe('what a project shows', () => {
 
     it('groups the chosen columns under their categories, in library order', () => {
         const groups = groupSelected(library, tableCodes(project, 'extended'));
-        expect(groups.map(g => g.key)).toEqual(['dir:*d', 'dir:*ud', 'dir:*ddd']);
-        expect(groups[1].columns.map(c => c.code)).toEqual(['*ud']);
+        // shapes first, then the signs
+        expect(groups.map(g => g.key)).toEqual(['dir:*ud', 'dir:*ddd', 'sign:L']);
+        expect(groups[0].columns.map(c => c.code)).toEqual(['*ud']);
     });
 });
 
@@ -259,7 +291,8 @@ describe('a code of one\'s own', () => {
     });
 
     it('says which category it belongs to', () => {
-        expect(checkCode(' *udL ').category.key).toBe('dir:*ud');
+        expect(checkCode(' *udL ').category.key).toBe('sign:L');
+        expect(checkCode('*uVd').category.key).toBe('dir:*ud');
         expect(checkCode('[*u]d')).toMatchObject({ code: '[*u]d', category: { key: 'dir:*ud', standard: true } });
         expect(checkCode('*dddd').category.standard).toBe(false);
     });

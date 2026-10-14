@@ -21,10 +21,10 @@ The standard table has fixed columns:
 
 This is the same ordering rule, with some cases left out (for instance `*ed` and `*ddd`).
 
-Choosing its columns is the first task of every project (tab *Columns*):
+Choosing its columns is the first task of every project, and it is done in the standard table itself:
 
-- **Neume shapes.** Each shape (`*ud`, …) is a group; under it stand all the ways of writing it — `*ud`, `[*u]d`, `*[ud]`, `[*ud]` and any code variant of the library. Tick the ones this project uses.
-- **Special signs.** A pattern with a sign stands under its shape, among the others: `*dL` under `*d`, `*udL` under `*ud`. Choose **at most three** constellations for each of `L` (liquescent), `O` (oriscus), `Q` (quilisma) and `,` (strophicus) — typically `*dL`, `*uL` and for example `*udL`, but that is for you to decide. A pattern with several signs counts for its **first** sign: `*uOdL` is an `O` pattern.
+- **Neume shapes.** Each shape (`*ud`, …) is a group; under it stand all the ways of writing it — `*ud`, `[*u]d`, `*[ud]`, `[*ud]` — and its code variants, such as the virga (`*uVd`), right after the code they come from. Tick the ones this project uses.
+- **Special signs.** A pattern with a built-in sign stands in a group of that sign, after the shapes: `*dL` and `*udL` under `L`, `*uO` under `O`. The groups are `L` (liquescent), `O` (oriscus), `Q` (quilisma) and `S` (strophicus, written as a comma in the brief). Choose **at most three** constellations for each — typically `*dL`, `*uL` and for example `*udL`, but that is for you to decide; the header of the group counts them. A pattern with several signs counts for its **first** sign: `*uOdL` is an `O` pattern.
 - **Clef and Custos.** Tick them if the manuscript has them.
 
 ## Expanded documentation
@@ -38,9 +38,8 @@ Each addition appears in the table at its place in the ordering. The search sits
 
 ## Working in the editor
 
-- The tab *Columns* is one table for the whole library. By default each shape shows its first few codes and those already in use; **+n more** opens the rest, and the search narrows the table to a code.
-- Under each column the table shows how often the code occurs in the transcription of the project's folios, and how many snippets the project has.
-- In the *Standard table* every column is one cell; open it to find the neume in the transcription and add a snippet.
+- The *Standard table* is one table for the whole library. By default each group shows its first few codes and those already in use; **+n more** opens the rest, and the search narrows the table to a code. **Chosen** shows only the project's columns.
+- Under each column the table shows how often the code occurs in the transcription of the project's folios, and under that one cell for its snippets; open it to find the neume in the transcription and add a snippet. A cell of a column that is not chosen yet chooses it.
 - Taking a column out of the extended table shows an **Undo** message for a few seconds.
 - Whether the project's manuscript appears in the public views is a setting of the project.
 

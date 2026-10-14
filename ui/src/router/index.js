@@ -17,7 +17,6 @@ import IiifSourcesView from '../views/IiifSourcesView.vue'
 import ProjectsView from '../views/ProjectsView.vue'
 import ProjectWizardView from '../views/ProjectWizardView.vue'
 import ProjectShellView from '../views/ProjectShellView.vue'
-import ProjectColumnsView from '../views/ProjectColumnsView.vue'
 import ProjectTableView from '../views/ProjectTableView.vue'
 import ProjectAllView from '../views/ProjectAllView.vue'
 import ProjectPageView from '../views/ProjectPageView.vue'
@@ -38,10 +37,9 @@ import { adoptLegacyProjects } from '../composables/useProjectAdoption';
 import { getBaseCode } from '../utils/patternCode';
 import { projectPageLocation } from '../utils/projectChoices';
 
-/** Where a project is worked on first: choosing its columns, or — once chosen — filling the table. */
+/** Where a project is worked on first: the standard table, where the columns are chosen and filled. */
 function projectHome(id) {
-    const project = useProjectsStore().get(id);
-    return { name: project && project.columnsChosen ? 'project_standard' : 'project_columns', params: { id } };
+    return { name: 'project_standard', params: { id } };
 }
 
 /** The tab a cell is in: the extended table when the code is only there. */
@@ -154,7 +152,8 @@ const router = createRouter({
       meta: { requiresWorkspace: true },
       children: [
         { path: '', name: 'project', redirect: (to) => projectHome(to.params.id) },
-        { path: 'columns', name: 'project_columns', component: ProjectColumnsView, meta: { title: 'Columns' } },
+        // Choosing the columns used to be a tab of its own; it is part of the standard table now.
+        { path: 'columns', redirect: (to) => ({ name: 'project_standard', params: { id: to.params.id } }) },
         { path: 'standard', name: 'project_standard', component: ProjectTableView, props: { scope: 'standard' }, meta: { title: 'Standard table' } },
         { path: 'extended', name: 'project_extended', component: ProjectTableView, props: { scope: 'extended' }, meta: { title: 'Extended table' } },
         { path: 'all', name: 'project_all', component: ProjectAllView, meta: { title: 'All manuscripts' } },

@@ -13,6 +13,28 @@ export const RESERVED_SUFFIXES = ['L', 'Q', 'O', 'S', 'A', 'D'];
 export const MOVEMENT_CHARS = ['*', 'u', 'd', 'e'];
 
 /**
+ * The signs every workspace has from the start, so that a code variant can be made
+ * without defining anything first. The virga has no glyph of its own: it is drawn
+ * with the note, and told apart by the letter in the code (`*uVd`).
+ */
+export const DEFAULT_SIGNS = [
+    { key: 'V', label: 'Virga', abbrev: 'v', description: 'A note written as a virga', glyph: 'note', glyphSvg: '', builtin: true }
+];
+
+/** Whether a sign is one of those every workspace has (these cannot be removed). */
+export const isDefaultSign = (sign) => !!sign && DEFAULT_SIGNS.some(d => d.key === sign.key);
+
+/** A list of signs with the default ones in it: a sign of the same key, if the list has one, stays as it is. */
+export function withDefaultSigns(list) {
+    const own = Array.isArray(list) ? list.filter(s => s && s.key) : [];
+    const have = new Set(own.map(s => s.key));
+    return [...DEFAULT_SIGNS.filter(d => !have.has(d.key)).map(d => ({ ...d })), ...own];
+}
+
+/** The signs somebody defined, without the default ones. */
+export const ownSigns = (list) => (list || []).filter(s => !isDefaultSign(s));
+
+/**
  * Validate a candidate sign key. Returns an error string, or '' if valid.
  * @param {string} key
  * @param {string[]} existingKeys keys already in use (for uniqueness)

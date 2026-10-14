@@ -24,7 +24,7 @@ export const SNIPPETS = ['lines', 'signs']
  *   extended          the codes added beyond it
  *   collectionId      the custom collection holding the screenshots
  *   published         shown in the public views (see utils/projectPublishing)
- *   columnsChosen     the person has been through "choose columns" (or the project came from an existing table)
+ *   columnsChosen     the person has chosen columns in the standard table (or the project came from an existing table)
  *   legacyKey         what it was made from ('table:Aa 13'), so it is made once
  *   createdAt, updatedAt
  *

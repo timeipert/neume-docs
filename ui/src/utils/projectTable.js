@@ -2,24 +2,27 @@
  * The table of a project: two levels of columns, and how a project's selection
  * of them is kept.
  *
- *   level 1  a shape: only the movement of the notes (`*ud` — up, down), whatever
- *            the signs on them; Clef and Custos stand together at the end
- *   level 2  the columns proper: every code of the pattern library that has that
- *            movement — plain, in brackets, with signs, code variants
- *            (`*ud`, `[*u]d`, `*udL`, `*uVd`, ...)
+ *   level 1  a group: a shape (only the movement of the notes — `*ud`, up, down —
+ *            whatever sits on them), then one group for each special sign (L, O, Q, S),
+ *            then Clef and Custos together
+ *   level 2  the columns proper: every code of the pattern library that belongs to the
+ *            group — under a shape the plain ways of writing it, in brackets, and the code
+ *            variants (`*ud`, `[*u]d`, `*uVd`, ...); under a sign the codes whose first
+ *            special sign it is (`*dL`, `[*uL]`, ...)
  *
  * One rule orders everything: **length, then frequency** — fewer notes first, and
  * among equally long the more frequent first. It orders the shapes, and the codes
- * under each shape (the ways of writing one signature stay together).
+ * under each group (the ways of writing one signature stay together).
  *
  * A **code variant** (a code the pattern library derives from another by marking a
- * note with a sign of the project: `*uuVdd` of `*uudd`) is a column of its own, in the
- * shape of the code it comes from and right after it.
+ * note with a sign of the project, the virga above all: `*uuVdd` of `*uudd`) is a column
+ * of its own, in the group of the code it comes from and right after it — a variant is
+ * shown with the patterns, not apart from them.
  *
  * A project selects level-2 columns twice over:
  *
  *   columns    the standard table: the standard shapes (`*` `*d` `*u` `*e` `*dd` `*ud`
- *              `*uu` `*du` `*udd` `*uud` `*ddu`), plain or with the built-in signs, Clef and
+ *              `*uu` `*du` `*udd` `*uud` `*ddu`), the special signs on them, Clef and
  *              Custos. A special sign (L O Q `,`) takes at most three constellations.
  *   extended   anything else the library has, added for this project.
  *
@@ -31,6 +34,7 @@
 import {
     CLEF_CODE,
     CUSTOS_CODE,
+    SPECIAL_COLUMNS,
     STANDARD_DIRECTIONS,
     MAX_SPECIAL_SIGNATURES,
     canSelectForStandard,
@@ -43,11 +47,16 @@ import { getBaseCode } from './patternCode.js';
 const natural = (a, b) => a.localeCompare(b, undefined, { numeric: true });
 
 /**
- * The shape a code stands under, or null when it has no place in a table.
+ * The group a code stands under, or null when it has no place in a table.
  * `standard` says whether this code can be a column of the standard table.
  *
+ *   a shape      the movement only, whatever the signs of the project on it
+ *   a sign       a code with a built-in special sign (L, O, Q, S) stands under that sign,
+ *                not under its shape
+ *   clef/custos  together, at the end
+ *
  * @param {string} code
- * @returns {{ key: string, label: string, title: string, group: 'direction'|'other', standard: boolean, direction?: string }|null}
+ * @returns {{ key: string, label: string, title: string, group: 'direction'|'sign'|'other', standard: boolean, direction?: string, sign?: string }|null}
  */
 export function categoryOf(code) {
     const cl = classify(code);
@@ -55,8 +64,19 @@ export function categoryOf(code) {
         case 'clef':
         case 'custos':
             return { key: 'other', label: 'Clef · Custos', title: '', group: 'other', standard: true };
+        case 'special': {
+            const def = SPECIAL_COLUMNS.find(c => c.key === cl.column);
+            return {
+                key: `sign:${cl.column}`,
+                label: cl.column,
+                title: def ? def.label : '',
+                group: 'sign',
+                sign: cl.column,
+                // The standard table has the signs on the standard shapes.
+                standard: STANDARD_DIRECTIONS.includes(cl.direction)
+            };
+        }
         case 'direction':
-        case 'special':
         case 'custom':
             return {
                 key: `dir:${cl.direction}`,
@@ -64,7 +84,7 @@ export function categoryOf(code) {
                 title: '',
                 group: 'direction',
                 direction: cl.direction,
-                // The standard table has the standard shapes, plain or with built-in signs; a sign of the project makes a code an addition.
+                // The standard table has the standard shapes; a sign of the project makes a code an addition.
                 standard: cl.kind !== 'custom' && STANDARD_DIRECTIONS.includes(cl.direction)
             };
         default: return null;
@@ -85,14 +105,14 @@ function slotOf(code) {
 }
 
 /**
- * Every shape with its columns, in table order.
+ * Every group (shapes, signs, clef and custos) with its columns, in table order.
  *
  * @param {Iterable<string>} allCodes every code the library knows
  * @param {ReturnType<import('./neumeTable.js').buildFrequency>} freq
  * @param {{ variants?: Map<string, { base: string, label?: string, id?: string }> }} [options]
  *   `variants`: code variant → the code it is a variant of
  * @returns {{
- *   categories: Array<{ key: string, label: string, title: string, group: string, direction?: string, columns: LibraryColumn[] }>,
+ *   categories: Array<{ key: string, label: string, title: string, group: 'direction'|'sign'|'other', direction?: string, sign?: string, columns: LibraryColumn[] }>,
  *   byCode: Map<string, LibraryColumn>,
  *   byKey: Map<string, object>,
  *   variantOf: (code: string) => string
@@ -149,8 +169,12 @@ export function buildLibrary(allCodes, freq, { variants = new Map() } = {}) {
             || natural(a.code, b.code));
     }
 
+    // The shapes, then the special signs in the order of the brief, then clef and custos.
+    const rank = { direction: 0, sign: 1, other: 2 };
+    const signOrder = (cat) => SPECIAL_COLUMNS.findIndex(c => c.key === cat.sign);
     const categories = [...byKey.values()].sort((a, b) => {
-        if (a.group !== b.group) return a.group === 'other' ? 1 : -1;
+        if (a.group !== b.group) return rank[a.group] - rank[b.group];
+        if (a.group === 'sign') return signOrder(a) - signOrder(b);
         return a.group === 'other' ? 0 : compareDirections(a.direction, b.direction, freq);
     });
 

@@ -13,24 +13,23 @@ Open **Projects** in the navigation bar. Snippets are never stored in a project:
 3. **Images.** *IIIF page images* come from a manifest; if the manuscript has none yet you can paste its address here. *Screenshots* are images you paste or upload yourself, kept in the editor.
 4. **Snippets.** *Lines, then signs* — mark each text line, then the signs on it. *Signs only* — mark each sign directly on the page. With screenshots the same choice is between a screenshot of a whole line and of a single sign.
 
-The last answer creates the project and leads to its columns.
+The last answer creates the project and leads to its standard table.
 
 The answers can be changed later under **Settings…** on the project. They decide what a cell offers (see below), nothing is converted.
 
-## The four tabs
+## The three tabs
 
-Every project has the same four tabs, always in view. Any tab can be entered at any time; the order only says what usually comes next.
+Every project has the same three tabs, always in view. Any tab can be entered at any time; the order only says what usually comes next.
 
 | Tab | What it is |
 | --- | --- |
-| **Columns** | One big table of the whole pattern library, and **the code is what it is about**. The top row has the shapes (only the movement: `*`, `*d`, `*u`, `*ud`, …; Clef and Custos at the end); under each shape stand all the codes with that movement — plain, in brackets, with special signs, code variants. Everything follows one rule, **length, then frequency**: fewer notes first, and among equally long the more frequent first. Tick the columns of this project's standard table. A special sign (L, O, Q, `,`) takes at most three constellations. Under the codes you see how often each occurs in the transcription of this project's folios and how many snippets exist (snippets already drawn there are loaded in, and a new project starts with the columns that already have snippets). **Search** narrows the table to matching codes; the filter shows only the chosen codes, those with snippets, or those in the transcription; **Add suggested** takes the codes with snippets and the most frequent code of each shape in the transcription. |
-| **Standard table** | The chosen columns, one cell each. Open a cell to find or add snippets. |
+| **Standard table** | Where a project starts, and **the code is what it is about**. One table with every possibility for the standard patterns. The top row has the shapes (only the movement: `*`, `*d`, `*u`, `*ud`, …); under each shape stand the ways of writing it — plain, in brackets — and its code variants (see below). After the shapes comes a group for each special sign — **L, O, Q and S** — with the codes that carry it, and last Clef and Custos. Everything follows one rule, **length, then frequency**: fewer notes first, and among equally long the more frequent first. **Tick** the columns of this project's table, or just **open a cell**: a cell of a column that is not chosen yet chooses it. A special sign takes at most three constellations (the group's header counts them). Under the codes you see how often each occurs in the transcription of this project's folios, and under that one cell each, where snippets are found or added (snippets already drawn there are loaded in, and a new project starts with the columns that already have snippets). A new project shows **All**; once columns are chosen you can switch to **Chosen** to see only those. **Search** narrows the table to matching codes; the filter shows only the chosen codes, those with snippets, or those in the transcription; **Add suggested** takes the codes with snippets and the most frequent code of each shape in the transcription. |
 | **Extended table** | The standard table plus any other pattern of the library, added by code (`*udL` finds every way of writing it). Added columns can be taken out again with ✕. |
 | **All manuscripts** | Every project as a row, the chosen columns side by side (the standard or the extended columns). A cell opens that project's table at that column. |
 
 ### Variants and codes of your own
 
-- **+ variant** under any column makes a *code variant* of it: a code in which a note carries a sign of your own (`*udd` → `*uVdd`; signs are defined in the [pattern library](./conventions)). The variant is a column of its own, right after the code it comes from, and is chosen for the table at once.
+- **+ variant** under any column makes a *code variant* of it: a code in which a note carries a sign (`*udd` → `*uVdd`). The **virga** (`V`) is a sign of every workspace, so this works from the start; further signs are defined in the [pattern library](./conventions). The variant is a column of its own, shown among the patterns right after the code it comes from, and is chosen for the table at once. (The virga is drawn with the note; the letter in the code tells it apart.)
 - **A code the library does not have:** type it into the search. If it is a good code (the first note is `*`, then `u`, `d` or `e`; `[ ]` joins notes; upper-case letters are signs) it is offered with **Add it…**, shown, filed under its shape and chosen. In the extended table the search on the right offers the same.
 
 ## A cell

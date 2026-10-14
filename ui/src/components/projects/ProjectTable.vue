@@ -3,16 +3,16 @@ import { computed, nextTick, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import PatternDisplay from '../PatternDisplay.vue';
 import PatternCode from '../PatternCode.vue';
-import { CLEF_CODE, CUSTOS_CODE } from '../../utils/neumeTable';
+import { CLEF_CODE, CUSTOS_CODE, MAX_SPECIAL_SIGNATURES } from '../../utils/neumeTable';
 
 /**
- * The table of a project: two rows of headers — the category (a movement or a
- * special sign) over the codes that belong to it — and under them what is known
- * about each code. One component for the three ways it is used:
+ * The table of a project: two rows of headers — the group (a movement, a special
+ * sign, clef and custos) over the codes that belong to it — and under them what is
+ * known about each code. One component for the two ways it is used:
  *
- *   select   choosing which codes are columns: a check box in every header, a way to
- *            add a variant, and the snippets that already exist, so nothing is chosen blind
- *   fill     the chosen columns: every cell is where a snippet is added or seen
+ *   fill     every cell is where a snippet is added or seen. With `choose` the headers also
+ *            carry a check box (is this a column of the project?) and a way to add a variant:
+ *            the table offers every possibility and the person ticks, in one place
  *   matrix   one row per project, for comparing manuscripts: every cell shows what that
  *            project has for the code, and opens it
  *
@@ -22,7 +22,9 @@ import { CLEF_CODE, CUSTOS_CODE } from '../../utils/neumeTable';
 const props = defineProps({
     /** [{ key, label, title, group, columns: [{ code, variantOf?, variantLabel? }], total? }] */
     groups: { type: Array, required: true },
-    mode: { type: String, default: 'fill' }, // 'select' | 'fill' | 'matrix'
+    mode: { type: String, default: 'fill' }, // 'fill' | 'matrix'
+    /** fill: the codes can be chosen as columns (check boxes), and variants added */
+    choose: { type: Boolean, default: false },
     selected: { type: Object, default: () => new Set() },
     /** code -> snippets of this project */
     snippets: { type: Object, required: true },
@@ -33,7 +35,7 @@ const props = defineProps({
     removable: { type: Object, default: () => new Set() },
     /** the cell whose workbench is open */
     active: { type: String, default: '' },
-    /** categories drawn in full while choosing */
+    /** groups drawn in full while choosing */
     expanded: { type: Object, default: () => new Set() },
     emptyText: { type: String, default: 'Nothing here yet.' },
     /** matrix: [{ id, name, sub, to, snippets: Map, has: Set<string>, active }] */
@@ -42,7 +44,7 @@ const props = defineProps({
 
 const emit = defineEmits(['toggle', 'open', 'remove', 'expand', 'variant', 'open-cell']);
 
-const select = computed(() => props.mode === 'select');
+const select = computed(() => props.choose && props.mode === 'fill');
 const matrix = computed(() => props.mode === 'matrix');
 const isPseudo = (code) => code === CLEF_CODE || code === CUSTOS_CODE;
 const pseudoLabel = (code) => (code === CLEF_CODE ? 'Clef' : 'Custos');
@@ -70,7 +72,9 @@ function compact(n) {
 const fmt = (n) => n.toLocaleString('en-US');
 
 const chosenIn = (group) => group.columns.filter(c => props.selected.has(c.code)).length;
-const kindOf = (group) => (group.group === 'direction' ? 'shape' : 'other');
+const kindOf = (group) => ({ direction: 'shape', sign: 'sign' }[group.group] || 'other');
+/** A sign takes at most three constellations (signatures); a variant counts as the one of its code. */
+const constellations = (group) => new Set(group.columns.filter(c => props.selected.has(c.code)).map(c => c.signature)).size;
 
 /**
  * A check box changes itself before anyone has said yes. When the choice is refused
@@ -103,9 +107,9 @@ defineExpose({ reveal });
 
 <template>
 <div ref="root" class="pt-scroll">
-    <table class="pt" :class="`pt--${mode}`">
+    <table class="pt" :class="[`pt--${mode}`, { 'pt--choose': select }]">
         <caption class="sr-only">
-            {{ select ? 'Choose the columns of the table' : matrix ? 'All projects side by side' : 'The table of the project' }}: {{ columnCount }} columns in {{ groups.length }} groups
+            {{ matrix ? 'All projects side by side' : select ? 'Choose the columns of the table, and fill them' : 'The table of the project' }}: {{ columnCount }} columns in {{ groups.length }} groups
         </caption>
         <thead>
             <tr class="l1">
@@ -119,7 +123,11 @@ defineExpose({ reveal });
                             <code>{{ g.label }}</code>
                             <small v-if="g.title && g.title !== g.label">{{ g.title }}</small>
                         </span>
-                        <span v-if="select && chosenIn(g)" class="cat-count some">{{ chosenIn(g) }} chosen</span>
+                        <span
+                            v-if="select && chosenIn(g)"
+                            class="cat-count some"
+                            :title="kindOf(g) === 'sign' ? `At most ${MAX_SPECIAL_SIGNATURES} constellations per sign` : ''"
+                        >{{ chosenIn(g) }} chosen<template v-if="kindOf(g) === 'sign'"> · {{ constellations(g) }}/{{ MAX_SPECIAL_SIGNATURES }} constellations</template></span>
                         <button
                             v-if="select && (g.total > g.columns.length || expanded.has(g.key))"
                             type="button"
@@ -214,10 +222,8 @@ defineExpose({ reveal });
             <tr v-if="!matrix" class="r-snip">
                 <th scope="row">Snippets</th>
                 <template v-for="g in groups" :key="g.key">
-                    <td v-for="(c, i) in g.columns" :key="c.code" class="snip" :class="{ first: i === 0, filled: snippetsOf(c.code).length, active: active === c.code }">
-                        <span v-if="select" class="made" :class="{ some: snippetsOf(c.code).length }">{{ snippetsOf(c.code).length || '–' }}</span>
+                    <td v-for="(c, i) in g.columns" :key="c.code" class="snip" :class="{ first: i === 0, filled: snippetsOf(c.code).length, active: active === c.code, off: select && !selected.has(c.code) }">
                         <button
-                            v-else
                             type="button"
                             class="cell"
                             :aria-label="snippetsOf(c.code).length ? `${snippetsOf(c.code).length} snippets for ${c.code}: open` : `Add a snippet for ${c.code}`"
@@ -262,6 +268,7 @@ tbody th small { display: block; margin-top: 2px; font-size: 0.72rem; font-weigh
 /* level 1: the group, tinted by what kind of group it is */
 .l1 th.cat { position: sticky; top: 0; z-index: 2; text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
 .cat--shape { background: linear-gradient(180deg, #e8f0ff, #f3f7ff) !important; box-shadow: inset 0 3px 0 var(--shape); }
+.cat--sign { background: linear-gradient(180deg, #f0eaff, #f7f4ff) !important; box-shadow: inset 0 3px 0 var(--sign); }
 .cat--other { background: linear-gradient(180deg, #e9eef4, #f4f7fa) !important; box-shadow: inset 0 3px 0 var(--other); }
 .cat-inner { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; position: sticky; left: calc(var(--rowhead) + var(--space-3)); width: max-content; max-width: 100%; }
 .cat-name { display: inline-flex; align-items: baseline; gap: var(--space-2); }
@@ -304,11 +311,9 @@ td.tr.none .tr-n { color: var(--color-text-light); font-weight: 500; }
 
 /* the cells: one place to add a snippet, or the snippets that are there */
 td.snip { text-align: center; vertical-align: middle; height: 92px; }
-.pt--select td.snip { height: 40px; }
 td.snip.filled { background: #fafcff; }
+td.snip.off:not(.filled) .add { opacity: 0.55; }
 td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-primary); }
-.made { font-weight: 600; color: var(--color-text-light); }
-.made.some { color: var(--color-accent-dark); }
 .cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 100%; min-height: 92px; padding: var(--space-2); border: none; border-radius: 0; background: transparent; color: var(--color-text-light); transition: background-color 0.12s, color 0.12s; }
 .cell:hover { background: var(--color-primary-light); color: var(--color-primary); }
 .cell:focus-visible { box-shadow: inset var(--ring); }

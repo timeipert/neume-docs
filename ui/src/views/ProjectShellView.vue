@@ -10,7 +10,7 @@ import ProjectTabs from '../components/projects/ProjectTabs.vue';
 import ProjectSettingsDialog from '../components/projects/ProjectSettingsDialog.vue';
 
 /**
- * The frame of one project: its name, and the four tabs that lead through the
+ * The frame of one project: its name, and the tabs that lead through the
  * work. What a tab shows is a child route, so every step has an address of its own.
  */
 const route = useRoute();

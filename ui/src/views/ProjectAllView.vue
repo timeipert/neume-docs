@@ -11,7 +11,7 @@ import SegmentedControl from '../components/ui/SegmentedControl.vue';
 import SnippetThumb from '../components/projects/SnippetThumb.vue';
 
 /**
- * Step 4: every project as a row, the columns they have chosen side by side.
+ * Step 3: every project as a row, the columns they have chosen side by side.
  * The same two-level header as in the project's own tables; a cell opens that
  * project's table at that column.
  */
@@ -41,7 +41,7 @@ const rows = computed(() => projects.value.map(p => ({
     id: p.id,
     name: p.name,
     sub: [p.name === p.source ? '' : p.source, describeRange(p.from, p.to)].filter(Boolean).join(' · '),
-    to: { name: p.columnsChosen ? 'project_standard' : 'project_columns', params: { id: p.id } },
+    to: { name: 'project_standard', params: { id: p.id } },
     snippets: allSnippets.value.get(p.id) || new Map(),
     has: new Set(tableCodes(p, scope.value)),
     active: p.id === project.value.id

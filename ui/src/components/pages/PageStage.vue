@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { useImageFallback } from '../../composables/useImageFallback';
 import {
     fitView, pageSize, rectFromCorners, rectOnStage, stageToPage, zoomAt
 } from '../../utils/pageEditing';
@@ -24,14 +25,21 @@ const props = defineProps({
     /** a box that is waiting for what to do with it */
     draft: { type: Object, default: null },
     /** a drag draws a box (otherwise it moves the page) */
-    drawing: { type: Boolean, default: true }
+    drawing: { type: Boolean, default: true },
+    /** other addresses of the same page, tried in turn when `imageUrl` cannot be loaded (smaller ones, say) */
+    fallbacks: { type: Array, default: () => [] }
 });
 const emit = defineEmits(['draw', 'pick']);
 
 const viewport = ref(null);
 const stage = reactive({ w: 0, h: 0 });
 const aspect = ref(0);
-const failed = ref(false);
+// A page is large and a server may refuse to send it: the picture is asked for down a list of addresses.
+const { url: shownUrl, status: imageState, loaded: imageLoaded, failed: imageFailed } = useImageFallback(
+    computed(() => [props.imageUrl, ...props.fallbacks]),
+    { timeout: 90000 }
+);
+const failed = computed(() => imageState.value === 'error');
 const view = ref({ s: 1, tx: 0, ty: 0 });
 const touched = ref(false); // the person has zoomed or moved: leave the view alone when the window changes
 
@@ -64,10 +72,10 @@ onBeforeUnmount(() => {
 });
 
 function onLoad(e) {
-    failed.value = false;
+    imageLoaded();
     aspect.value = e.target.naturalWidth / e.target.naturalHeight || 0.7;
 }
-watch(() => props.imageUrl, () => { aspect.value = 0; failed.value = false; });
+watch(() => props.imageUrl, () => { aspect.value = 0; });
 
 // ---- drawing, moving, clicking ------------------------------------------------------
 
@@ -169,7 +177,7 @@ const cursor = computed(() => (gesture && gesture.pan ? 'grabbing' : space.value
     @wheel.prevent="onWheel"
     @contextmenu.prevent
 >
-    <img :src="imageUrl" class="page" :class="{ on: ready }" :style="imageStyle" alt="The page" draggable="false" @load="onLoad" @error="failed = true" />
+    <img :src="shownUrl" class="page" :class="{ on: ready }" :style="imageStyle" alt="The page" draggable="false" @load="onLoad" @error="imageFailed" />
 
     <template v-if="ready">
         <div v-if="focusAt" class="shade" :style="focusAt"></div>

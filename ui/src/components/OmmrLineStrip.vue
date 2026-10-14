@@ -7,7 +7,8 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useImageManifest } from '../composables/useImageManifest';
 import { undeskewPoint, parsePoints } from '../utils/ommrGeometry';
-import { getCachedItem, setCachedItem } from '../utils/idb';
+import { fetchFirstBlob } from '../utils/iiifFetch';
+import { regionUrls as iiifRegionUrls } from '../utils/iiifUrls';
 
 const props = defineProps({
     source: { type: String, required: true },
@@ -23,7 +24,7 @@ const props = defineProps({
     padding: { type: Number, default: 0.08 }
 });
 
-const { getIiifRegionUrl } = useImageManifest();
+const { getIiifRegionUrls } = useImageManifest();
 
 const containerRef = ref(null);
 const isVisible = ref(false);
@@ -85,35 +86,30 @@ const overlays = computed(() => {
 const fontPx = computed(() => Math.max(boxPx.value.h * 0.16, dims.value.H * 0.008));
 
 // --- IIIF region loading (few strips at a time → simple direct fetch + cache) ---
-const regionUrl = computed(() => {
-    if (props.localSrc) return null;
+/** The addresses to try for the strip, best first (see utils/iiifUrls). */
+const regionUrls = computed(() => {
+    if (props.localSrc) return [];
     const b = boxPct.value;
     const region = `pct:${b.x.toFixed(3)},${b.y.toFixed(3)},${b.w.toFixed(3)},${b.h.toFixed(3)}`;
     const w = Math.min(2000, Math.round(props.width * 2));
-    if (props.serviceUrl) return `${props.serviceUrl}/${region}/${w},/0/default.jpg`;
-    return getIiifRegionUrl(props.source, props.folio, region, w);
+    if (props.serviceUrl) return iiifRegionUrls(props.serviceUrl, region, w);
+    return getIiifRegionUrls(props.source, props.folio, region, w);
 });
+const regionUrl = computed(() => regionUrls.value[0] || null);
 const imgHref = computed(() => (props.localSrc ? props.localSrc : blobUrl.value || ''));
 const iiifImageBox = computed(() => boxPx.value);
 
 async function load() {
     if (props.localSrc) { status.value = 'loading'; return; }
-    const url = regionUrl.value;
-    if (!url) { status.value = 'error'; return; }
+    if (!regionUrl.value) { status.value = 'error'; return; }
     status.value = 'loading';
-    try {
-        let blob = await getCachedItem('images', url);
-        if (!(blob instanceof Blob)) {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            blob = await res.blob();
-            setCachedItem('images', url, blob);
-        }
+    const { blob, url } = await fetchFirstBlob(regionUrls.value);
+    if (blob) {
         if (objectUrl) URL.revokeObjectURL(objectUrl);
         objectUrl = URL.createObjectURL(blob);
         blobUrl.value = objectUrl;
-    } catch {
-        blobUrl.value = url; // let <image> load directly
+    } else {
+        blobUrl.value = url; // not readable (CORS, no answer): let <image> load directly
     }
 }
 

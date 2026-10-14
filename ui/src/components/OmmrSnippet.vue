@@ -14,7 +14,8 @@
  */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { useImageManifest } from '../composables/useImageManifest';
-import { getCachedItem, setCachedItem } from '../utils/idb';
+import { fetchFirstBlob } from '../utils/iiifFetch';
+import { regionUrls as iiifRegionUrls } from '../utils/iiifUrls';
 
 const props = defineProps({
     source: { type: String, required: true },
@@ -49,7 +50,7 @@ const props = defineProps({
     showMarkers: { type: Boolean, default: true }
 });
 
-const { getIiifRegionUrl, getImageUrl } = useImageManifest();
+const { getIiifRegionUrls, getImageUrl } = useImageManifest();
 
 const containerRef = ref(null);
 const isVisible = ref(false);
@@ -125,15 +126,15 @@ const targetPx = computed(() => {
     return Math.min(480, Math.max(120, Math.round(props.width * dpr)));
 });
 
-const regionUrl = computed(() => {
-    if (props.localSrc) return null; // exact local crop takes precedence
+/** The addresses to try for the region, best first (see utils/iiifUrls). */
+const regionUrls = computed(() => {
+    if (props.localSrc) return [];
     const b = box.value;
     const region = `pct:${b.x.toFixed(3)},${b.y.toFixed(3)},${b.w.toFixed(3)},${b.h.toFixed(3)}`;
-    if (props.serviceUrl) {
-        return `${props.serviceUrl}/${region}/${targetPx.value},/0/default.jpg`;
-    }
-    return getIiifRegionUrl(props.source, props.folio, region, targetPx.value);
+    if (props.serviceUrl) return iiifRegionUrls(props.serviceUrl, region, targetPx.value);
+    return getIiifRegionUrls(props.source, props.folio, region, targetPx.value);
 });
+const regionUrl = computed(() => regionUrls.value[0] || null);
 
 // SVG-cropped image source: the exact local image, or a non-IIIF local scan.
 const cropSrc = computed(() => {
@@ -178,22 +179,15 @@ async function load() {
         status.value = cropSrc.value ? 'loading' : 'error';
         return;
     }
-    const url = regionUrl.value;
     status.value = 'loading';
-    try {
-        let blob = await getCachedItem('images', url);
-        if (!(blob instanceof Blob)) {
-            const res = await fetch(url);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            blob = await res.blob();
-            setCachedItem('images', url, blob); // fire-and-forget
-        }
+    const { blob, url } = await fetchFirstBlob(regionUrls.value);
+    if (blob) {
         revokeObjectUrl();
         objectUrl = URL.createObjectURL(blob);
         blobUrl.value = objectUrl;
         status.value = 'loaded';
-    } catch (e) {
-        // CORS or network failure: fall back to letting the <img> load the URL directly.
+    } else {
+        // not readable (CORS, no answer): let the <img> load the address directly
         blobUrl.value = url;
         status.value = 'loading';
     }

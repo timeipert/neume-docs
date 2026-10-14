@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { iiifParseRules } from '../config/iiifRules';
 import { parseManifest } from '../services/iiif/manifestParser';
+import { iiifKey } from '../utils/iiifStatus';
 import { getCachedItem, setCachedItem, deleteCachedItem, clearStore } from '../utils/idb';
 
 export const useIiifStore = defineStore('iiif', () => {
@@ -184,7 +185,9 @@ export const useIiifStore = defineStore('iiif', () => {
      * Ensure a specific source's manifest is loaded.
      * Called lazily when a source's images are actually needed.
      */
-    async function ensureLoaded(source) {
+    async function ensureLoaded(name) {
+        // 'Kön D-219v-a-19' is read from the manifest linked for 'Kön D'
+        const source = iiifKey({ links: links.value, parsedData: parsedData.value, folioImageSources: folioImageSources.value }, name);
         if (parsedData.value[source] && !folioImageSources.value[source]) return; // Already loaded
         const url = links.value[source];
         if (!url) return; // No URL known

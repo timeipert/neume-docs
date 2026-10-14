@@ -4,6 +4,7 @@ import { useTranscriptionData } from './useTranscriptionData';
 import { useSettingsStore } from '../stores/settings';
 import { folioToIndex, indexToFolio } from '../utils/folioMath';
 import { inferAlignment } from '../utils/folioAlignment';
+import { pageUrls, regionUrls } from '../utils/iiifUrls';
 
 const normCache = new Map();
 
@@ -370,6 +371,27 @@ export function useImageManifest() {
     }
 
     /**
+     * The addresses to try for a part of a page, best first (see utils/iiifUrls): the width asked for,
+     * then the server's maximum, then the part at its own size. Empty when the page has no IIIF service
+     * (yet: its manifest may still be loading).
+     */
+    function getIiifRegionUrls(source, folio, regionStr, width) {
+        const iiifMatch = fuzzyMatchIiifFolio(source, folio);
+        return iiifMatch && iiifMatch.serviceUrl ? regionUrls(iiifMatch.serviceUrl, regionStr, width, { pageWidth: iiifMatch.w }) : [];
+    }
+
+    /**
+     * The addresses to try for a whole page, best first. With a `width`, a picture of about that width
+     * to cut from; without, the page at its best, then smaller ones for a server that will not send it.
+     * A page without a IIIF service has the one address it always had.
+     */
+    function getPageUrls(source, folio, { width = 0 } = {}) {
+        const iiifMatch = fuzzyMatchIiifFolio(source, folio);
+        if (iiifMatch && iiifMatch.serviceUrl) return pageUrls(iiifMatch.serviceUrl, iiifMatch.imgUrl, { width });
+        return [getImageUrl(source, folio)];
+    }
+
+    /**
      * Returns the base IIIF source key for physical manuscripts.
      */
     /**
@@ -501,6 +523,8 @@ export function useImageManifest() {
         getImageUrl,
         getIiifThumbnailUrl,
         getIiifRegionUrl,
+        getIiifRegionUrls,
+        getPageUrls,
         getIiifCanvasByIndex,
         getIiifCanvasCount,
         getStandardSource,

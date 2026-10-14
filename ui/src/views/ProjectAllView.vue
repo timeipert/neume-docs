@@ -1,7 +1,8 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useProjectsStore } from '../stores/projects';
+import { useIiifStore } from '../stores/iiif';
 import { useAllProjectSnippets, useProjectContext } from '../composables/useProject';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { describeRange } from '../utils/projectData';
@@ -17,9 +18,16 @@ import SnippetThumb from '../components/projects/SnippetThumb.vue';
  */
 const router = useRouter();
 const store = useProjectsStore();
+const iiif = useIiifStore();
 const { project, library, glyphs } = useProjectContext();
 const allSnippets = useAllProjectSnippets();
 useTranscriptionData();
+
+// The snippets of the other projects are cut from their own manuscripts' pages: those manifests are
+// needed too, not only the one of the project this tab belongs to.
+watch(() => store.projects.map(p => (p.images === 'iiif' ? p.source : '')), (sources) => {
+    for (const source of new Set(sources)) if (source) iiif.ensureLoaded(source);
+}, { immediate: true });
 
 const scope = ref('standard');
 const SCOPES = [

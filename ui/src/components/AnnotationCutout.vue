@@ -1,7 +1,7 @@
 <script setup>
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useImageManifest } from '../composables/useImageManifest';
-import { getCachedItem, setCachedItem } from '../utils/idb';
+import { useImageFallback } from '../composables/useImageFallback';
 
 const props = defineProps({
     source: String,
@@ -20,12 +20,10 @@ const props = defineProps({
 
 const emit = defineEmits(['zoom-item']);
 
-const { getImageUrl, getIiifThumbnailUrl, getIiifRegionUrl } = useImageManifest();
+const { getIiifRegionUrls, getPageUrls } = useImageManifest();
 
 const containerRef = ref(null);
 const isVisible = ref(false);
-const cachedBlobUrl = ref(null);
-const imageStatus = ref('loading'); // 'loading' | 'loaded' | 'error'
 let observer = null;
 
 const polyPoints = computed(() => {
@@ -77,8 +75,11 @@ const vbCoords = computed(() => {
 
 // Prefer the IIIF Region API: fetch ONLY the cropped area, sized to the display.
 // This keeps small neume crops sharp (instead of cropping a downsized full page)
-// while staying light. Falls back to a full-page thumbnail for non-IIIF scans.
-const imgSpec = computed(() => {
+// while staying light. Servers refuse what they do not like — a width above the part's own
+// size (a small snippet), a width above their limit (a large picture) — so there is a list of
+// addresses, best first: the width asked for, the server's maximum, the part at its own size,
+// and last the whole page cut out by the viewBox (the only way for scans that are not IIIF).
+const candidates = computed(() => {
     const { x, y, w, h } = vbCoords.value;
     const rx = Math.max(0, x), ry = Math.max(0, y);
     const rw = Math.min(100 - rx, w), rh = Math.min(100 - ry, h);
@@ -90,24 +91,18 @@ const imgSpec = computed(() => {
         ? 1600
         : Math.min(1400, Math.max(320, Math.round(props.width * dpr * 1.6)));
 
-    const rurl = getIiifRegionUrl(props.source, props.folio, region, String(regionW));
-    if (rurl) return { url: rurl, region: true };
-
     const targetWidth = Math.min(1600, Math.max(600, Math.round(props.width * 2)));
-    return { url: getIiifThumbnailUrl(props.source, props.folio, targetWidth), region: false };
+    return [
+        ...getIiifRegionUrls(props.source, props.folio, region, String(regionW)).map(url => ({ url, region: true })),
+        ...getPageUrls(props.source, props.folio, { width: targetWidth }).map(url => ({ url, region: false }))
+    ];
 });
-const rawImgUrl = computed(() => imgSpec.value.url);
-const usingRegion = computed(() => imgSpec.value.region);
 
-// Load image when visible
-function loadImage() {
-    if (!isVisible.value || !rawImgUrl.value) {
-        if (isVisible.value && !rawImgUrl.value) imageStatus.value = 'error';
-        return;
-    }
-    imageStatus.value = 'loading';
-    cachedBlobUrl.value = rawImgUrl.value;
-}
+const { url: rawImgUrl, index: tried, status: imageStatus, loaded: onImageLoad, failed: onImageError } = useImageFallback(
+    computed(() => candidates.value.map(c => c.url)),
+    { enabled: isVisible }
+);
+const usingRegion = computed(() => !!(candidates.value[tried.value] && candidates.value[tried.value].region));
 
 onMounted(() => {
     if ('IntersectionObserver' in window && containerRef.value) {
@@ -129,11 +124,7 @@ onUnmounted(() => {
     if (observer) observer.disconnect();
 });
 
-watch([isVisible, rawImgUrl], () => {
-    if (isVisible.value) loadImage();
-}, { immediate: true });
-
-const imgUrl = computed(() => isVisible.value ? rawImgUrl.value : '');
+const imgUrl = rawImgUrl;
 
 const layerStyle = computed(() => ({
     position: 'absolute',
@@ -190,8 +181,8 @@ const clipId = computed(() => `clip-${props.source}-${props.folio}-${Math.abs(pr
             :height="usingRegion ? vbCoords.h : 100"
             preserveAspectRatio="none"
             :clip-path="clip ? `url(#${clipId})` : undefined"
-            @load="imageStatus = 'loaded'"
-            @error="imageStatus = 'error'"
+            @load="onImageLoad"
+            @error="onImageError"
         />
         
         <!-- Overlays (Items on the line) -->

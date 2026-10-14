@@ -5,8 +5,10 @@
  * deskew-corrected neume outline highlighted, and lets the user nudge the
  * per-source folio offset until the highlight sits on the right neume.
  */
-import { ref, computed, watch } from 'vue';
+import { computed } from 'vue';
 import { useImageManifest } from '../composables/useImageManifest';
+import { useImageFallback } from '../composables/useImageFallback';
+import { pageUrls } from '../utils/iiifUrls';
 import { correctedPolygon, correctedBox, undeskewPoint } from '../utils/ommrGeometry';
 
 const props = defineProps({
@@ -20,14 +22,13 @@ const props = defineProps({
 });
 const emit = defineEmits(['close', 'set-offset']);
 
-const { getIiifThumbnailUrl, getStandardFolio } = useImageManifest();
+const { getPageUrls, getStandardFolio } = useImageManifest();
 
-const imgStatus = ref('loading');
-const pageUrl = computed(() => {
-    if (props.serviceUrl) return `${props.serviceUrl}/full/1600,/0/default.jpg`;
-    return getIiifThumbnailUrl(props.snippet.source, props.effectiveFolio, 1600);
-});
-watch(pageUrl, () => { imgStatus.value = 'loading'; });
+// The page at about 1600 wide, and other ways to get it for a server that will not send that (see utils/iiifUrls).
+const candidates = computed(() => (props.serviceUrl
+    ? pageUrls(props.serviceUrl, '', { width: 1600 })
+    : getPageUrls(props.snippet.source, props.effectiveFolio, { width: 1600 })));
+const { url: pageUrl, status: imgStatus, loaded: onPageLoad, failed: onPageError } = useImageFallback(candidates, { timeout: 60000 });
 
 const resolvedLabel = computed(() =>
     props.canvasLabel || getStandardFolio(props.snippet.source, props.effectiveFolio)
@@ -88,8 +89,8 @@ function nudge(delta) { emit('set-offset', props.folioOffset + delta); }
                     :src="pageUrl || ''"
                     class="peek-img"
                     alt=""
-                    @load="imgStatus = 'loaded'"
-                    @error="imgStatus = 'error'"
+                    @load="onPageLoad"
+                    @error="onPageError"
                 />
                 <svg class="peek-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <!-- context box -->

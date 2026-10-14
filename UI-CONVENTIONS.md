@@ -48,6 +48,10 @@ Work is guided, but never locked: every step has an address, so a person can ent
 - **A page that is reached from a cell** (the page editor, the line region editor) is given `return_to=project&return_id=<project id>&highlight=<code>`, and its back button leads to that cell.
 - **Old addresses** (`/table`, `/table/:source`, `/compare`, `/`) are redirects to the project pages, so links and bookmarks keep working.
 
+## Pictures from a IIIF server
+
+A picture that comes from an image server is never asked for with one address. The addresses are a list, best first (`utils/iiifUrls.js`: the width wanted, the server's `max`, the part at its own size; for a page also smaller sizes), and the component that shows it goes down the list with `useImageFallback` — which also tries the whole list once more after a pause and gives up on a server that does not answer. A new place that shows a IIIF picture uses these two; a single `…/320,/0/default.jpg` written into a component is how a table once stopped showing small snippets. Whatever needs a manuscript's pages needs its manifest, so a view that shows other projects' snippets loads *their* manifests too.
+
 ## Buttons
 
 Use the `ne-btn` classes (`style.css`).

@@ -30,6 +30,16 @@ Suggestions are matched on the library siglum and shelfmark (`D-Eu 84`, taken fr
 
 *Add a manuscript…* (on the Catalogue and the Images tab) is for a manuscript that is not in your corpus. Type its siglum and whatever you know; matching entries of the catalogue are suggested as you type. **Take this** fills in the empty fields (library, shelfmark, date, origin, siglum) and links the manifest. The manuscript then appears as a row of the Manuscripts table, where you can complete it.
 
+## When pictures do not show
+
+Snippets and pages are cut and sent by the library's image server, and servers differ in what they accept: some refuse a picture that is larger than the part of the page (a small snippet shown big), some refuse more than a set width, some are busy for a moment. The editor therefore asks for each picture in several ways — the size it wants, then the server's own maximum, then the part at its own size, and for a page also smaller sizes — and tries the next when one is refused; a picture that is not there at all is asked for once more after a pause, and one that does not answer is given up after a while. Nothing for you to do, but it explains why a picture can take a moment longer than usual.
+
+If a picture still shows ⚠️ or the page cannot be loaded:
+
+- **The manuscript's manifest could not be read.** The table and the cell say so (*Add page images…* / the notice in the cell). Check the address under *Manuscripts → Images*; *Refresh* reads it again.
+- **The server does not allow its pictures to be used by other sites.** Pictures can then be shown, but not saved into a PDF; the neume tree's PDF draws the shape in place of such a snippet and tells you how many.
+- **Another project's snippets** are cut from that project's own manuscript, whose manifest is read when you open *All manuscripts*.
+
 ## Collecting the catalogue
 
 The catalogue is third-party data, so it is not part of the editor: each installation collects it once. In the `ui` folder:

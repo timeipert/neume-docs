@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useManagerWorkspace } from '../../composables/useManagerWorkspace';
+import { useImageManifest } from '../../composables/useImageManifest';
 import { useLineNeumes } from '../../composables/useLineNeumes';
 import { useTranscriptionData } from '../../composables/useTranscriptionData';
 import { useProjectLibrary } from '../../composables/useProject';
@@ -71,7 +72,10 @@ const lineIndex = computed(() => lines.value.findIndex(r => r.id === props.line)
 const items = computed(() => activeRegionItems.value);
 const itemCount = (r) => annotations.getRegionItems(r.id).length;
 
-const imageUrl = computed(() => getImageUrl(props.source, props.folio));
+// The page, and other ways to get it for a server that will not send it at its full size.
+const { getPageUrls } = useImageManifest();
+const imageUrls = computed(() => getPageUrls(props.source, props.folio));
+const imageUrl = computed(() => imageUrls.value[0] || getImageUrl(props.source, props.folio));
 
 // ---- the transcription, as a help --------------------------------------------------------
 
@@ -357,7 +361,7 @@ const title = computed(() => (mode.value === 'whole' ? 'The page as a whole' : r
     </header>
 
     <div class="stagebox">
-        <PageStage :image-url="imageUrl" :focus="focus" :shade="mode === 'line'" :boxes="boxes" :draft="draft" @draw="onDraw" @pick="onPick">
+        <PageStage :image-url="imageUrl" :fallbacks="imageUrls.slice(1)" :focus="focus" :shade="mode === 'line'" :boxes="boxes" :draft="draft" @draw="onDraw" @pick="onPick">
             <template #hint>
                 <span class="pill" :class="{ ask: pendingSign || draftLine || editingBox }">
                     <template v-if="editingBox">Drag the new box for “{{ title }}” &middot; Esc cancels</template>

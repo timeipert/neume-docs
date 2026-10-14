@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { iiifStatus, isWebAddress } from './iiifStatus';
+import { iiifKey, iiifStatus, isWebAddress } from './iiifStatus';
 
 const store = (over = {}) => ({ links: {}, parsedData: {}, folioImageSources: {}, manifestStatus: {}, ...over });
 
@@ -42,5 +42,36 @@ describe('a manifest address', () => {
         expect(isWebAddress('example.org/manifest')).toBe(false);
         expect(isWebAddress('https://exa mple.org')).toBe(false);
         expect(isWebAddress('')).toBe(false);
+    });
+});
+
+describe('the key a source is kept under', () => {
+    const links = { 'Kön D': 'https://a/m.json', 'Kön': 'https://a/n.json', 'Pa 1235': 'https://a/p.json' };
+
+    it('is the source itself when a manifest is linked for it', () => {
+        expect(iiifKey(store({ links }), 'Kön D')).toBe('Kön D');
+    });
+
+    it('is the longest manifest the source starts with, ending at a hyphen or a space', () => {
+        expect(iiifKey(store({ links }), 'Kön D-219v-a-19')).toBe('Kön D');
+        expect(iiifKey(store({ links }), 'Kön D 219')).toBe('Kön D');
+        expect(iiifKey(store({ links }), 'Pa 1235-9-1')).toBe('Pa 1235');
+    });
+
+    it('is not a manifest whose name only begins like the source', () => {
+        expect(iiifKey(store({ links }), 'Pa 12350')).toBe('Pa 12350');
+        expect(iiifKey(store({ links }), 'Kön Dx')).toBe('Kön');
+    });
+
+    it('is the source itself when no manifest is known, and nothing for nothing', () => {
+        expect(iiifKey(store({ links }), 'Zürich C 78')).toBe('Zürich C 78');
+        expect(iiifKey(store(), '')).toBe('');
+        expect(iiifKey(store(), undefined)).toBe('');
+    });
+
+    it('lets the status of a closer source be the status of its manifest', () => {
+        const parsedData = { 'Kön D': [{ folio: '1r' }] };
+        expect(iiifStatus(store({ links, parsedData }), 'Kön D-219v-a-19').state).toBe('ready');
+        expect(iiifStatus(store({ links, manifestStatus: { 'Kön D': { status: 'error', error: 'HTTP 500' } } }), 'Kön D-219v').state).toBe('error');
     });
 });

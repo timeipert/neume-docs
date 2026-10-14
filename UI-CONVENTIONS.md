@@ -16,7 +16,8 @@ A function is reachable from one place, the place where it is *used*. Other page
 | Sending annotations to Monodi-Zero, taking them back, linking snippets to the transcription | Workspace (Exchange with Monodi-Zero) | Manuscripts → Corpus, after an update from Monodi-Zero |
 | Removing the loaded corpus | Corpus | |
 | OMMR4all import | Corpus (leads to `/ommr`) | |
-| Making a project, choosing its columns, filling its table, comparing all manuscripts | Projects (the three tabs of a project) | the Corpus page, the Metadata table |
+| Making a project, choosing its columns, filling its table, comparing all manuscripts | Projects (the tabs of a project) | the Corpus page, the Metadata table |
+| The neume tree of a project: going on from a box, hiding boxes, saving it as a PDF | Projects → *Neume tree* | |
 | Lines, the signs on them, snippets | the cell of a table (and the line editor it opens) | |
 | What a snippet says about itself: its attributes and how they are checked | Settings | the cell, the line editor |
 | Display mode, order of the neume table | Settings | |
@@ -42,7 +43,8 @@ Settings is for preferences that apply everywhere. If a setting belongs to one p
 Work is guided, but never locked: every step has an address, so a person can enter, leave and come back anywhere.
 
 - **A question that shapes the work** is asked in a stepper (`/projects/new?step=…`): one question per step, answers as `ChoiceCards` (each answer explained), back and forth freely, a review at the end. What it decided can be changed later under **Settings…**.
-- **The steps of a project** are the three tabs of `ProjectShellView` (Standard table → Extended table → All manuscripts), always in view and always clickable. They are child routes (`/projects/:id/standard`, `…/extended`, `…/all`), and the end of each tab offers the next as its primary button.
+- **The steps of a project** are the four tabs of `ProjectShellView` (Standard table → Extended table → Neume tree → All manuscripts), always in view and always clickable. They are child routes (`/projects/:id/standard`, `…/extended`, `…/tree`, `…/all`), and the end of each tab offers the next as its primary button.
+- **The neume tree** is drawn from the columns the project has chosen (the standard table, or with the extended one). What is changed in it — boxes gone on from, boxes hidden — is the tree's own state, kept with the project, and never changes the table; what is shown (which table, shapes or snippets) is in the address (`?scope=`, `?show=`). The buttons of a box appear when the pointer or the keyboard is on it; hiding and going on can be undone with a toast.
 - **The standard table is where a project starts.** It offers every possibility — the shapes with their ways of writing and their variants, a group for each special sign (L, O, Q, S), then Clef · Custos — and the columns are chosen in the table itself (tick a header, or fill a cell: a cell of a column that is not chosen yet chooses it). There is no separate step for choosing columns.
 - **A cell** of a table opens beside it, addressed by `?cell=<code>`. A link to a cell from anywhere is `{ name: 'project_cell', params: { id }, query: { code } }`.
 - **A page that is reached from a cell** (the page editor, the line region editor) is given `return_to=project&return_id=<project id>&highlight=<code>`, and its back button leads to that cell.
@@ -98,6 +100,7 @@ Anything that removes workspace data goes through `useWorkspaceManagement`, whic
 | **Workspace** | everything *you* made on top of it |
 | **Patterns** | the pattern library (the vocabulary) |
 | **Project** | a range of folios in one manuscript (one scribe's pages, say) and the table that documents its neumes |
+| **Neume tree** | the patterns of a project's table arranged left to right by number of notes, each growing out of a shorter pattern it contains (`[ ]` read as a hyphen, a virga told from a plain note); a box can be gone on from (the boxes with one more note are *made*, and drawn lighter — in the standard table's tree only what the standard table allows, in the extended one anything) or hidden; saved as a PDF |
 | **Standard table** / **Extended table** | the project's table with the columns of the brief, chosen in the table itself / with any further pattern of the library |
 | **Code variant** | a code in which a note carries a sign of the workspace (the virga above all: `*uudd` → `*uuVdd`). It stands among the patterns, right after the code it comes from |
 | **Page editor** | a manuscript's IIIF folios, where line regions and signs are marked. From a cell it opens inside the project (its tabs stay, with a *Page* tab); *Pages →* in the catalogue opens it on its own |

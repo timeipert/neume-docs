@@ -22,6 +22,8 @@ export const SNIPPETS = ['lines', 'signs']
  *                     'signs'          the signs alone
  *   columns           the standard table: codes chosen for it
  *   extended          the codes added beyond it
+ *   tree              what was done to the neume tree: `grown` the boxes that were gone on from, `hidden` the boxes left out
+ *                     (each by its notation, e.g. `*u-d`; see utils/neumeTree)
  *   collectionId      the custom collection holding the screenshots
  *   published         shown in the public views (see utils/projectPublishing)
  *   columnsChosen     the person has chosen columns in the standard table (or the project came from an existing table)
@@ -43,6 +45,8 @@ export const useProjectsStore = defineStore('projects', () => {
     const oneOf = (v, list) => (list.includes(v) ? v : list[0])
     const codes = (list) => [...new Set((Array.isArray(list) ? list : []).map(getBaseCode).filter(Boolean))]
 
+    const notation = (list) => [...new Set((Array.isArray(list) ? list : []).filter(n => typeof n === 'string' && /^\*[*udeA-Z-]*$/.test(n)))]
+
     function normalise(p) {
         const now = new Date().toISOString()
         const columns = codes(p.columns)
@@ -59,6 +63,7 @@ export const useProjectsStore = defineStore('projects', () => {
             snippets: oneOf(p.snippets, SNIPPETS),
             columns,
             extended: codes(p.extended).filter(c => !columns.includes(c)),
+            tree: { grown: notation(p.tree && p.tree.grown), hidden: notation(p.tree && p.tree.hidden) },
             collectionId: text(p.collectionId),
             published: !!p.published,
             columnsChosen: !!p.columnsChosen,
@@ -132,6 +137,12 @@ export const useProjectsStore = defineStore('projects', () => {
         return update(id, { extended })
     }
 
+    /** Gone on from, or hidden, in the project's neume tree: `{ grown?: string[], hidden?: string[] }`. */
+    function setTree(id, patch) {
+        const project = get(id)
+        return project ? update(id, { tree: { ...project.tree, ...patch } }) : null
+    }
+
     function markOpened(id) {
         if (get(id)) lastOpenedId.value = id
     }
@@ -190,7 +201,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
     return {
         projects, dismissed, lastOpenedId,
-        get, create, update, remove, restore, setColumns, setExtended, markOpened,
+        get, create, update, remove, restore, setColumns, setExtended, setTree, markOpened,
         adoptLegacy, clear, serialize, hydrate, mergeIn
     }
 })

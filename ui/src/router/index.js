@@ -19,6 +19,7 @@ import ProjectWizardView from '../views/ProjectWizardView.vue'
 import ProjectShellView from '../views/ProjectShellView.vue'
 import ProjectTableView from '../views/ProjectTableView.vue'
 import ProjectAllView from '../views/ProjectAllView.vue'
+import ProjectTreeView from '../views/ProjectTreeView.vue'
 import ProjectPageView from '../views/ProjectPageView.vue'
 import StartView from '../views/StartView.vue'
 import DocsHomeView from '../views/docs/DocsHomeView.vue'
@@ -156,6 +157,7 @@ const router = createRouter({
         { path: 'columns', redirect: (to) => ({ name: 'project_standard', params: { id: to.params.id } }) },
         { path: 'standard', name: 'project_standard', component: ProjectTableView, props: { scope: 'standard' }, meta: { title: 'Standard table' } },
         { path: 'extended', name: 'project_extended', component: ProjectTableView, props: { scope: 'extended' }, meta: { title: 'Extended table' } },
+        { path: 'tree', name: 'project_tree', component: ProjectTreeView, meta: { title: 'Neume tree' } },
         { path: 'all', name: 'project_all', component: ProjectAllView, meta: { title: 'All manuscripts' } },
         // The page editor, inside the frame of the project.
         { path: 'page', name: 'project_page', component: ProjectPageView, meta: { title: 'Page', fill: true } },

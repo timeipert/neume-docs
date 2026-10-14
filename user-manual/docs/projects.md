@@ -17,15 +17,37 @@ The last answer creates the project and leads to its standard table.
 
 The answers can be changed later under **Settings…** on the project. They decide what a cell offers (see below), nothing is converted.
 
-## The three tabs
+## The four tabs
 
-Every project has the same three tabs, always in view. Any tab can be entered at any time; the order only says what usually comes next.
+Every project has the same four tabs, always in view. Any tab can be entered at any time; the order only says what usually comes next.
 
 | Tab | What it is |
 | --- | --- |
 | **Standard table** | Where a project starts, and **the code is what it is about**. One table with every possibility for the standard patterns. The top row has the shapes (only the movement: `*`, `*d`, `*u`, `*ud`, …); under each shape stand the ways of writing it — plain, in brackets — and its code variants (see below). After the shapes comes a group for each special sign — **L, O, Q and S** — with the codes that carry it, and last Clef and Custos. Everything follows one rule, **length, then frequency**: fewer notes first, and among equally long the more frequent first. **Tick** the columns of this project's table, or just **open a cell**: a cell of a column that is not chosen yet chooses it. A special sign takes at most three constellations (the group's header counts them). Under the codes you see how often each occurs in the transcription of this project's folios, and under that one cell each, where snippets are found or added (snippets already drawn there are loaded in, and a new project starts with the columns that already have snippets). A new project shows **All**; once columns are chosen you can switch to **Chosen** to see only those. **Search** narrows the table to matching codes; the filter shows only the chosen codes, those with snippets, or those in the transcription; **Add suggested** takes the codes with snippets and the most frequent code of each shape in the transcription. |
 | **Extended table** | The standard table plus any other pattern of the library, added by code (`*udL` finds every way of writing it). Added columns can be taken out again with ✕. |
+| **Neume tree** | The patterns the project has chosen, arranged as a tree (see [The neume tree](#the-neume-tree)): left to right by number of notes, shown as shapes or as snippets, saved as a PDF. |
 | **All manuscripts** | Every project as a row, the chosen columns side by side (the standard or the extended columns). A cell opens that project's table at that column. |
+
+## The neume tree
+
+The **Neume tree** tab arranges the patterns of the project's table — the standard table, or with the extended one — as a tree, in the manner of the *Zeichenbäume* of the Corpus Monodicum volumes. The root is at the left; each column to the right has one more note (neume component) than the one before.
+
+**How the boxes hang together.** To compare patterns, every bracket is turned into a hyphen between the notes it joins: `[*u]` is `*-u`, `*u` stays `*u`, `*ud[ud]` is `*udu-d`. A pattern grows out of the longest shorter pattern that is contained in it: the same notes from the start, and every hyphen of the shorter one is there in the longer one too. So `*u` branches into `*ud` and `*[ud]` (`*u-d`), while `[*u]` has as many notes as `*u` and therefore hangs from `*` like it. If a shorter pattern is not in the table, a pattern hangs from the nearest one that is, or from the root. A **virga** (`V`) is told from a plain note everywhere: `*` and `*V` are the two boxes at the root, and `*Vd` grows out of `*V`, never out of `*`.
+
+**Order.** At every branch the boxes without a virga are above, the boxes with a virga below; within these, what goes **up** (`u`) is above, what stays level (`e`) in the middle, what goes **down** (`d`) below, and a pattern written apart before the same one joined by brackets.
+
+**Showing.** *Standard table* / *Extended table* chooses which columns make the tree. *Neume types* draws every box as its shape, with its code beneath (the virga letter in bold); *Scan snippets* shows the first snippet of each pattern instead — a box without one keeps its shape in a dashed frame. The switch only appears when the project has snippets for these patterns. A box that is one of the project's patterns is a link to its cell; hovering a box lights the way back to the root. Clef and custos are not neume shapes and stay out (a line under the tree says so).
+
+**Going on.** The tree does not have to stop at the patterns of the table. At every box, **+** makes the boxes that grow out of it — one more note, up, level or down, each written apart from the one before or joined to it — and **+ n notes** at the right end of the tree does so for every box of the last column at once. What may be made depends on the table:
+
+- In the **standard table's tree**, only what the standard table can have: the standard shapes (`*`, `*d`, `*u`, `*e`, `*dd`, `*ud`, `*uu`, `*du`, `*udd`, `*uud`, `*ddu`) in every way of writing them, so the tree stops at four notes, like the *Zeichenbäume* of the volumes. A box that cannot be gone on from has no **+**, and the last column has no **+ n notes** once nothing more can be made.
+- In the **extended table's tree**, everything: there is no limit to the number of columns.
+
+Boxes made this way are not patterns of the table: they are drawn lighter, with dashed lines, and are not links. **−** at a box takes back what was made from it, **Remove made boxes** takes back all of them. What was made is kept for both trees; the standard one shows only the part of it that the standard table allows. (A tree is a picture; past 400 boxes the editor asks you to hide some first.)
+
+**Hiding.** **×** at a box hides it **together with everything that grows out of it** — the pattern stays in the table, only the tree leaves it out. *Hidden · n* above the tree lists what is hidden; click a code to show it again, or *Show all*. Hiding and going on can be undone from the message that follows. Both are kept with the project, so the tree is as you left it.
+
+**PDF.** *Export as PDF* saves the tree as it is shown: one page as large as the tree, the lines and codes as vector graphics, the shapes (or snippets) as images, with the project's name beneath — meant to be placed as a figure. With *Scan snippets*, pictures cut from IIIF page images need the image server to allow it; a picture that cannot be read is replaced by its drawn shape, and the message says how many.
 
 ### Variants and codes of your own
 

@@ -52,6 +52,14 @@ describe('the projects store', () => {
         expect(store.setColumns(p.id, ['*u']).columnsChosen).toBe(true);
     });
 
+    it('keeps what was done to the neume tree, as notations only', () => {
+        const p = store.create({ source: 'A' });
+        expect(p.tree).toEqual({ grown: [], hidden: [] });
+        store.setTree(p.id, { grown: ['*u', '*u', 'nonsense', '*u-d'] });
+        store.setTree(p.id, { hidden: ['*d'] });
+        expect(store.get(p.id).tree).toEqual({ grown: ['*u', '*u-d'], hidden: ['*d'] });
+    });
+
     it('removes a project and puts it back', () => {
         const p = store.create({ source: 'A', legacyKey: 'table:A' });
         const gone = store.remove(p.id);

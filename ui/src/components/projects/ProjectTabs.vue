@@ -4,7 +4,7 @@ import { RouterLink, useRoute } from 'vue-router';
 
 /**
  * The steps of a project as tabs, always in view: the standard table (where the columns
- * are chosen and filled), the extended table, all manuscripts side by side. Any of them
+ * are chosen and filled), the extended table, the neume tree they make, all manuscripts side by side. Any of them
  * can be entered at any time; the order only says what usually comes next.
  */
 const props = defineProps({
@@ -24,6 +24,7 @@ const pageLabel = computed(() => (route.query.folio ? `Page f. ${route.query.fol
 const tabs = computed(() => [
     { name: 'project_standard', label: 'Standard table', count: props.progress.columns ? `${props.progress.filled}/${props.progress.columns}` : '' },
     { name: 'project_extended', label: 'Extended table', count: props.progress.extended ? `+${props.progress.extended}` : '' },
+    { name: 'project_tree', label: 'Neume tree', count: '' },
     { name: 'project_all', label: 'All manuscripts', count: props.projectCount > 1 ? props.projectCount : '' }
 ]);
 </script>

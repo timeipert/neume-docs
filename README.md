@@ -32,11 +32,12 @@ The file format and the reasoning are in `INTEGRATION-PLAN.md` of the monodi-lig
 
 ### Projects (new)
 
-Work happens in **projects**. A project is a range of folios in one manuscript — one scribe's pages, say — and the table that documents its neumes. **New project** asks four questions (start from the transcription or from the manuscript; which manuscript and folios; IIIF or screenshots; lines or signs), and the project then leads through three tabs:
+Work happens in **projects**. A project is a range of folios in one manuscript — one scribe's pages, say — and the table that documents its neumes. **New project** asks four questions (start from the transcription or from the manuscript; which manuscript and folios; IIIF or screenshots; lines or signs), and the project then leads through four tabs:
 
 1. **Standard table** — where a project starts: every possibility for the standard patterns in one table. A top row of shapes (only up, down, equal) with under each every way of writing it — plain, in brackets, and its code variants (the virga is always there to make one with) — then a group for each special sign (L, O, Q, S) and Clef · Custos, all in one order: length, then frequency. Tick the columns of the project's table, or just open a cell: it chooses its column. Open a cell to find the neume in the transcription and mark it on the page (IIIF, line or sign snippets), or to paste a screenshot. Snippets already drawn in these folios are loaded in.
 2. **Extended table** — the standard table plus any other pattern of the library.
-3. **All manuscripts** — the projects as rows, side by side.
+3. **Neume tree** — the chosen patterns as a tree, left to right by number of notes (`*` → `*u` → `*ud`, `*u-d`, …), as shapes or as snippets; it can be gone on with (the standard table's tree only within what the standard table allows, the extended one without limit), single boxes can be hidden, and it is saved as a PDF.
+4. **All manuscripts** — the projects as rows, side by side.
 
 With **screenshots of lines**, a project keeps the lines themselves (folio and line, validated), and the signs are marked on them in a line editor — each with its pattern code, its syllable and a link to the transcription's neume; a sign stays tied to its line. What a snippet says about itself (folio, line, syllable, and attributes of your own) is set in *Settings*. Variants and codes the library does not have are added from the tables.
 

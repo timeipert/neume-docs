@@ -13,7 +13,8 @@
  * survives a reload, a project is made with the wizard and its columns are chosen in the
  * standard table (including the three-constellation limit, and a virga variant made with
  * nothing defined first), a cell opens, the extended table takes
- * an addition by code, the table of all manuscripts has the project as a row, and
+ * an addition by code, the neume tree of the chosen columns can be gone on with, cut back and
+ * saved as a PDF, the table of all manuscripts has the project as a row, and
  * publishing it fills the public comparison table in the fixed order.
  */
 import assert from 'node:assert/strict';
@@ -305,6 +306,48 @@ try {
     await page.getByRole('button', { name: 'Undo' }).last().click();
     assert.equal(await page.locator('.pt--fill thead .l2 th').count(), before, 'Undo puts it back');
     step('taking a column out can be undone');
+
+    // The neume tree of the chosen columns: a box for each shape, each on a line. Going on makes more boxes — in the standard
+    // table's tree only what the standard table can have (no more than four notes), in the extended table's tree without a limit;
+    // boxes can be hidden and brought back; and it is saved as a PDF.
+    await page.getByRole('link', { name: /Neume tree/ }).first().click();
+    await page.waitForSelector('.nt .node');
+    const boxes = await page.locator('.nt .node').count();
+    assert.ok(boxes > 0 && boxes <= standardCodes.length, 'the tree has a box for the shapes among the standard columns');
+    assert.equal(await page.locator('.nt .line').count(), boxes, 'every box hangs on a line');
+    for (let i = 0; i < 6 && await page.locator('.nt .more').count(); i++) {
+        const before = await page.locator('.nt .head').count();
+        await page.locator('.nt .more').click();
+        await page.waitForFunction((n) => document.querySelectorAll('.nt .head').length > n, before);
+    }
+    // the root's heading is empty, then one for each number of notes
+    assert.ok(await page.locator('.nt .head').count() <= 5, 'the standard table has no shape of more than four notes, so its tree stops there');
+    assert.equal(await page.locator('.nt .more').count(), 0, 'and offers no further column');
+    // (a tree whose shapes are all the longest ones has nothing to go on with, and nothing made to take back)
+    if (await page.getByRole('button', { name: 'Remove made boxes' }).count()) await page.getByRole('button', { name: 'Remove made boxes' }).click();
+    assert.equal(await page.locator('.nt .node').count(), boxes, 'taking back the made boxes leaves the table\'s own');
+
+    await page.getByRole('radio', { name: 'Extended table' }).click();
+    await page.waitForFunction((n) => document.querySelectorAll('.nt .node').length >= n, boxes);
+    const ownBoxes = await page.locator('.nt .node').count();
+    const treeColumns = await page.locator('.nt .head').count();
+    await page.locator('.nt .more').click();
+    await page.waitForFunction((n) => document.querySelectorAll('.nt .head').length > n, treeColumns);
+    assert.ok(await page.locator('.nt .node.made').count() > 0, 'going on makes boxes beyond the table');
+    const withMade = await page.locator('.nt .node').count();
+    const leaf = page.locator('.nt .node:not(.made)').last();
+    await leaf.hover();
+    await leaf.locator('.tool--hide').click();
+    assert.ok((await page.locator('.nt .node').count()) < withMade, 'hiding a box takes it out of the tree');
+    await page.getByRole('button', { name: /^Hidden/ }).click();
+    await page.getByRole('button', { name: 'Show all' }).click();
+    assert.equal(await page.locator('.nt .node').count(), withMade, 'showing all brings the hidden boxes back');
+    await page.getByRole('button', { name: 'Remove made boxes' }).click();
+    assert.equal(await page.locator('.nt .node').count(), ownBoxes, 'taking back the made boxes leaves the table\'s own');
+    const [pdf] = await Promise.all([page.waitForEvent('download'), page.getByRole('button', { name: 'Export as PDF' }).click()]);
+    assert.match(pdf.suggestedFilename(), /^neume-tree-.*\.pdf$/, 'the tree is saved as a PDF');
+    await shot('neume-tree');
+    step('Neume tree: boxes on lines, going on (standard: only what the table can have, extended: no limit) and hiding, a PDF');
 
     await page.getByRole('link', { name: /All manuscripts/ }).first().click();
     await page.waitForSelector('.pt--matrix');

@@ -127,7 +127,7 @@ function createColumn(code) {
 }
 
 const next = computed(() => (extended.value
-    ? { name: 'project_all', label: 'All manuscripts' }
+    ? { name: 'project_tree', label: 'Neume tree' }
     : { name: 'project_extended', label: 'Extended table' }));
 </script>
 

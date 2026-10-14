@@ -7,9 +7,10 @@ The editor starts without data. Load a Monodi-Zero workspace or a Corpus Monodic
 - *See [Loading Data](./loading-data).*
 
 ## 1. A project and its Neume Table
-Make a **project** for a range of folios in a manuscript — one scribe's pages, say — and let it lead you through three tabs.
+Make a **project** for a range of folios in a manuscript — one scribe's pages, say — and let it lead you through four tabs.
 - *Standard table*: the starting point. Every possibility is in it; choose which ways of writing each neume belong to the project (up to three constellations for each of the special signs L, O, Q and S, which have groups of their own) and open each cell to find the neume and add its snippet.
 - *Extended table*: add further patterns by code, also ones the pattern library does not have yet.
+- *Neume tree*: the chosen patterns as a tree, to look at and to save as a PDF.
 - *All manuscripts*: the projects side by side.
 - *See [Projects](./projects), [The Neume Table](./neume-table) and [Pattern Editor & Ref IDs](./equivalents).*
 

@@ -97,7 +97,15 @@ export function useDataManagement() {
         if (actualExported.length === 0) {
             throw new Error("None of the selected manuscripts contain any annotations, regions, or pattern rows.");
         }
-        
+
+        // The folio/canvas alignment is what makes a snippet's saved points land on the right
+        // spot in the right IIIF image — without it, a manuscript re-imported elsewhere falls
+        // back to naive label matching and its lines can resolve to the wrong page entirely.
+        data.sourceAlignments = {};
+        for (const src of actualExported) {
+            if (settings.sourceAlignments[src]) data.sourceAlignments[src] = settings.sourceAlignments[src];
+        }
+
         const payload = {
             schemaVersion: SCHEMA_VERSION,
             type: 'cm-manuscript-export',
@@ -289,13 +297,23 @@ export function useDataManagement() {
         let currentState = getLocalFullState();
 
         const importedSources = extractSourcesFromContent(parsedJson.data);
+        const nextAlignments = { ...settings.sourceAlignments };
 
         for (const src of importedSources) {
             const strategy = choices[src] || 'overwrite';
             if (strategy === 'skip') continue;
-            
+
             currentState = mergeManuscript(currentState, parsedJson.data, src, strategy);
+
+            // The alignment travels with its manuscript (not gated by importSettings): without it,
+            // the imported snippets' points resolve against the wrong IIIF canvas on this machine.
+            const incomingAlignment = parsedJson.data?.sourceAlignments?.[src];
+            if (incomingAlignment) {
+                const targetSourceId = strategy === 'copy' ? `${src} (copy)` : src;
+                nextAlignments[targetSourceId] = incomingAlignment;
+            }
         }
+        settings.sourceAlignments = nextAlignments;
 
         // Commit to stores (triggering autosave if folder bound)
         tablesStore.tables = currentState.personalTables;

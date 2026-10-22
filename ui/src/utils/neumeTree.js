@@ -82,6 +82,15 @@ export function parseTreeCode(code) {
     return { code: src, notes, links, text, count: notes.length };
 }
 
+/**
+ * Whether a code has a special sign: a sign on a note other than the virga (`L`, `O`, `Q`, `S`, a sign of
+ * the project). The virga is told from a plain note in the tree; the others are details a tree leaves out unless asked.
+ */
+export function hasSpecialSign(code) {
+    const parsed = parseTreeCode(code);
+    return !!parsed && parsed.notes.some(note => note.slice(1).replace(new RegExp(VIRGA, 'g'), '') !== '');
+}
+
 /** The code with hyphens for the connected notes (`[*u]` -> `*-u`), or '' when it is not a neume shape. */
 export function treeNotation(code) {
     const parsed = parseTreeCode(code);

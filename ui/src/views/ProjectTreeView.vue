@@ -9,7 +9,7 @@ import { useProjectContext } from '../composables/useProject';
 import { resolveSignGlyphs } from '../utils/signs';
 import { categoryOf } from '../utils/projectTable';
 import { renderSvg } from '../utils/svgRenderer';
-import { THUMB, buildNeumeTree, layoutNeumeTree, nodeSize, treePicture } from '../utils/neumeTree';
+import { THUMB, buildNeumeTree, hasSpecialSign, layoutNeumeTree, nodeSize, treePicture } from '../utils/neumeTree';
 import { exportNeumeTreePdf, snippetPhoto } from '../utils/neumeTreePdf';
 import NeumeTree from '../components/projects/NeumeTree.vue';
 import SegmentedControl from '../components/ui/SegmentedControl.vue';
@@ -37,6 +37,10 @@ const SCOPES = [
     { value: 'standard', label: 'Standard table', title: 'The columns chosen in the standard table' },
     { value: 'extended', label: 'Extended table', title: 'The standard columns and what the project added' }
 ];
+const SIGNS = [
+    { value: 'off', label: 'Without special signs', title: 'Leave out the patterns with a sign other than the virga (L, O, Q, S, …)' },
+    { value: 'on', label: 'With special signs', title: 'Show the patterns with L, O, Q, S and the signs of the project as well' }
+];
 const SHOWS = [
     { value: 'types', label: 'Neume types', title: 'The shapes, drawn from their codes' },
     { value: 'snippets', label: 'Scan snippets', title: 'The first snippet of each pattern, from the manuscript' }
@@ -50,10 +54,14 @@ function query(name, fallback, allowed) {
 }
 const scope = query('scope', 'standard', ['standard', 'extended']);
 const show = query('show', 'types', ['types', 'snippets']);
+const signs = query('signs', 'off', ['off', 'on']);
 
 // ---- the tree ----------------------------------------------------------------
 
-const codes = computed(() => (scope.value === 'extended' ? extendedCodes.value : standardCodes.value));
+const tableCodes = computed(() => (scope.value === 'extended' ? extendedCodes.value : standardCodes.value));
+/** The tree is of the shapes and the virga; the patterns with another sign are left out unless they are asked for. */
+const codes = computed(() => (signs.value === 'on' ? tableCodes.value : tableCodes.value.filter(code => !hasSpecialSign(code))));
+const leftOut = computed(() => tableCodes.value.length - codes.value.length);
 const grown = computed(() => project.value.tree.grown);
 const hidden = computed(() => project.value.tree.hidden);
 /**
@@ -190,7 +198,7 @@ async function exportPdf() {
 
 <template>
 <div class="tree-view">
-    <div v-if="!tree.nodes.length && !codes.length" class="ne-empty empty">
+    <div v-if="!tree.nodes.length && !tableCodes.length" class="ne-empty empty">
         <p>No columns yet, so there is nothing to grow a tree from.</p>
         <RouterLink :to="{ name: 'project_standard', params: { id: project.id } }" class="ne-btn ne-btn--primary">Choose columns in the standard table &rarr;</RouterLink>
     </div>
@@ -199,9 +207,10 @@ async function exportPdf() {
         <div class="toolbar">
             <SegmentedControl v-model="scope" :options="SCOPES" label="Which columns" size="sm" />
             <SegmentedControl v-if="hasSnippets" v-model="show" :options="SHOWS" label="What the nodes show" size="sm" />
+            <SegmentedControl v-model="signs" :options="SIGNS" label="Special signs" size="sm" />
             <span class="spacer"></span>
             <span class="stat">
-                {{ tree.nodes.length - made }} pattern{{ tree.nodes.length - made === 1 ? '' : 's' }}<template v-if="made"> + {{ made }} made</template><template v-if="hasSnippets"> · {{ withSnippets }} with a snippet</template>
+                {{ tree.nodes.length - made }} pattern{{ tree.nodes.length - made === 1 ? '' : 's' }}<template v-if="made"> + {{ made }} made</template><template v-if="hasSnippets"> · {{ withSnippets }} with a snippet</template><template v-if="leftOut"> · {{ leftOut }} with special signs left out</template>
             </span>
             <button v-if="made" class="ne-btn ne-btn--ghost" title="Take back every box made by going on" @click="clearMade">Remove made boxes</button>
             <button v-if="tree.hidden.length" class="ne-btn ne-btn--ghost" :aria-expanded="showHidden" @click="showHidden = !showHidden">Hidden · {{ tree.hidden.length }}</button>
@@ -238,7 +247,7 @@ async function exportPdf() {
                 @grow-column="growColumn"
             />
         </div>
-        <p v-else class="ne-empty">{{ tree.hidden.length ? 'Every box is hidden.' : 'None of these columns is a neume shape.' }}</p>
+        <p v-else class="ne-empty">{{ tree.hidden.length ? 'Every box is hidden.' : leftOut ? 'Every one of these columns has a special sign. Choose “With special signs” to see them.' : 'None of these columns is a neume shape.' }}</p>
 
         <p v-if="tree.skipped.length" class="skipped">Not in the tree, as they are no neume shapes: {{ tree.skipped.join(', ') }}.</p>
 

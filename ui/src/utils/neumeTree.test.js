@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildNeumeTree, continuations, layoutNeumeTree, parseTreeCode, treeCode, treeNotation, treePicture } from './neumeTree';
+import { buildNeumeTree, continuations, hasSpecialSign, layoutNeumeTree, parseTreeCode, treeCode, treeNotation, treePicture } from './neumeTree';
 import { renderSvg } from './svgRenderer';
 import { GLYPHS } from '../data/glyphs';
 
@@ -425,5 +425,16 @@ describe('hiding', () => {
         expect(t.nodes).toEqual([]);
         expect(t.hidden.map(n => n.text)).toEqual(['*']);
         expect(t.root.children).toEqual([]);
+    });
+});
+
+describe('special signs', () => {
+    it('are any sign on a note other than the virga', () => {
+        for (const code of ['*dL', '[*uO]', '*uuQ', '*SeS', '*uVL', '*u[uQu]d', '*uW']) expect(hasSpecialSign(code), code).toBe(true);
+        for (const code of ['*', '*V', '[*Vd]', '*uuVdduV', '*[uVd]d', '*u[ud]']) expect(hasSpecialSign(code), code).toBe(false);
+    });
+
+    it('are not in a code that is not a neume shape', () => {
+        expect(hasSpecialSign('(Clef-C)')).toBe(false);
     });
 });

@@ -6,7 +6,7 @@ import PatternCode from '../PatternCode.vue';
 import { MAX_SPECIAL_SIGNATURES, pseudoLabel } from '../../utils/neumeTable';
 import { useSettingsStore } from '../../stores/settings';
 import { paleoOf, paleoSlots, slotKey } from '../../utils/paleo';
-import { isFavorite, notShown, shownOf } from '../../utils/favorites';
+import { isFavorite, visibleSnippets } from '../../utils/favorites';
 
 /**
  * The table of a project: two rows of headers — the group (a movement, a special
@@ -53,16 +53,26 @@ const isPseudo = (code) => !!pseudoLabel(code);
 const snippetsOf = (code) => props.snippets.get(code) || [];
 
 // ---- paleographic attributes: the places under a code -----------------------------------
-// Snippets with the same attributes stand at the same height. The places of a code are those any
-// snippet of the table has — in the matrix those of every project, so a place is where the others have it.
+// The attribute only stands with the snippet, and can be asked for (the filter above the table); a place under a code
+// is made only for what is shown, so a code needs no snippet without an attribute for the ones with one to stand.
+// In the matrix the places of a code are those any manuscript shows, so the same attribute is at the same height.
 const settings = useSettingsStore();
 const order = computed(() => settings.paleoKeys());
+/** The places a snippet can stand in: the key of its attributes on its notes. */
+const keyOf = (s, code) => slotKey(paleoOf(s, order.value, code));
+/**
+ * The snippets of a cell that are shown: its favourites, wherever they stand, or, without any, the first of each place.
+ * Nothing is shown for a place just because it exists.
+ */
+function visibleOf(code, list) {
+    return visibleSnippets(list, s => keyOf(s, code));
+}
 const slotMap = computed(() => {
     const map = new Map();
     for (const g of props.groups) {
         for (const c of g.columns) {
-            const all = matrix.value ? props.rows.flatMap(r => r.snippets.get(c.code) || []) : snippetsOf(c.code);
-            const slots = paleoSlots(all, order.value, c.code);
+            const shown = matrix.value ? props.rows.flatMap(r => visibleOf(c.code, r.snippets.get(c.code) || [])) : visibleOf(c.code, snippetsOf(c.code));
+            const slots = paleoSlots(shown, order.value, c.code);
             // Without any attribute there is one place, and nothing to show of it.
             map.set(c.code, slots.length === 1 && !slots[0].key ? [] : slots);
         }
@@ -70,18 +80,25 @@ const slotMap = computed(() => {
     return map;
 });
 const slotsOf = (code) => slotMap.value.get(code) || [];
-/** The snippets of a cell that stand in a place. */
-const inSlot = (list, slot, code) => list.filter(s => slotKey(paleoOf(s, order.value, code)) === slot.key);
 /**
- * What a cell draws, top to bottom: a place for each set of attributes the code has anywhere in the table, with the
- * snippets of this cell that stand in it (none: the place is kept, so the others stay where they are). A code with
- * no attributes has one place and no label to tell it by. A cell with no snippets draws none.
+ * What a cell draws, top to bottom: a place for each set of attributes shown for the code, with the snippets of this cell
+ * that stand in it (none, in the matrix: the place is kept, so the others stay where they are). A cell with no snippets draws none.
+ * `badge` says how many are not shown: the number in the place, or, with favourites, how many are not favourites.
  */
 function partsOf(code, list) {
     if (!list.length) return [];
+    const shown = visibleOf(code, list);
+    const fav = list.some(isFavorite);
     const slots = slotsOf(code);
-    const part = (slot, items) => ({ slot, items, shown: shownOf(items), more: notShown(items), fav: items.some(isFavorite) });
-    return slots.length ? slots.map(slot => part(slot, inSlot(list, slot, code))) : [part({ key: '', label: '' }, list)];
+    const places = slots.length ? slots : [{ key: '', label: '' }];
+    const parts = places.map(slot => {
+        const mine = slots.length ? shown.filter(x => keyOf(x, code) === slot.key) : shown;
+        const total = slots.length ? list.filter(x => keyOf(x, code) === slot.key).length : list.length;
+        return { slot, shown: mine, fav, badge: !fav && mine.length && total > mine.length ? String(total) : '', many: !fav && total > mine.length };
+    });
+    const last = [...parts].reverse().find(x => x.shown.length);
+    if (fav && last && list.length > shown.length) last.badge = `+${list.length - shown.length}`;
+    return parts;
 }
 const occurrencesOf = (code) => (props.occurrences && props.occurrences.get(code)) || null;
 
@@ -237,9 +254,9 @@ defineExpose({ reveal });
                                     <span v-for="part in partsOf(c.code, r.snippets.get(c.code) || [])" :key="part.slot.key" class="slot">
                                         <template v-if="part.shown.length">
                                             <span v-for="(shot, i) in part.shown" :key="shot.id" class="shot">
-                                                <span class="stack" :class="{ many: !part.fav && part.more > 0 }">
+                                                <span class="stack" :class="{ many: part.many }">
                                                     <span class="thumb"><slot name="thumb" :snippet="shot" :code="c.code" /></span>
-                                                    <span v-if="part.more > 0 && i === part.shown.length - 1" class="n" :title="part.fav ? `${part.more} more, not favourites` : ''">{{ part.fav ? `+${part.more}` : part.items.length }}</span>
+                                                    <span v-if="part.badge && i === part.shown.length - 1" class="n" :title="part.fav ? 'More snippets, not favourites' : 'More snippets'">{{ part.badge }}</span>
                                                 </span>
                                                 <span class="slot-code">{{ part.slot.label || c.code }}</span>
                                             </span>
@@ -280,9 +297,9 @@ defineExpose({ reveal });
                                 <span v-for="part in partsOf(c.code, snippetsOf(c.code))" :key="part.slot.key" class="slot">
                                     <template v-if="part.shown.length">
                                         <span v-for="(shot, i) in part.shown" :key="shot.id" class="shot">
-                                            <span class="stack" :class="{ many: !part.fav && part.more > 0 }">
+                                            <span class="stack" :class="{ many: part.many }">
                                                 <span class="thumb"><slot name="thumb" :snippet="shot" :code="c.code" /></span>
-                                                <span v-if="part.more > 0 && i === part.shown.length - 1" class="n" :title="part.fav ? `${part.more} more, not favourites` : ''">{{ part.fav ? `+${part.more}` : part.items.length }}</span>
+                                                <span v-if="part.badge && i === part.shown.length - 1" class="n" :title="part.fav ? 'More snippets, not favourites' : 'More snippets'">{{ part.badge }}</span>
                                             </span>
                                             <span class="slot-code">{{ part.slot.label || c.code }}</span>
                                         </span>
@@ -370,15 +387,15 @@ td.tr.none .tr-n { color: var(--color-text-light); font-weight: 500; }
 
 /* the cells: one place to add a snippet, or the snippets that are there */
 /* a cell is as tall as what is in it, and at least 112px; no height is given to the cell, so every browser lets the row grow */
-td.snip { text-align: center; vertical-align: middle; }
+td.snip { text-align: center; vertical-align: top; }
 td.snip.click { cursor: pointer; }
 td.snip.filled { background: #fafcff; }
 td.snip.off:not(.filled) .add { opacity: 0.55; }
 td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-primary); }
-.cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; min-height: 112px; padding: var(--space-2); border: none; border-radius: 0; background: transparent; color: var(--color-text-light); transition: background-color 0.12s, color 0.12s; }
+.cell { display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 5px; width: 100%; min-height: 112px; padding: var(--space-2); border: none; border-radius: 0; background: transparent; color: var(--color-text-light); transition: background-color 0.12s, color 0.12s; }
 .cell:hover { background: var(--color-primary-light); color: var(--color-primary); }
 .cell:focus-visible { box-shadow: inset var(--ring); }
-.add { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1.5px dashed var(--color-border-hover); border-radius: 50%; font-size: 1.25rem; line-height: 1; transition: border-color 0.12s, background-color 0.12s, transform 0.12s; }
+.add { margin: auto 0; display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1.5px dashed var(--color-border-hover); border-radius: 50%; font-size: 1.25rem; line-height: 1; transition: border-color 0.12s, background-color 0.12s, transform 0.12s; }
 .cell:hover .add { border-color: var(--color-primary); border-style: solid; background: #fff; transform: scale(1.08); }
 /* the first snippet, with the number of the others as a badge; several are a small stack of cards */
 .stack { position: relative; display: inline-flex; }

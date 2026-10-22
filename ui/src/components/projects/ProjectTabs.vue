@@ -24,6 +24,7 @@ const pageLabel = computed(() => (route.query.folio ? `Page f. ${route.query.fol
 const tabs = computed(() => [
     { name: 'project_standard', label: 'Standard table', count: props.progress.columns ? `${props.progress.filled}/${props.progress.columns}` : '' },
     { name: 'project_extended', label: 'Extended table', count: props.progress.extended ? `+${props.progress.extended}` : '' },
+    { name: 'project_lines', label: 'Lines', count: '' },
     { name: 'project_tree', label: 'Neume tree', count: '' },
     { name: 'project_all', label: 'All manuscripts', count: props.projectCount > 1 ? props.projectCount : '' }
 ]);

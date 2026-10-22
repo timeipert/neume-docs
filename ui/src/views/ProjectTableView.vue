@@ -211,7 +211,7 @@ const next = computed(() => (extended.value
                 @open="openCell"
                 @remove="removeColumn"
             >
-                <template #thumb="{ snippet, compact }"><SnippetThumb :snippet="snippet" :width="compact ? 64 : 84" :height="compact ? 46 : 60" /></template>
+                <template #thumb="{ snippet }"><SnippetThumb :snippet="snippet" :width="84" :height="60" /></template>
             </ProjectTable>
 
             <footer class="next">

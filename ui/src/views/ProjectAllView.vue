@@ -78,7 +78,7 @@ function openCell({ row, code }) {
         empty-text="No project has chosen columns yet."
         @open-cell="openCell"
     >
-        <template #thumb="{ snippet }"><SnippetThumb :snippet="snippet" :width="64" :height="46" /></template>
+        <template #thumb="{ snippet }"><SnippetThumb :snippet="snippet" :width="84" :height="60" /></template>
     </ProjectTable>
 </div>
 </template>

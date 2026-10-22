@@ -71,6 +71,16 @@ const slotMap = computed(() => {
 const slotsOf = (code) => slotMap.value.get(code) || [];
 /** The snippets of a cell that stand in a place. */
 const inSlot = (list, slot) => list.filter(s => slotKey(paleoOf(s, order.value)) === slot.key);
+/**
+ * What a cell draws, top to bottom: a place for each set of attributes the code has anywhere in the table, with the
+ * snippets of this cell that stand in it (none: the place is kept, so the others stay where they are). A code with
+ * no attributes has one place and no label to tell it by. A cell with no snippets draws none.
+ */
+function partsOf(code, list) {
+    if (!list.length) return [];
+    const slots = slotsOf(code);
+    return slots.length ? slots.map(slot => ({ slot, items: inSlot(list, slot) })) : [{ slot: { key: '', label: '' }, items: list }];
+}
 const occurrencesOf = (code) => (props.occurrences && props.occurrences.get(code)) || null;
 
 const columnCount = computed(() => props.groups.reduce((n, g) => n + g.columns.length, 0));
@@ -221,19 +231,15 @@ defineExpose({ reveal });
                                 :aria-label="`${r.name}, ${c.code}: ${(r.snippets.get(c.code) || []).length} snippets`"
                                 @click="emit('open-cell', { row: r, code: c.code })"
                             >
-                                <span v-if="slotsOf(c.code).length" class="slots">
-                                    <span v-for="slot in slotsOf(c.code)" :key="slot.key" class="slot">
-                                        <span class="slot-label">{{ slot.label || '—' }}</span>
-                                        <span v-if="inSlot(r.snippets.get(c.code) || [], slot).length" class="stack" :class="{ many: inSlot(r.snippets.get(c.code) || [], slot).length > 1 }">
-                                            <span class="thumb"><slot name="thumb" :snippet="inSlot(r.snippets.get(c.code) || [], slot)[0]" :code="c.code" compact /></span>
-                                            <span v-if="inSlot(r.snippets.get(c.code) || [], slot).length > 1" class="n">{{ inSlot(r.snippets.get(c.code) || [], slot).length }}</span>
+                                <span v-if="partsOf(c.code, r.snippets.get(c.code) || []).length" class="slots">
+                                    <span v-for="part in partsOf(c.code, r.snippets.get(c.code) || [])" :key="part.slot.key" class="slot">
+                                        <span v-if="part.items.length" class="stack" :class="{ many: part.items.length > 1 }">
+                                            <span class="thumb"><slot name="thumb" :snippet="part.items[0]" :code="c.code" /></span>
+                                            <span v-if="part.items.length > 1" class="n">{{ part.items.length }}</span>
                                         </span>
                                         <span v-else class="thumb gap"></span>
+                                        <span class="slot-code" :class="{ vacant: !part.items.length }">{{ c.code }}{{ part.slot.label }}</span>
                                     </span>
-                                </span>
-                                <span v-else-if="(r.snippets.get(c.code) || []).length" class="stack" :class="{ many: (r.snippets.get(c.code) || []).length > 1 }">
-                                    <span class="thumb"><slot name="thumb" :snippet="r.snippets.get(c.code)[0]" :code="c.code" /></span>
-                                    <span v-if="(r.snippets.get(c.code) || []).length > 1" class="n">{{ (r.snippets.get(c.code) || []).length }}</span>
                                 </span>
                                 <span v-else class="add" aria-hidden="true">+</span>
                             </button>
@@ -261,19 +267,15 @@ defineExpose({ reveal });
                             :aria-label="snippetsOf(c.code).length ? `${snippetsOf(c.code).length} snippets for ${c.code}: open` : `Add a snippet for ${c.code}`"
                             @click="emit('open', c.code)"
                         >
-                            <span v-if="slotsOf(c.code).length" class="slots">
-                                <span v-for="slot in slotsOf(c.code)" :key="slot.key" class="slot">
-                                    <span class="slot-label">{{ slot.label || '—' }}</span>
-                                    <span v-if="inSlot(snippetsOf(c.code), slot).length" class="stack" :class="{ many: inSlot(snippetsOf(c.code), slot).length > 1 }">
-                                        <span class="thumb"><slot name="thumb" :snippet="inSlot(snippetsOf(c.code), slot)[0]" :code="c.code" compact /></span>
-                                        <span v-if="inSlot(snippetsOf(c.code), slot).length > 1" class="n">{{ inSlot(snippetsOf(c.code), slot).length }}</span>
+                            <span v-if="partsOf(c.code, snippetsOf(c.code)).length" class="slots">
+                                <span v-for="part in partsOf(c.code, snippetsOf(c.code))" :key="part.slot.key" class="slot">
+                                    <span v-if="part.items.length" class="stack" :class="{ many: part.items.length > 1 }">
+                                        <span class="thumb"><slot name="thumb" :snippet="part.items[0]" :code="c.code" /></span>
+                                        <span v-if="part.items.length > 1" class="n">{{ part.items.length }}</span>
                                     </span>
                                     <span v-else class="thumb gap"></span>
+                                    <span class="slot-code" :class="{ vacant: !part.items.length }">{{ c.code }}{{ part.slot.label }}</span>
                                 </span>
-                            </span>
-                            <span v-else-if="snippetsOf(c.code).length" class="stack" :class="{ many: snippetsOf(c.code).length > 1 }">
-                                <span class="thumb"><slot name="thumb" :snippet="snippetsOf(c.code)[0]" :code="c.code" /></span>
-                                <span v-if="snippetsOf(c.code).length > 1" class="n">{{ snippetsOf(c.code).length }}</span>
                             </span>
                             <span v-else class="add" aria-hidden="true">+</span>
                         </button>
@@ -351,11 +353,11 @@ td.tr.none .tr-n { color: var(--color-text-light); font-weight: 500; }
 .tr-bar span { display: block; height: 100%; background: var(--color-primary-muted); border-radius: 999px; }
 
 /* the cells: one place to add a snippet, or the snippets that are there */
-td.snip { text-align: center; vertical-align: middle; height: 92px; }
+td.snip { text-align: center; vertical-align: middle; height: 112px; }
 td.snip.filled { background: #fafcff; }
 td.snip.off:not(.filled) .add { opacity: 0.55; }
 td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-primary); }
-.cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 100%; min-height: 92px; padding: var(--space-2); border: none; border-radius: 0; background: transparent; color: var(--color-text-light); transition: background-color 0.12s, color 0.12s; }
+.cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 100%; min-height: 112px; padding: var(--space-2); border: none; border-radius: 0; background: transparent; color: var(--color-text-light); transition: background-color 0.12s, color 0.12s; }
 .cell:hover { background: var(--color-primary-light); color: var(--color-primary); }
 .cell:focus-visible { box-shadow: inset var(--ring); }
 .add { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1.5px dashed var(--color-border-hover); border-radius: 50%; font-size: 1.25rem; line-height: 1; transition: border-color 0.12s, background-color 0.12s, transform 0.12s; }
@@ -374,15 +376,14 @@ td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-pri
 .r-row th { font-size: 0.88rem; text-transform: none; letter-spacing: 0; color: var(--color-text); }
 .row-link { display: block; font-weight: 700; overflow-wrap: anywhere; }
 .r-row.current th { background: var(--color-primary-light); }
-/* places under a code: the same attributes at the same height */
-.slots { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.slot { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.slot-label { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.66rem; line-height: 1; color: var(--color-text-light); }
-.slots .thumb { width: 64px; height: 46px; }
+/* a snippet, its code under it; the places of a code one below the other, every snippet the same size */
+.slots { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.slot { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 100%; }
+.slot-code { max-width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.7rem; line-height: 1.2; color: var(--color-text-muted); overflow-wrap: break-word; text-align: center; }
+.slot-code.vacant { color: var(--color-text-light); }
 .thumb.gap { border: 1px dashed var(--line); background: transparent; box-shadow: none; }
-td.snip.m { height: 64px; }
-td.snip.m .cell { min-height: 64px; }
-td.snip.m .thumb { width: 64px; height: 46px; }
+td.snip.m { height: 96px; }
+td.snip.m .cell { min-height: 96px; }
 td.snip.off { background: repeating-linear-gradient(135deg, var(--color-surface) 0 6px, var(--color-surface-muted) 6px 12px); }
 .off-mark { color: var(--color-text-light); }
 

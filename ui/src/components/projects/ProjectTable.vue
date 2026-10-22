@@ -160,7 +160,7 @@ defineExpose({ reveal });
                                 <span class="glyph"><PatternDisplay :pattern="c.code" :glyphs="glyphs" :scale="1.1" /></span>
                                 <PatternCode :pattern="c.code" class="code" />
                             </template>
-                            <span v-if="c.variantOf" class="vtag" :title="`Variant of ${c.variantOf}`">variant{{ c.variantLabel ? ` · ${c.variantLabel}` : '' }}</span>
+                            <span v-if="c.variantOf" class="vtag" :title="`Variant of ${c.variantOf}`">{{ c.variantLabel || 'variant' }}</span>
                             <button
                                 v-if="select && !isPseudo(c.code)"
                                 type="button"
@@ -266,15 +266,15 @@ tbody th small { display: block; margin-top: 2px; font-size: 0.72rem; font-weigh
 
 /* level 1: the group, tinted by what kind of group it is */
 .l1 th.cat { position: sticky; top: 0; z-index: 2; text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
-.cat--shape { background: linear-gradient(180deg, #e8f0ff, #f3f7ff) !important; box-shadow: inset 0 3px 0 var(--shape); }
-.cat--sign { background: linear-gradient(180deg, #f0eaff, #f7f4ff) !important; box-shadow: inset 0 3px 0 var(--sign); }
-.cat--other { background: linear-gradient(180deg, #e9eef4, #f4f7fa) !important; box-shadow: inset 0 3px 0 var(--other); }
+.cat--shape { background: #f6f9ff !important; box-shadow: inset 0 2px 0 var(--shape); }
+.cat--sign { background: #f9f7ff !important; box-shadow: inset 0 2px 0 var(--sign); }
+.cat--other { background: #f6f8fa !important; box-shadow: inset 0 2px 0 var(--other); }
 .cat-inner { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; position: sticky; left: calc(var(--rowhead) + var(--space-3)); width: max-content; max-width: 100%; }
 .cat-name { display: inline-flex; align-items: baseline; gap: var(--space-2); }
 .cat-name code { font-size: 1.2rem; font-weight: 800; background: transparent; padding: 0; color: var(--color-text); }
 .cat-name small { color: var(--color-text-muted); font-weight: 500; font-size: 0.78rem; }
 .cat-count { font-size: 0.72rem; color: var(--color-text-muted); background: rgba(255,255,255,0.8); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); }
-.cat-count.some { color: var(--color-primary-dark); background: var(--color-primary-light); border-color: var(--color-primary-muted); font-weight: 700; }
+.cat-count.some { color: var(--color-text-muted); background: transparent; border-color: transparent; font-weight: 500; padding: 0; }
 .cat-more { font-size: 0.72rem; padding: 1px 9px; line-height: 1.6; border-radius: 999px; background: #fff; color: var(--color-primary-dark); border: 1px dashed var(--color-primary-muted); }
 .cat-more:hover { background: var(--color-primary-light); }
 
@@ -286,14 +286,13 @@ label.col-inner:hover { background: var(--color-primary-light); }
 .tick { position: absolute; top: 8px; left: 8px; margin: 0; width: 17px; height: 17px; accent-color: var(--color-primary); cursor: pointer; }
 .glyph { display: inline-flex; min-height: 60px; align-items: center; justify-content: center; margin-top: 2px; }
 .col-inner :deep(.pattern-code) { font-size: 0.92rem; font-weight: 700; overflow-wrap: anywhere; letter-spacing: 0.01em; background: transparent; padding: 0; text-align: center; }
+.col-inner :deep(.pattern-code .sign) { background: transparent; padding: 0; font-weight: 700; color: var(--color-text-muted); }
 .pseudo { display: inline-flex; align-items: center; justify-content: center; min-height: 60px; margin-top: 2px; font-weight: 700; font-size: 0.95rem; }
-.vtag { font-size: 0.64rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-accent-dark); background: var(--color-accent-light); padding: 0 6px; border-radius: 999px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vtag { font-size: 0.68rem; font-weight: 500; font-style: italic; color: var(--color-text-light); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .vbtn { margin-top: auto; padding: 0 7px; font-size: 0.7rem; line-height: 1.7; font-weight: 600; color: var(--color-text-muted); background: transparent; border: 1px dashed var(--color-border-hover); border-radius: 999px; opacity: 0; transition: opacity 0.12s, color 0.12s, border-color 0.12s, background-color 0.12s; }
 th.col:hover .vbtn, .vbtn:focus-visible { opacity: 1; }
 .vbtn:hover { color: var(--color-accent-dark); border-color: var(--color-accent); background: var(--color-accent-light); }
-th.col.on { background: #eaf2ff; box-shadow: inset 0 -3px 0 var(--color-primary); }
-th.col.variant { background: #faf7ff; }
-th.col.variant.on { background: #efe8ff; box-shadow: inset 0 -3px 0 var(--color-accent); }
+th.col.on { background: #f5f9ff; box-shadow: inset 0 -2px 0 var(--color-primary-muted); }
 th.col.added { background: var(--color-accent-light); }
 th.col.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-primary); }
 th.col.flash { animation: flash 1.4s ease-out; }

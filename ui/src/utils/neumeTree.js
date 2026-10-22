@@ -277,7 +277,8 @@ export function buildNeumeTree(codes, { grown = [], hidden = [], allow = () => t
 
 /**
  * Place the nodes of a tree: one column for each number of notes, left to right; the branches of a
- * node one below the other, the node level with the middle of its branches.
+ * node one below the other, the node level with the middle of its branches. The root is not drawn:
+ * the single notes are the start, one below the other, with no line from anywhere.
  *
  * @param {ReturnType<typeof buildNeumeTree>} tree
  * @param {(node: TreeNode) => { w: number, h: number, anchorY?: number }} size the box of a node (what it
@@ -295,23 +296,21 @@ export function layoutNeumeTree(tree, size, { columnGap = 64, rowGap = 12 } = {}
     const sizes = new Map();
     const sizeOf = (node) => {
         if (!sizes.has(node)) {
-            const s = size(node) || { w: 0, h: 0 };
+            const s = node === root ? { w: 0, h: 0 } : size(node) || { w: 0, h: 0 };
             sizes.set(node, { w: s.w, h: s.h, anchorY: s.anchorY === undefined ? s.h / 2 : s.anchorY });
         }
         return sizes.get(node);
     };
 
-    // Columns: the root, then one for each number of notes.
-    const columns = [{ count: 0, x: 0, w: sizeOf(root).w }];
-    for (const col of tree.columns) {
-        columns.push({ count: col.count, x: 0, w: Math.max(0, ...col.nodes.map(n => sizeOf(n).w)) });
-    }
+    // Columns: one for each number of notes. The root has no picture and no column; the single
+    // notes (`*`, `*V`) are where the tree begins, each one a start of its own.
+    const columns = tree.columns.map(col => ({ count: col.count, x: 0, w: Math.max(0, ...col.nodes.map(n => sizeOf(n).w)) }));
     let cursor = 0;
     columns.forEach((col, i) => {
         col.x = cursor;
         cursor += col.w + (i < columns.length - 1 ? columnGap : 0);
     });
-    const columnOf = new Map(columns.map(c => [c.count, c]));
+    const columnOf = new Map([[0, { count: 0, x: 0, w: 0 }], ...columns.map(c => [c.count, c])]);
 
     // Height of a branch: its own box, or the boxes of what grows out of it, whichever is taller.
     const slot = (node) => sizeOf(node).h + rowGap;
@@ -349,6 +348,7 @@ export function layoutNeumeTree(tree, size, { columnGap = 64, rowGap = 12 } = {}
     const edges = [];
     const round = (n) => Math.round(n * 100) / 100;
     for (const node of tree.nodes) {
+        if (node.parent === root) continue; // nothing is drawn for the root, so nothing leads from it
         const a = boxes.get(node.parent);
         const b = boxes.get(node);
         const x1 = a.x + a.w + 4;
@@ -407,8 +407,6 @@ export function treePicture(rendered, code) {
 export const LABEL = { height: 14, gap: 4, size: 11, charWidth: 6.6 };
 /** The picture of a snippet, and the frame a drawn shape stands in when a node has no snippet. */
 export const THUMB = { w: 96, h: 68 };
-/** The root: where every single note starts. */
-export const ROOT_BOX = { w: 12, h: 12, anchorY: 6 };
 
 /**
  * The box of a node: what it shows, and its code beneath.

@@ -183,11 +183,6 @@ export async function exportNeumeTreePdf({ tree, layout, entries, photo, caption
         }
     }
 
-    // The root.
-    const root = layout.boxes.get(tree.root);
-    doc.setFillColor('#222222');
-    doc.circle(X(root.x + root.w / 2), Y(root.y + root.anchorY), 1.2, 'F');
-
     // The nodes.
     doc.setFont('courier', 'normal');
     doc.setFontSize(LABEL.size * 0.75);

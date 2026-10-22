@@ -3,11 +3,11 @@ import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import SnippetThumb from './SnippetThumb.vue';
 import PatternCode from '../PatternCode.vue';
-import { THUMB, ROOT_BOX } from '../../utils/neumeTree';
+import { THUMB } from '../../utils/neumeTree';
 
 /**
- * The neume tree, drawn: a column for each number of notes, left to right, the root
- * at the left. Where everything goes is decided by `layoutNeumeTree`; this only draws it
+ * The neume tree, drawn: a column for each number of notes, left to right, the
+ * single notes at the left (the root is not drawn). Where everything goes is decided by `layoutNeumeTree`; this only draws it
  * (the same layout is what the PDF is made from).
  *
  * A box that is one of the project's patterns is a link to its cell. At every box two buttons
@@ -42,7 +42,6 @@ const path = computed(() => {
     return on;
 });
 
-const root = computed(() => props.layout.boxes.get(props.tree.root));
 const placed = computed(() => props.tree.nodes.map(node => ({ node, box: props.layout.boxes.get(node), entry: props.entries.get(node) })).filter(p => p.box && p.entry));
 const heading = (count) => (count === 0 ? '' : count === 1 ? '1 note' : `${count} notes`);
 const last = computed(() => props.tree.columns[props.tree.columns.length - 1]);
@@ -85,12 +84,6 @@ const cell = (code) => ({ name: 'project_cell', params: { id: props.projectId },
             />
         </g>
     </svg>
-
-    <span
-        class="root"
-        title="The root: every single note starts here"
-        :style="{ left: `${root.x + (root.w - ROOT_BOX.w) / 2}px`, top: `${root.y + HEAD}px`, width: `${ROOT_BOX.w}px`, height: `${ROOT_BOX.h}px` }"
-    ></span>
 
     <div
         v-for="{ node, box, entry } in placed"
@@ -171,7 +164,6 @@ const cell = (code) => ({ name: 'project_cell', params: { id: props.projectId },
 .line { fill: none; stroke: #555; stroke-width: 1; opacity: 0.55; transition: opacity 0.12s, stroke 0.12s; }
 .line.made { stroke-dasharray: 4 3; opacity: 0.4; }
 .line.on { stroke: var(--color-primary); stroke-width: 2; stroke-dasharray: none; opacity: 1; }
-.root { position: absolute; border-radius: 50%; background: #222; transform: scale(0.7); }
 
 .node { position: absolute; }
 .face { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; height: 100%; text-decoration: none; color: var(--color-text); border-radius: var(--radius-md); }

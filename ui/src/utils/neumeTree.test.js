@@ -169,9 +169,18 @@ describe('the layout', () => {
     const t = tree(codes.map(c => c === '*u-d' ? '*[ud]' : c));
     const l = layoutNeumeTree(t, SIZE);
 
-    it('has a box for the root and every node, and a line for every node', () => {
+    it('has a box for every node, and a line for every node that has a node above it', () => {
         expect(l.boxes.size).toBe(t.nodes.length + 1);
-        expect(l.edges).toHaveLength(t.nodes.length);
+        expect(l.edges).toHaveLength(t.nodes.length - t.root.children.length);
+    });
+
+    it('does not draw the root: the single notes are where it begins, each apart, with no line into them', () => {
+        expect(t.root.children.map(n => n.text)).toEqual(['*', '*V']);
+        expect(l.columns.map(c => c.count)).toEqual(t.columns.map(c => c.count));
+        expect(l.columns[0].count).toBe(1);
+        expect(l.columns[0].x).toBe(0);
+        expect(l.edges.some(e => e.from === t.root)).toBe(false);
+        for (const node of t.root.children) expect(l.boxes.get(node).x).toBe(0);
     });
 
     it('goes from left to right with the number of notes', () => {

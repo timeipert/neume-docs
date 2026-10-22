@@ -9,7 +9,7 @@ import { useProjectContext } from '../composables/useProject';
 import { resolveSignGlyphs } from '../utils/signs';
 import { categoryOf } from '../utils/projectTable';
 import { renderSvg } from '../utils/svgRenderer';
-import { THUMB, ROOT_BOX, buildNeumeTree, layoutNeumeTree, nodeSize, treePicture } from '../utils/neumeTree';
+import { THUMB, buildNeumeTree, layoutNeumeTree, nodeSize, treePicture } from '../utils/neumeTree';
 import { exportNeumeTreePdf, snippetPhoto } from '../utils/neumeTreePdf';
 import NeumeTree from '../components/projects/NeumeTree.vue';
 import SegmentedControl from '../components/ui/SegmentedControl.vue';
@@ -97,7 +97,7 @@ const entries = computed(() => {
     return map;
 });
 
-const layout = computed(() => layoutNeumeTree(tree.value, node => (node === tree.value.root ? ROOT_BOX : entries.value.get(node).size)));
+const layout = computed(() => layoutNeumeTree(tree.value, node => entries.value.get(node).size));
 const counts = computed(() => new Map([...snippets.value].map(([code, list]) => [code, list.length])));
 
 // ---- going on, and hiding -----------------------------------------------------

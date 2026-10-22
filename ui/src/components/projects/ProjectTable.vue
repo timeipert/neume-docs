@@ -369,7 +369,8 @@ td.tr.none .tr-n { color: var(--color-text-light); font-weight: 500; }
 .tr-bar span { display: block; height: 100%; background: var(--color-primary-muted); border-radius: 999px; }
 
 /* the cells: one place to add a snippet, or the snippets that are there */
-td.snip { text-align: center; vertical-align: middle; height: 112px; }
+/* a cell is as tall as what is in it, and at least 112px; `height: 1px` lets the button fill a row that others made taller */
+td.snip { text-align: center; vertical-align: middle; height: 1px; }
 td.snip.filled { background: #fafcff; }
 td.snip.off:not(.filled) .add { opacity: 0.55; }
 td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-primary); }
@@ -399,7 +400,7 @@ td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-pri
 .slot-code { max-width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.7rem; line-height: 1.2; color: var(--color-text-muted); overflow-wrap: break-word; text-align: center; }
 .slot-code.vacant { color: var(--color-text-light); }
 .thumb.gap { border: 1px dashed var(--line); background: transparent; box-shadow: none; }
-td.snip.m { height: 96px; }
+td.snip.m { height: 1px; }
 td.snip.m .cell { min-height: 96px; }
 td.snip.off { background: repeating-linear-gradient(135deg, var(--color-surface) 0 6px, var(--color-surface-muted) 6px 12px); }
 .off-mark { color: var(--color-text-light); }

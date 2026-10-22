@@ -6,6 +6,7 @@ import PatternCode from '../PatternCode.vue';
 import { MAX_SPECIAL_SIGNATURES, pseudoLabel } from '../../utils/neumeTable';
 import { useSettingsStore } from '../../stores/settings';
 import { paleoOf, paleoSlots, slotKey } from '../../utils/paleo';
+import { isFavorite, notShown, shownOf } from '../../utils/favorites';
 
 /**
  * The table of a project: two rows of headers — the group (a movement, a special
@@ -79,7 +80,8 @@ const inSlot = (list, slot, code) => list.filter(s => slotKey(paleoOf(s, order.v
 function partsOf(code, list) {
     if (!list.length) return [];
     const slots = slotsOf(code);
-    return slots.length ? slots.map(slot => ({ slot, items: inSlot(list, slot, code) })) : [{ slot: { key: '', label: '' }, items: list }];
+    const part = (slot, items) => ({ slot, items, shown: shownOf(items), more: notShown(items), fav: items.some(isFavorite) });
+    return slots.length ? slots.map(slot => part(slot, inSlot(list, slot, code))) : [part({ key: '', label: '' }, list)];
 }
 const occurrencesOf = (code) => (props.occurrences && props.occurrences.get(code)) || null;
 
@@ -233,12 +235,19 @@ defineExpose({ reveal });
                             >
                                 <span v-if="partsOf(c.code, r.snippets.get(c.code) || []).length" class="slots">
                                     <span v-for="part in partsOf(c.code, r.snippets.get(c.code) || [])" :key="part.slot.key" class="slot">
-                                        <span v-if="part.items.length" class="stack" :class="{ many: part.items.length > 1 }">
-                                            <span class="thumb"><slot name="thumb" :snippet="part.items[0]" :code="c.code" /></span>
-                                            <span v-if="part.items.length > 1" class="n">{{ part.items.length }}</span>
-                                        </span>
-                                        <span v-else class="thumb gap"></span>
-                                        <span class="slot-code" :class="{ vacant: !part.items.length }">{{ part.slot.label || c.code }}</span>
+                                        <template v-if="part.shown.length">
+                                            <span v-for="(shot, i) in part.shown" :key="shot.id" class="shot">
+                                                <span class="stack" :class="{ many: !part.fav && part.more > 0 }">
+                                                    <span class="thumb"><slot name="thumb" :snippet="shot" :code="c.code" /></span>
+                                                    <span v-if="part.more > 0 && i === part.shown.length - 1" class="n" :title="part.fav ? `${part.more} more, not favourites` : ''">{{ part.fav ? `+${part.more}` : part.items.length }}</span>
+                                                </span>
+                                                <span class="slot-code">{{ part.slot.label || c.code }}</span>
+                                            </span>
+                                        </template>
+                                        <template v-else>
+                                            <span class="thumb gap"></span>
+                                            <span class="slot-code vacant">{{ part.slot.label || c.code }}</span>
+                                        </template>
                                     </span>
                                 </span>
                                 <span v-else class="add" aria-hidden="true">+</span>
@@ -269,12 +278,19 @@ defineExpose({ reveal });
                         >
                             <span v-if="partsOf(c.code, snippetsOf(c.code)).length" class="slots">
                                 <span v-for="part in partsOf(c.code, snippetsOf(c.code))" :key="part.slot.key" class="slot">
-                                    <span v-if="part.items.length" class="stack" :class="{ many: part.items.length > 1 }">
-                                        <span class="thumb"><slot name="thumb" :snippet="part.items[0]" :code="c.code" /></span>
-                                        <span v-if="part.items.length > 1" class="n">{{ part.items.length }}</span>
-                                    </span>
-                                    <span v-else class="thumb gap"></span>
-                                    <span class="slot-code" :class="{ vacant: !part.items.length }">{{ part.slot.label || c.code }}</span>
+                                    <template v-if="part.shown.length">
+                                        <span v-for="(shot, i) in part.shown" :key="shot.id" class="shot">
+                                            <span class="stack" :class="{ many: !part.fav && part.more > 0 }">
+                                                <span class="thumb"><slot name="thumb" :snippet="shot" :code="c.code" /></span>
+                                                <span v-if="part.more > 0 && i === part.shown.length - 1" class="n" :title="part.fav ? `${part.more} more, not favourites` : ''">{{ part.fav ? `+${part.more}` : part.items.length }}</span>
+                                            </span>
+                                            <span class="slot-code">{{ part.slot.label || c.code }}</span>
+                                        </span>
+                                    </template>
+                                    <template v-else>
+                                        <span class="thumb gap"></span>
+                                        <span class="slot-code vacant">{{ part.slot.label || c.code }}</span>
+                                    </template>
                                 </span>
                             </span>
                             <span v-else class="add" aria-hidden="true">+</span>
@@ -378,7 +394,8 @@ td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-pri
 .r-row.current th { background: var(--color-primary-light); }
 /* a snippet, its code under it; the places of a code one below the other, every snippet the same size */
 .slots { display: flex; flex-direction: column; align-items: center; gap: 10px; }
-.slot { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 100%; }
+.slot { display: flex; flex-direction: column; align-items: center; gap: 6px; max-width: 100%; }
+.shot { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 100%; }
 .slot-code { max-width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.7rem; line-height: 1.2; color: var(--color-text-muted); overflow-wrap: break-word; text-align: center; }
 .slot-code.vacant { color: var(--color-text-light); }
 .thumb.gap { border: 1px dashed var(--line); background: transparent; box-shadow: none; }

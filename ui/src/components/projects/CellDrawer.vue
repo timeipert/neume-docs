@@ -17,6 +17,7 @@ import { pseudoLabel } from '../../utils/neumeTable';
 import { fileToSnippet, imageFromPaste, imagesFromDrop } from '../../utils/snippetImages';
 import { findLine, lineLabel, signsOfLine, sortedLines } from '../../utils/lineSigns';
 import { normalizePaleo, paleoOf, withPaleo } from '../../utils/paleo';
+import { isFavorite } from '../../utils/favorites';
 import { loneSignAttributes, validateAttribute, validateAttributes } from '../../utils/snippetAttributes';
 
 /**
@@ -94,6 +95,13 @@ function savePaleo(snippet, keys) {
     else annotations.updateAnnotation(snippet.source, snippet.folio, snippet.pattern, snippet.id, { paleo: keys });
 }
 const paleoLabel = (s) => { const e = paleoOf(s, settings.paleoKeys(), props.code); return e.length ? withPaleo(props.code, e) : ''; };
+
+/** A favourite is shown in the table, one under the other; without one, the first snippet is. */
+function saveFavorite(snippet, value) {
+    if (snippet.kind === 'image') direct.updateSnippet(collection.value.id, snippet.id, { favorite: value });
+    else annotations.updateAnnotation(snippet.source, snippet.folio, snippet.pattern, snippet.id, { favorite: value });
+}
+const favourites = computed(() => mine.value.filter(isFavorite).length);
 
 function openPage(folio, region) {
     if (!folio) return;
@@ -259,13 +267,26 @@ onBeforeUnmount(() => {
             <h3>Snippets</h3>
             <p v-if="!mine.length" class="ne-muted none">None yet.</p>
             <ul v-else class="grid">
-                <li v-for="s in mine" :key="s.id" :class="{ chosen: s.id === chosenId }">
+                <li v-for="s in mine" :key="s.id" :class="{ chosen: s.id === chosenId, fav: isFavorite(s) }">
+                    <button
+                        type="button"
+                        class="star"
+                        :class="{ on: isFavorite(s) }"
+                        :aria-pressed="isFavorite(s)"
+                        :aria-label="isFavorite(s) ? 'Take out of the favourites' : 'Make a favourite'"
+                        :title="isFavorite(s) ? 'A favourite: shown in the table. Click to take it out.' : 'Make it a favourite, to show it in the table'"
+                        @click.stop="saveFavorite(s, !isFavorite(s))"
+                    >{{ isFavorite(s) ? '★' : '☆' }}</button>
                     <button class="snip" :title="s.place && s.place.label ? s.place.label : 'Snippet'" @click="chosenId = chosenId === s.id ? '' : s.id">
                         <span class="pic"><SnippetThumb :snippet="s" :width="92" :height="64" /></span>
                         <span class="cap"><b v-if="paleoLabel(s)" class="paleo">{{ paleoLabel(s) }}</b> {{ s.kind === 'image' ? (s.place && s.place.label) || '—' : `f. ${s.folio}${s.lineName ? ' · ' + s.lineName : ''}` }}</span>
                     </button>
                 </li>
             </ul>
+            <p v-if="mine.length > 1" class="ne-muted none">
+                <template v-if="favourites">The table shows the {{ favourites }} favourite{{ favourites === 1 ? '' : 's' }}, one under the other.</template>
+                <template v-else>The table shows the first. Mark the ones that should stand for this code with ☆.</template>
+            </p>
 
             <div v-if="chosen" class="detail">
                 <div class="detail-head">
@@ -406,6 +427,10 @@ h3 code { text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
 .grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: var(--space-2); }
 .snip { width: 100%; display: flex; flex-direction: column; gap: 3px; padding: 4px; text-align: left; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
 .snip:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
+.grid li { position: relative; }
+.star { position: absolute; top: 6px; right: 6px; z-index: 1; width: 22px; height: 22px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 0.95rem; line-height: 1; border-radius: 999px; border: 1px solid var(--color-border); background: rgba(255,255,255,0.9); color: var(--color-text-light); cursor: pointer; }
+.star:hover { color: var(--color-warning); border-color: var(--color-warning); }
+.star.on { color: var(--color-warning); border-color: var(--color-warning); background: #fff; }
 .grid li.chosen .snip { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); background: var(--color-primary-light); }
 .pic { display: flex; align-items: center; justify-content: center; min-height: 64px; background: #f8fafc; border-radius: var(--radius-sm); overflow: hidden; }
 .pic :deep(img) { max-width: 100%; max-height: 90px; object-fit: contain; }

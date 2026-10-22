@@ -313,6 +313,7 @@ export function cleanManuscript(raw, fallbackId = '') {
             id, pattern,
             variant: text(s.variant, 20),
             ...(Array.isArray(s.paleo) && s.paleo.length ? { paleo: exportPaleo(s.paleo) } : {}),
+            ...(s.favorite === true ? { favorite: true } : {}),
             refId: text(s.refId, 60) || '-',
             folio: text(s.folio, 40),
             line: text(s.line, 80),

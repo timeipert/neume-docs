@@ -8,6 +8,7 @@ import { useImageManifest } from '../composables/useImageManifest';
 import { useProjectContext } from '../composables/useProject';
 import { resolveSignGlyphs } from '../utils/signs';
 import { categoryOf } from '../utils/projectTable';
+import { representative } from '../utils/favorites';
 import { renderSvg } from '../utils/svgRenderer';
 import { THUMB, buildNeumeTree, hasSpecialSign, layoutNeumeTree, nodeSize, treePicture } from '../utils/neumeTree';
 import { exportNeumeTreePdf, snippetPhoto } from '../utils/neumeTreePdf';
@@ -75,11 +76,11 @@ const made = computed(() => tree.value.nodes.filter(n => !n.chosen).length);
 
 const signGlyphs = computed(() => resolveSignGlyphs(settings.customSigns, glyphs.value));
 
-/** The first snippet of a pattern (of any way it is written), as the cell of the table shows it. */
+/** The snippet that stands for a pattern (of any way it is written): its first favourite, else its first, as the cell of the table shows it. */
 function snippetOf(node) {
     for (const code of node.codes) {
         const list = snippets.value.get(code);
-        if (list && list.length) return list[0];
+        if (list && list.length) return representative(list);
     }
     return null;
 }

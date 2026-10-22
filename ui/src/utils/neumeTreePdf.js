@@ -177,9 +177,12 @@ export async function exportNeumeTreePdf({ tree, layout, entries, photo, caption
         if (e.y1 === e.y2) {
             doc.line(x1, y1, x2, y2);
         } else {
-            const mid = (x1 + x2) / 2;
+            // level out of the box, the bend in the gap, level into the next box
+            const xa = X(e.xa), xb = X(e.xb), mid = (xa + xb) / 2;
+            doc.line(x1, y1, xa, y1);
             // jsPDF takes a curve as three points relative to where it starts
-            doc.lines([[mid - x1, 0, mid - x1, y2 - y1, x2 - x1, y2 - y1]], x1, y1, [1, 1], 'S', false);
+            doc.lines([[mid - xa, 0, mid - xa, y2 - y1, xb - xa, y2 - y1]], xa, y1, [1, 1], 'S', false);
+            doc.line(xb, y2, x2, y2);
         }
     }
 

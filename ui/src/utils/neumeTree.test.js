@@ -223,7 +223,45 @@ describe('the layout', () => {
         const straight = l.edges.find(e => e.y1 === e.y2);
         const curved = l.edges.find(e => e.y1 !== e.y2);
         expect(straight.d).toMatch(/^M [\d.]+ [\d.]+ L /);
-        expect(curved.d).toMatch(/^M [\d.]+ [\d.]+ C /);
+        expect(curved.d).toMatch(/^M [\d.]+ [\d.]+ L [\d.]+ [\d.]+ C /);
+    });
+
+    it('never lets a line cut across a box, even when a pattern skips a column', () => {
+        const wide = tree(['*', '*V', '*u', '*ud', '*[ud]', '*udu', '*[udu]', '*uudd', '*[uu]dd', '*uV', '*uVd', '*d', '*dd', '*ddd', '*dddd', '*dddddd', '*ud', '*udL', '*eO', '*eOdd']);
+        const sizes = (n) => ({ w: 30 + (n.text.length * 7) % 40, h: 20 + (n.text.length * 11) % 50, anchorY: 10 });
+        const big = layoutNeumeTree(wide, sizes);
+        const inside = (x, y, b) => x > b.x + 0.5 && x < b.x + b.w - 0.5 && y > b.y + 0.5 && y < b.y + b.h - 0.5;
+        const bezier = (p0, p1, p2, p3, u) => (1 - u) ** 3 * p0 + 3 * (1 - u) ** 2 * u * p1 + 3 * (1 - u) * u * u * p2 + u ** 3 * p3;
+        let skipped = 0;
+        for (const e of big.edges) {
+            const points = [];
+            for (let i = 0; i <= 40; i++) {
+                const u = i / 40;
+                if (e.y1 === e.y2) { points.push([e.x1 + (e.x2 - e.x1) * u, e.y1]); continue; }
+                points.push([e.x1 + (e.xa - e.x1) * u, e.y1]);
+                const mid = (e.xa + e.xb) / 2;
+                points.push([bezier(e.xa, mid, mid, e.xb, u), bezier(e.y1, e.y1, e.y2, e.y2, u)]);
+                points.push([e.xb + (e.x2 - e.xb) * u, e.y2]);
+            }
+            for (const [x, y] of points) {
+                for (const [node, box] of big.boxes) {
+                    if (node === wide.root) continue;
+                    expect(inside(x, y, box), `${e.from.text} -> ${e.to.text} cuts ${node.text}`).toBe(false);
+                }
+            }
+            if (e.to.count - e.from.count > 1) skipped++;
+        }
+        expect(skipped).toBeGreaterThan(0);
+    });
+
+    it('bends in the gap after the column of the box the line leaves', () => {
+        for (const e of l.edges.filter(e => e.y1 !== e.y2)) {
+            const col = l.columns.find(c => c.count === e.from.count);
+            expect(e.xa).toBeGreaterThanOrEqual(col.x + col.w);
+            const next = l.columns[l.columns.indexOf(col) + 1];
+            expect(e.xb).toBeLessThanOrEqual(next.x);
+            expect(e.xa).toBeLessThanOrEqual(e.xb);
+        }
     });
 
     it('has the lines end where the boxes begin', () => {

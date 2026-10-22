@@ -275,6 +275,9 @@ export function buildNeumeTree(codes, { grown = [], hidden = [], allow = () => t
 // Where everything goes
 // ---------------------------------------------------------------------------
 
+/** How far into the gap between two columns a line goes before it bends, and how far from the next column it ends the bend. */
+const BEND = 10;
+
 /**
  * Place the nodes of a tree: one column for each number of notes, left to right; the branches of a
  * node one below the other, the node level with the middle of its branches. The root is not drawn:
@@ -288,7 +291,8 @@ export function buildNeumeTree(codes, { grown = [], hidden = [], allow = () => t
  *   width: number, height: number,
  *   boxes: Map<TreeNode, { x: number, y: number, w: number, h: number, anchorY: number }>,
  *   columns: Array<{ count: number, x: number, w: number }>,
- *   edges: Array<{ from: TreeNode, to: TreeNode, x1: number, y1: number, x2: number, y2: number, d: string }>
+ *   edges: Array<{ from: TreeNode, to: TreeNode, x1: number, y1: number, x2: number, y2: number, xa: number, xb: number, d: string }>
+ *     (`xa`..`xb` is where the line bends, in the gap after the column of `from`)
  * }}
  */
 export function layoutNeumeTree(tree, size, { columnGap = 64, rowGap = 12 } = {}) {
@@ -355,12 +359,19 @@ export function layoutNeumeTree(tree, size, { columnGap = 64, rowGap = 12 } = {}
         const y1 = a.y + a.anchorY;
         const x2 = b.x - 4;
         const y2 = b.y + b.anchorY;
-        const mid = (x1 + x2) / 2;
+        // The bend is made in the gap right after the parent's column, where there is nothing to cut across;
+        // the line then runs level to the box. A box far to the right (a pattern that skips a column) is
+        // in the band of its own branch, so the level part meets no other box.
+        const gapStart = columnOf.get(node.parent.count);
+        const gapEnd = columns[columns.findIndex(c => c.count === node.parent.count) + 1];
+        const xa = Math.max(x1, gapStart.x + gapStart.w + BEND);
+        const xb = Math.min(x2, gapEnd.x - BEND);
+        const mid = (xa + xb) / 2;
         edges.push({
-            from: node.parent, to: node, x1, y1, x2, y2,
+            from: node.parent, to: node, x1, y1, x2, y2, xa, xb,
             d: y1 === y2
                 ? `M ${round(x1)} ${round(y1)} L ${round(x2)} ${round(y2)}`
-                : `M ${round(x1)} ${round(y1)} C ${round(mid)} ${round(y1)}, ${round(mid)} ${round(y2)}, ${round(x2)} ${round(y2)}`
+                : `M ${round(x1)} ${round(y1)} L ${round(xa)} ${round(y1)} C ${round(mid)} ${round(y1)}, ${round(mid)} ${round(y2)}, ${round(xb)} ${round(y2)} L ${round(x2)} ${round(y2)}`
         });
     }
 

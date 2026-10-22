@@ -269,7 +269,7 @@ defineExpose({ reveal });
             <tr v-if="!matrix" class="r-snip">
                 <th scope="row">Snippets</th>
                 <template v-for="g in groups" :key="g.key">
-                    <td v-for="(c, i) in g.columns" :key="c.code" class="snip" :class="{ first: i === 0, filled: snippetsOf(c.code).length, active: active === c.code, off: select && !selected.has(c.code) }">
+                    <td v-for="(c, i) in g.columns" :key="c.code" class="snip click" :class="{ first: i === 0, filled: snippetsOf(c.code).length, active: active === c.code, off: select && !selected.has(c.code) }" @click.self="emit('open', c.code)">
                         <button
                             type="button"
                             class="cell"
@@ -369,12 +369,13 @@ td.tr.none .tr-n { color: var(--color-text-light); font-weight: 500; }
 .tr-bar span { display: block; height: 100%; background: var(--color-primary-muted); border-radius: 999px; }
 
 /* the cells: one place to add a snippet, or the snippets that are there */
-/* a cell is as tall as what is in it, and at least 112px; `height: 1px` lets the button fill a row that others made taller */
-td.snip { text-align: center; vertical-align: middle; height: 1px; }
+/* a cell is as tall as what is in it, and at least 112px; no height is given to the cell, so every browser lets the row grow */
+td.snip { text-align: center; vertical-align: middle; }
+td.snip.click { cursor: pointer; }
 td.snip.filled { background: #fafcff; }
 td.snip.off:not(.filled) .add { opacity: 0.55; }
 td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-primary); }
-.cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; height: 100%; min-height: 112px; padding: var(--space-2); border: none; border-radius: 0; background: transparent; color: var(--color-text-light); transition: background-color 0.12s, color 0.12s; }
+.cell { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; width: 100%; min-height: 112px; padding: var(--space-2); border: none; border-radius: 0; background: transparent; color: var(--color-text-light); transition: background-color 0.12s, color 0.12s; }
 .cell:hover { background: var(--color-primary-light); color: var(--color-primary); }
 .cell:focus-visible { box-shadow: inset var(--ring); }
 .add { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1.5px dashed var(--color-border-hover); border-radius: 50%; font-size: 1.25rem; line-height: 1; transition: border-color 0.12s, background-color 0.12s, transform 0.12s; }
@@ -400,7 +401,6 @@ td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-pri
 .slot-code { max-width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.7rem; line-height: 1.2; color: var(--color-text-muted); overflow-wrap: break-word; text-align: center; }
 .slot-code.vacant { color: var(--color-text-light); }
 .thumb.gap { border: 1px dashed var(--line); background: transparent; box-shadow: none; }
-td.snip.m { height: 1px; }
 td.snip.m .cell { min-height: 96px; }
 td.snip.off { background: repeating-linear-gradient(135deg, var(--color-surface) 0 6px, var(--color-surface-muted) 6px 12px); }
 .off-mark { color: var(--color-text-light); }

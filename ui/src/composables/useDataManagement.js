@@ -12,6 +12,9 @@ import { useSaveReminderStore } from '../stores/saveReminder';
 import { extractManuscripts, mergeManuscript, getManuscriptStats } from '../utils/workspaceSharing';
 
 const SCHEMA_VERSION = 1;
+// Manuscript exports made with schemaVersion 2 carry the same `data` shape as v1
+// (personalTables/regions/regionItems/manualLines/iiifLinks) - the import accepts both.
+const SUPPORTED_IMPORT_SCHEMA_VERSIONS = [1, 2];
 
 export function useDataManagement() {
     const settings = useSettingsStore();
@@ -240,8 +243,8 @@ export function useDataManagement() {
                     throw new Error("Invalid backup file format: Missing schemaVersion or data object.");
                 }
 
-                if (json.schemaVersion !== SCHEMA_VERSION) {
-                    throw new Error(`Schema mismatch! File is v${json.schemaVersion}, app expects v${SCHEMA_VERSION}.`);
+                if (!SUPPORTED_IMPORT_SCHEMA_VERSIONS.includes(json.schemaVersion)) {
+                    throw new Error(`Schema mismatch! File is v${json.schemaVersion}, app supports v${SUPPORTED_IMPORT_SCHEMA_VERSIONS.join('/')}.`);
                 }
 
                 const importedSources = extractSourcesFromContent(json.data);

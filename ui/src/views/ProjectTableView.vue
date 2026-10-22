@@ -54,7 +54,7 @@ const extended = computed(() => props.scope === 'extended');
 const paleoUsed = computed(() => {
     const order = settings.paleoKeys();
     const used = new Set();
-    for (const list of context.snippets.value.values()) for (const s of list) paleoOf(s, order).forEach(k => used.add(k));
+    for (const list of context.snippets.value.values()) for (const s of list) paleoOf(s, order).forEach(e => used.add(e.key));
     return [...order.filter(k => used.has(k)), ...[...used].filter(k => !order.includes(k))];
 });
 const paleoFilter = ref([]);

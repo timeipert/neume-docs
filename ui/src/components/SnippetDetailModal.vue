@@ -179,7 +179,7 @@ function goToEditor() {
                 </div>
                 
                 <div class="info-group">
-                    <PaleoPicker :model-value="paleoOf(liveAnnotation, settings.paleoKeys())" :code="annotation.pattern" @update:model-value="updatePaleo" />
+                    <PaleoPicker :model-value="paleoOf(liveAnnotation, settings.paleoKeys(), annotation.pattern)" :code="annotation.pattern" @update:model-value="updatePaleo" />
                 </div>
 
                 <hr class="divider"/>

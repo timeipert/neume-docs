@@ -16,7 +16,7 @@ import { projectPageLocation } from '../../utils/projectChoices';
 import { pseudoLabel } from '../../utils/neumeTable';
 import { fileToSnippet, imageFromPaste, imagesFromDrop } from '../../utils/snippetImages';
 import { findLine, lineLabel, signsOfLine, sortedLines } from '../../utils/lineSigns';
-import { paleoOf, paleoSuffix, withPaleo } from '../../utils/paleo';
+import { normalizePaleo, paleoOf, withPaleo } from '../../utils/paleo';
 import { loneSignAttributes, validateAttribute, validateAttributes } from '../../utils/snippetAttributes';
 
 /**
@@ -93,7 +93,7 @@ function savePaleo(snippet, keys) {
     if (snippet.kind === 'image') direct.updateSnippet(collection.value.id, snippet.id, { paleo: keys });
     else annotations.updateAnnotation(snippet.source, snippet.folio, snippet.pattern, snippet.id, { paleo: keys });
 }
-const paleoLabel = (s) => paleoSuffix(paleoOf(s, settings.paleoKeys()));
+const paleoLabel = (s) => { const e = paleoOf(s, settings.paleoKeys(), props.code); return e.length ? withPaleo(props.code, e) : ''; };
 
 function openPage(folio, region) {
     if (!folio) return;
@@ -209,7 +209,7 @@ function addPending() {
     if (!c) return;
     direct.addPattern(c.id, props.code);
     direct.addSnippet(c.id, {
-        pattern: props.code, image: pending.value.dataUrl, attrs: check.value.values, paleo: pendingPaleo.value,
+        pattern: props.code, image: pending.value.dataUrl, attrs: check.value.values, paleo: normalizePaleo(pendingPaleo.value, settings.paleoKeys(), props.code),
         width: pending.value.width, height: pending.value.height
     });
     const written = withPaleo(props.code, pendingPaleo.value);
@@ -274,7 +274,7 @@ onBeforeUnmount(() => {
                     <button v-if="chosen.kind !== 'image' || chosen.lineId" class="ne-btn ne-btn--sm" @click="openSnippet(chosen)">{{ chosen.kind === 'image' ? 'Open the line →' : 'Open the page →' }}</button>
                     <button v-if="chosen.kind === 'image'" class="ne-btn ne-btn--danger ne-btn--sm" @click="removeShot(chosen)">Delete</button>
                 </div>
-                <PaleoPicker class="paleo-field" :model-value="paleoOf(chosen, settings.paleoKeys())" :code="code" @update:model-value="savePaleo(chosen, $event)" />
+                <PaleoPicker class="paleo-field" :model-value="paleoOf(chosen, settings.paleoKeys(), code)" :code="code" @update:model-value="savePaleo(chosen, $event)" />
                 <div v-if="detailDefs.length" class="fields">
                     <div v-for="def in detailDefs" :key="def.key" class="ne-field">
                         <label :for="`cd-${chosen.id}-${def.key}`">{{ def.label }}</label>

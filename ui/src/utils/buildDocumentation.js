@@ -13,6 +13,7 @@ import { compareFolios } from './sorting';
 import { defaultTier, tierOf } from './neumeTable';
 import { signMarker, stripSignKeys } from './signs';
 import { linesOf } from './lineSigns';
+import { exportPaleo } from './paleo';
 
 /** A piece of a name that is safe in a file name. */
 export function fileSlug(s) {
@@ -135,7 +136,7 @@ export function buildDocumentation({
                         id: String(item.id),
                         pattern: base,
                         variant,
-                        ...(Array.isArray(item.paleo) && item.paleo.length ? { paleo: item.paleo.map(String) } : {}),
+                        ...(Array.isArray(item.paleo) && item.paleo.length ? { paleo: exportPaleo(item.paleo) } : {}),
                         refId: display,
                         folio,
                         line: region.name || '',
@@ -194,7 +195,7 @@ export function buildDocumentation({
                 id: String(s.id),
                 pattern: s.pattern,
                 variant: s.variant || '',
-                ...(Array.isArray(s.paleo) && s.paleo.length ? { paleo: s.paleo.map(String) } : {}),
+                ...(Array.isArray(s.paleo) && s.paleo.length ? { paleo: exportPaleo(s.paleo) } : {}),
                 refId: s.refId || '-',
                 folio: lineAttrs.folio || '',
                 line: lineAttrs.line || '',

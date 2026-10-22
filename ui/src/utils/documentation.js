@@ -17,6 +17,7 @@
  * where a documentation may point are dropped.
  */
 import { FILTER_KINDS } from './manuscriptFilter';
+import { exportPaleo } from './paleo';
 
 export const FORMAT = 'neume-docs';
 export const VERSION = 1;
@@ -311,7 +312,7 @@ export function cleanManuscript(raw, fallbackId = '') {
         out.snippets.push({
             id, pattern,
             variant: text(s.variant, 20),
-            ...(Array.isArray(s.paleo) && s.paleo.length ? { paleo: s.paleo.map(k => text(k, 12)).filter(Boolean).slice(0, 8) } : {}),
+            ...(Array.isArray(s.paleo) && s.paleo.length ? { paleo: exportPaleo(s.paleo) } : {}),
             refId: text(s.refId, 60) || '-',
             folio: text(s.folio, 40),
             line: text(s.line, 80),

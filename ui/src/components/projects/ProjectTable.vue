@@ -61,7 +61,7 @@ const slotMap = computed(() => {
     for (const g of props.groups) {
         for (const c of g.columns) {
             const all = matrix.value ? props.rows.flatMap(r => r.snippets.get(c.code) || []) : snippetsOf(c.code);
-            const slots = paleoSlots(all, order.value);
+            const slots = paleoSlots(all, order.value, c.code);
             // Without any attribute there is one place, and nothing to show of it.
             map.set(c.code, slots.length === 1 && !slots[0].key ? [] : slots);
         }
@@ -70,7 +70,7 @@ const slotMap = computed(() => {
 });
 const slotsOf = (code) => slotMap.value.get(code) || [];
 /** The snippets of a cell that stand in a place. */
-const inSlot = (list, slot) => list.filter(s => slotKey(paleoOf(s, order.value)) === slot.key);
+const inSlot = (list, slot, code) => list.filter(s => slotKey(paleoOf(s, order.value, code)) === slot.key);
 /**
  * What a cell draws, top to bottom: a place for each set of attributes the code has anywhere in the table, with the
  * snippets of this cell that stand in it (none: the place is kept, so the others stay where they are). A code with
@@ -79,7 +79,7 @@ const inSlot = (list, slot) => list.filter(s => slotKey(paleoOf(s, order.value))
 function partsOf(code, list) {
     if (!list.length) return [];
     const slots = slotsOf(code);
-    return slots.length ? slots.map(slot => ({ slot, items: inSlot(list, slot) })) : [{ slot: { key: '', label: '' }, items: list }];
+    return slots.length ? slots.map(slot => ({ slot, items: inSlot(list, slot, code) })) : [{ slot: { key: '', label: '' }, items: list }];
 }
 const occurrencesOf = (code) => (props.occurrences && props.occurrences.get(code)) || null;
 
@@ -238,7 +238,7 @@ defineExpose({ reveal });
                                             <span v-if="part.items.length > 1" class="n">{{ part.items.length }}</span>
                                         </span>
                                         <span v-else class="thumb gap"></span>
-                                        <span class="slot-code" :class="{ vacant: !part.items.length }">{{ c.code }}{{ part.slot.label }}</span>
+                                        <span class="slot-code" :class="{ vacant: !part.items.length }">{{ part.slot.label || c.code }}</span>
                                     </span>
                                 </span>
                                 <span v-else class="add" aria-hidden="true">+</span>
@@ -274,7 +274,7 @@ defineExpose({ reveal });
                                         <span v-if="part.items.length > 1" class="n">{{ part.items.length }}</span>
                                     </span>
                                     <span v-else class="thumb gap"></span>
-                                    <span class="slot-code" :class="{ vacant: !part.items.length }">{{ c.code }}{{ part.slot.label }}</span>
+                                    <span class="slot-code" :class="{ vacant: !part.items.length }">{{ part.slot.label || c.code }}</span>
                                 </span>
                             </span>
                             <span v-else class="add" aria-hidden="true">+</span>

@@ -35,11 +35,12 @@ function remove(a) {
 <template>
 <div class="pa">
     <p class="ne-muted intro">
-        What a snippet says about how a sign is written — set when the snippet is made, and written in braces after the code:
-        <code>*Vdu{r}</code>, or with several <code>*Vdu{r,l}</code>. A key is lower-case letters and digits and can be longer than one letter
-        (<code>rl</code>). Define them here first, so the same thing is always spelled the same way.
+        What a snippet says about how a sign is written — set when the snippet is made. An attribute is on one note of the pattern and is written
+        in braces right after it, the way the sign of a code variant is: <code>*V{r}du</code> is <code>r</code> on the first note,
+        <code>*Vdu{r}</code> on the last, <code>*V{r,l}du{rl}</code> has three. A key is lower-case letters and digits and can be longer than one letter.
+        Define them here first, so the same thing is always spelled the same way.
         The columns of a table tell codes apart by their notes and the virga (<code>[ * V u d e ]</code>); everything finer is an attribute, and
-        puts the snippets in rows under the code. Snippets with the same attribute stand at the same height in every manuscript.
+        puts the snippets in rows under the code. Snippets with the same attribute on the same note stand at the same height in every manuscript.
     </p>
     <table class="ne-table">
         <thead><tr><th class="key">Key</th><th>Label</th><th>What it means</th><th></th></tr></thead>

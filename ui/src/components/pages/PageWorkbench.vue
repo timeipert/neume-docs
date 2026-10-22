@@ -20,7 +20,7 @@ import PatternDisplay from '../PatternDisplay.vue';
 import PatternCode from '../PatternCode.vue';
 import VariantEditorModal from '../VariantEditorModal.vue';
 import PaleoPicker from '../PaleoPicker.vue';
-import { paleoOf } from '../../utils/paleo';
+import { normalizePaleo, paleoOf } from '../../utils/paleo';
 
 /**
  * Marking a page: the lines on it, and the signs on a line. One picture, one panel, no pages to go
@@ -200,7 +200,7 @@ function saveSign(rect) {
     const before = annotations.snapshotPage(stdSource.value, stdFolio.value);
     const points = rectToPoints(rect);
     const link = linkFor(pattern);
-    const meta = { ...(variant.value ? { variant: variant.value } : {}), ...(paleo.value.length ? { paleo: [...paleo.value] } : {}), ...(link ? { linkData: link } : {}) };
+    const meta = { ...(variant.value ? { variant: variant.value } : {}), ...(normalizePaleo(paleo.value, settings.paleoKeys(), pattern).length ? { paleo: normalizePaleo(paleo.value, settings.paleoKeys(), pattern) } : {}), ...(link ? { linkData: link } : {}) };
     if (mode.value === 'whole') annotations.addAnnotation(stdSource.value, stdFolio.value, pattern, points, meta);
     else annotations.addItemToRegion(region.value.id, pattern, points, meta);
     emit('used', getBaseCode(pattern));

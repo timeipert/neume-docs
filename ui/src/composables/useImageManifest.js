@@ -3,7 +3,7 @@ import { useIiifStore } from '../stores/iiif';
 import { useTranscriptionData } from './useTranscriptionData';
 import { useSettingsStore } from '../stores/settings';
 import { folioToIndex, indexToFolio } from '../utils/folioMath';
-import { inferAlignment } from '../utils/folioAlignment';
+import { inferAlignment, detectScheme } from '../utils/folioAlignment';
 import { pageUrls, regionUrls } from '../utils/iiifUrls';
 
 const normCache = new Map();
@@ -207,8 +207,15 @@ export function useImageManifest() {
 
         const align = settings.sourceAlignments[iiifKey] || settings.sourceAlignments[source] || null;
         const dataFolios = dataFoliosForKey(iiifKey);
+        // A linked transcription's own folios are the best signal; without one (a manuscript
+        // worked on only here, with no corpus linkage) the canvases' own labels are all there
+        // is — and a manifest that labels its pages "4r"/"4v" is foliated whether or not
+        // anyone has told it so, so guessing "paginated" by default would send every recto/
+        // verso query chasing the wrong canvas.
         const dataType = align?.dataType
-            || (dataFolios.some(f => /[rv]$/i.test(String(f))) ? 'foliated' : 'paginated');
+            || (dataFolios.length
+                ? (dataFolios.some(f => /[rv]$/i.test(String(f))) ? 'foliated' : 'paginated')
+                : (detectScheme(canvases.map(c => c.originalFolio || c.folio)).scheme === 'foliated' ? 'foliated' : 'paginated'));
 
         const inferred = inferAlignment({
             canvasLabels: canvases.map(c => c.originalFolio || c.folio),

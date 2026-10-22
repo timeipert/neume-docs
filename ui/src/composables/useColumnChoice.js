@@ -2,6 +2,7 @@ import { computed, nextTick, ref, watch } from 'vue';
 import { useProjectsStore } from '../stores/projects';
 import { useToast } from './useToast';
 import { STANDARD_VIRGA_SET } from '../utils/neumeTable';
+import { splitPaleo } from '../utils/paleo';
 import { categoryOf, checkCode, columnsToShow, deselectColumn, selectColumn, suggestColumns } from '../utils/projectTable';
 
 /**
@@ -40,8 +41,10 @@ export function useColumnChoice(context, { table, active }) {
 
     const bare = (code) => code.replace(/[[\]{}]/g, '');
     const searching = computed(() => query.value.trim().length > 0);
+    // A code typed with its paleographic attributes (`*Vdu{r}`) is looked for as the code: the attributes belong to snippets, not columns.
+    const typed = () => splitPaleo(query.value.trim()).base;
     const matchesQuery = (code) => {
-        const q = query.value.trim();
+        const q = typed();
         return !q || (/[[\]{}]/.test(q) ? code.includes(q) : bare(code).includes(q));
     };
     const matchesView = (code) => {
@@ -150,7 +153,7 @@ export function useColumnChoice(context, { table, active }) {
 
     /** What was typed is a good code the library does not have yet. */
     const unknown = computed(() => {
-        const check = checkCode(query.value);
+        const check = checkCode(typed());
         return check.ok && !library.value.byCode.has(check.code) ? check : null;
     });
 

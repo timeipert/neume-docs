@@ -3,6 +3,8 @@ import { computed } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import AnnotationCutout from './AnnotationCutout.vue';
 import PatternDisplay from './PatternDisplay.vue';
+import PaleoPicker from './PaleoPicker.vue';
+import { paleoOf } from '../utils/paleo';
 import { useTranscriptionData } from '../composables/useTranscriptionData';
 import { useAnnotationsStore } from '../stores/annotations';
 import { usePersonalTablesStore } from '../stores/personalTables';
@@ -83,6 +85,12 @@ function updateVariant(val) {
     const std = getStandardSource(source, folio);
     
     annotStore.updateAnnotation(std, folio, pattern, id, { variant: val });
+}
+
+function updatePaleo(keys) {
+    if (!props.annotation) return;
+    const { source, folio, pattern, id } = props.annotation;
+    annotStore.updateAnnotation(getStandardSource(source, folio), folio, pattern, id, { paleo: keys });
 }
 
 function goToGlobalTable() {
@@ -170,6 +178,10 @@ function goToEditor() {
                     </router-link>
                 </div>
                 
+                <div class="info-group">
+                    <PaleoPicker :model-value="paleoOf(liveAnnotation, settings.paleoKeys())" :code="annotation.pattern" @update:model-value="updatePaleo" />
+                </div>
+
                 <hr class="divider"/>
                 
                 <div class="info-group" v-if="textData">

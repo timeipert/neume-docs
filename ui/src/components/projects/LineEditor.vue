@@ -2,6 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import ModalDialog from '../ui/ModalDialog.vue';
 import PatternDisplay from '../PatternDisplay.vue';
+import PaleoPicker from '../PaleoPicker.vue';
+import { paleoOf } from '../../utils/paleo';
 import { useProjectContext } from '../../composables/useProject';
 import { useLineNeumes } from '../../composables/useLineNeumes';
 import { useDirectSnippetsStore } from '../../stores/directSnippets';
@@ -450,6 +452,7 @@ const title = computed(() => (line.value ? `Line ${lineLabel(line.value).replace
                             <input v-else :id="`sa-${s.id}-${def.key}`" :value="(s.attrs && s.attrs[def.key]) || ''" class="ne-input" :class="{ bad: fieldErrors[`${s.id}:${def.key}`] }" :placeholder="def.hint" autocomplete="off" @change="setSignAttr(s, def, $event.target.value)" />
                             <p v-if="fieldErrors[`${s.id}:${def.key}`]" class="error">{{ fieldErrors[`${s.id}:${def.key}`] }}</p>
                         </div>
+                        <PaleoPicker v-if="s.pattern" class="paleo-attr" :model-value="paleoOf(s, settings.paleoKeys())" :code="s.pattern" @update:model-value="direct.updateSnippet(collection.id, s.id, { paleo: $event })" />
                         <div v-if="showVariant" class="ne-field attr">
                             <label :for="`sv-${s.id}`">Variant</label>
                             <select :id="`sv-${s.id}`" :value="s.variant || ''" class="ne-input" @change="setVariant(s, $event.target.value)">
@@ -539,6 +542,7 @@ kbd { padding: 0 5px; border: 1px solid var(--color-border-hover); border-bottom
 .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 700; padding: 0.35em 0.55em; width: 100%; }
 .del { margin-top: 2px; }
 .fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); margin-top: var(--space-2); align-items: start; }
+.fields > .pp { grid-column: 1 / -1; }
 .drawn { grid-column: 1 / -1; display: flex; justify-content: center; padding: 2px 0; }
 .sign .ne-field label { font-size: 0.7rem; }
 

@@ -19,6 +19,8 @@ import AnnotationCutout from '../AnnotationCutout.vue';
 import PatternDisplay from '../PatternDisplay.vue';
 import PatternCode from '../PatternCode.vue';
 import VariantEditorModal from '../VariantEditorModal.vue';
+import PaleoPicker from '../PaleoPicker.vue';
+import { paleoOf } from '../../utils/paleo';
 
 /**
  * Marking a page: the lines on it, and the signs on a line. One picture, one panel, no pages to go
@@ -106,6 +108,8 @@ const codeLines = computed(() => (highlightHint.value ? highlightHint.value.line
 
 const active = ref(props.code || '');
 const variant = ref('');
+/** The paleographic attributes the next sign gets: set while drawing, the way the variant is. */
+const paleo = ref([]);
 const followNeume = ref(''); // the sysId of the neume the next box is for, while drawing along the transcription
 watch(() => props.code, (code) => { if (code) active.value = code; });
 
@@ -196,7 +200,7 @@ function saveSign(rect) {
     const before = annotations.snapshotPage(stdSource.value, stdFolio.value);
     const points = rectToPoints(rect);
     const link = linkFor(pattern);
-    const meta = { ...(variant.value ? { variant: variant.value } : {}), ...(link ? { linkData: link } : {}) };
+    const meta = { ...(variant.value ? { variant: variant.value } : {}), ...(paleo.value.length ? { paleo: [...paleo.value] } : {}), ...(link ? { linkData: link } : {}) };
     if (mode.value === 'whole') annotations.addAnnotation(stdSource.value, stdFolio.value, pattern, points, meta);
     else annotations.addItemToRegion(region.value.id, pattern, points, meta);
     emit('used', getBaseCode(pattern));
@@ -249,6 +253,10 @@ function removeItem(item) {
     deleteOnPage(stdSource.value, stdFolio.value, 'Snippet deleted.', () => {
         annotations.removeAnnotation(stdSource.value, stdFolio.value, item.pattern, item.id);
     });
+}
+
+function setPaleo(item, keys) {
+    annotations.updateAnnotation(stdSource.value, stdFolio.value, item.pattern, item.id, { paleo: keys });
 }
 
 function setVariant(item, value) {
@@ -449,6 +457,7 @@ const title = computed(() => (mode.value === 'whole' ? 'The page as a whole' : r
                     <span class="lab">Variant</span>
                     <button v-for="v in variantChoices" :key="v.key || '_base'" type="button" class="chip" :class="{ on: (variant || '') === v.key }" @click="variant = v.key">{{ v.label }}</button>
                 </div>
+                <PaleoPicker v-model="paleo" class="paleo-next" label="Paleographic attributes of the next sign" :code="active" />
                 <PatternPalette :model-value="active" :groups="groups" :glyphs="glyphs" :counts="counts" @update:model-value="choose" />
             </div>
 
@@ -462,6 +471,7 @@ const title = computed(() => (mode.value === 'whole' ? 'The page as a whole' : r
                             <select v-if="variantChoices.length > 1" class="vsel" :value="i.variant || ''" aria-label="Variant" @click.stop @change="setVariant(i, $event.target.value)">
                                 <option v-for="v in settings.getSnippetVariants(i.variant || '')" :key="v.key || '_base'" :value="v.key">{{ v.label }}</option>
                             </select>
+                            <PaleoPicker v-if="settings.paleoAttributes.length" class="paleo-item" :model-value="paleoOf(i, settings.paleoKeys())" :label="false" :code="i.pattern" @click.stop @update:model-value="setPaleo(i, $event)" />
                             <span v-if="i.linkData && i.linkData.sysId" class="link-ok" title="Linked to the transcription">↔ “{{ syllableOf(i).syllable }}” <button type="button" class="unlink" title="Unlink" @click.stop="linkItem(i, '')">✕</button></span>
                             <span v-else-if="hasTranscription && linkOptions(i).length" class="linker">
                                 <button type="button" class="link" @click.stop="linking = linking === String(i.id) ? '' : String(i.id)">Link to a neume…</button>
@@ -557,6 +567,7 @@ const title = computed(() => (mode.value === 'whole' ? 'The page as a whole' : r
 .current :deep(.pattern-code) { font-size: 1rem; font-weight: 700; }
 .link { padding: 0; font-size: 0.8rem; color: var(--color-primary); background: none; border: none; }
 .link:hover { background: none; text-decoration: underline; }
+.paleo-next { margin: 0 0 var(--space-2); }
 .variants { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; flex: 0 0 auto; }
 .variants .lab { font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); margin-right: 4px; }
 

@@ -114,7 +114,7 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
     }
 
     // --- Snippets ---
-    function addSnippet(collectionId, { pattern, image, caption = '', refId = '', variant = '', width = 0, height = 0, lineId, box, attrs, link }) {
+    function addSnippet(collectionId, { pattern, image, caption = '', refId = '', variant = '', paleo, width = 0, height = 0, lineId, box, attrs, link }) {
         const c = getCollection(collectionId)
         if (!c || !image) return null
         const s = {
@@ -128,6 +128,7 @@ export const useDirectSnippetsStore = defineStore('directSnippets', () => {
             createdAt: new Date().toISOString(),
             ...(lineId ? { lineId } : {}),
             ...(box ? { box } : {}),
+            ...(Array.isArray(paleo) && paleo.length ? { paleo: [...paleo] } : {}),
             ...(attrs && Object.keys(attrs).length ? { attrs } : {}),
             ...(link ? { link } : {})
         }

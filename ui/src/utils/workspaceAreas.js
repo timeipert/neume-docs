@@ -119,14 +119,16 @@ export const AREAS = [
             const variants = countVariants(settings.codeVariants);
             const ids = Object.keys(settings.globalDisplayIds).length;
             const snippetVariants = settings.snippetVariants.length;
+            const paleo = settings.paleoAttributes.length;
             return {
-                count: entries + signs + variants + ids + snippetVariants,
+                count: entries + signs + variants + ids + snippetVariants + paleo,
                 text: describe([
                     entries && plural(entries, 'described pattern'),
                     signs && plural(signs, 'custom sign'),
                     variants && plural(variants, 'code variant'),
                     ids && plural(ids, 'preferred ID'),
-                    snippetVariants && plural(snippetVariants, 'snippet variant')
+                    snippetVariants && plural(snippetVariants, 'snippet variant'),
+                    paleo && plural(paleo, 'paleographic attribute')
                 ])
             };
         },

@@ -4,6 +4,7 @@ import { defaultSnippetAttributes, cleanSnippetAttributes } from '../utils/snipp
 import { cleanMetadataSchema, defaultMetadataSchema, forgetColumn } from '../utils/metadataSchema'
 import { cleanPublication, defaultPublication } from '../utils/publication'
 import { isDefaultSign, withDefaultSigns } from '../utils/signs'
+import { cleanPaleoAttributes, validatePaleoKey } from '../utils/paleo'
 
 /** Fresh default values for every persisted setting (new objects on every call). */
 export const settingDefaults = () => ({
@@ -22,6 +23,7 @@ export const settingDefaults = () => ({
     metadataSchema: defaultMetadataSchema(),
     publication: defaultPublication(),
     snippetVariants: [],
+    paleoAttributes: [],
     snippetAttributes: defaultSnippetAttributes(),
     frequencyBasis: 'corpus'
 })
@@ -35,7 +37,7 @@ export const SETTING_GROUPS = {
     // Display and table options: edited on the Settings page.
     preferences: ['displayMode', 'autoFillIds', 'snippetSize', 'snippetPadding', 'frequencyBasis', 'snippetAttributes', 'backupLabel'],
     // Signs, code variants, preferred IDs, snippet variants: edited in the pattern library.
-    library: ['globalDisplayIds', 'customSigns', 'codeVariants', 'discriminateSigns', 'snippetVariants'],
+    library: ['globalDisplayIds', 'customSigns', 'codeVariants', 'discriminateSigns', 'snippetVariants', 'paleoAttributes'],
     // Hand-made folio pins and offsets: edited next to the page images.
     alignments: ['sourceAlignments'],
     // The user's own metadata columns and their values, and how the columns are arranged and checked:
@@ -55,14 +57,14 @@ const KINDS = {
     displayMode: ['svg', 'arrow', 'text'],
     frequencyBasis: ['corpus', 'snapshot'],
     globalDisplayIds: 'object', sourceAlignments: 'object', codeVariants: 'object', sourceMeta: 'object', snippetAttributes: 'object', metadataSchema: 'object', publication: 'object',
-    customSigns: 'array', sourceMetaFields: 'array', snippetVariants: 'array',
+    customSigns: 'array', sourceMetaFields: 'array', snippetVariants: 'array', paleoAttributes: 'array',
     autoFillIds: 'boolean', discriminateSigns: 'boolean',
     snippetSize: 'number', snippetPadding: 'number',
     backupLabel: 'string'
 }
 
 /** Settings whose value is cleaned when it is taken from a file or storage. */
-const CLEANERS = { snippetAttributes: cleanSnippetAttributes, metadataSchema: cleanMetadataSchema, publication: cleanPublication, customSigns: withDefaultSigns }
+const CLEANERS = { snippetAttributes: cleanSnippetAttributes, metadataSchema: cleanMetadataSchema, publication: cleanPublication, customSigns: withDefaultSigns, paleoAttributes: cleanPaleoAttributes }
 
 /** Whether a value read from a file or storage is usable for a setting. */
 function acceptable(key, value) {
@@ -114,6 +116,10 @@ export const useSettingsStore = defineStore('settings', () => {
     // (same code, different graphical realisation). Empty = the built-in a–g.
     // Each: { key, label }
     const snippetVariants = ref([])
+    // Paleographic attributes: what a snippet says about how a sign is written, set when it is made and
+    // written in braces after the code (`*Vdu{r}`). Defined here, so the same thing is always spelled the same
+    // way (see utils/paleo). Each: { key, label, description }
+    const paleoAttributes = ref([])
     // What a snippet says about itself: { line: [definition], sign: [definition] } (see utils/snippetAttributes).
     // A line snippet has a folio and a line, a sign snippet a syllable; both can be extended.
     const snippetAttributes = ref(defaultSnippetAttributes())
@@ -122,7 +128,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const fields = {
         displayMode, autoFillIds, globalDisplayIds, snippetSize, snippetPadding, backupLabel,
         sourceAlignments, customSigns, codeVariants, discriminateSigns, sourceMetaFields,
-        sourceMeta, metadataSchema, publication, snippetVariants, snippetAttributes, frequencyBasis
+        sourceMeta, metadataSchema, publication, snippetVariants, paleoAttributes, snippetAttributes, frequencyBasis
     }
 
     /** A plain, detached copy of the given settings (all of them by default). */
@@ -332,6 +338,39 @@ export const useSettingsStore = defineStore('settings', () => {
         return [base, ...list]
     }
 
+    /** The keys of the paleographic attributes, in the order they are offered. */
+    function paleoKeys() {
+        return paleoAttributes.value.map(a => a.key)
+    }
+
+    /** Add an attribute; returns an error to show, or '' when it was added. */
+    function addPaleoAttribute(key, label = '', description = '') {
+        const k = String(key ?? '').trim()
+        const error = validatePaleoKey(k, paleoKeys())
+        if (error) return error
+        paleoAttributes.value = [...paleoAttributes.value, { key: k, label: String(label).trim() || k, description: String(description).trim() }]
+        return ''
+    }
+
+    function updatePaleoAttribute(key, patch) {
+        paleoAttributes.value = paleoAttributes.value.map(a => (a.key === key
+            ? { ...a, label: patch.label !== undefined ? String(patch.label).trim() || a.key : a.label, description: patch.description !== undefined ? String(patch.description).trim() : a.description }
+            : a))
+    }
+
+    function removePaleoAttribute(key) {
+        paleoAttributes.value = paleoAttributes.value.filter(a => a.key !== key)
+    }
+
+    function movePaleoAttribute(key, delta) {
+        const list = [...paleoAttributes.value]
+        const i = list.findIndex(a => a.key === key)
+        const j = i + delta
+        if (i < 0 || j < 0 || j >= list.length) return
+        ;[list[i], list[j]] = [list[j], list[i]]
+        paleoAttributes.value = list
+    }
+
     function hasSnippetVariantConfig() {
         return snippetVariants.value.some(v => v && v.key)
     }
@@ -422,6 +461,12 @@ export const useSettingsStore = defineStore('settings', () => {
         publication,
         setPublication,
         snippetVariants,
+        paleoAttributes,
+        paleoKeys,
+        addPaleoAttribute,
+        updatePaleoAttribute,
+        removePaleoAttribute,
+        movePaleoAttribute,
         frequencyBasis,
         snippetAttributes,
         getSnippetAttributes,

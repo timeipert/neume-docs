@@ -33,6 +33,7 @@ import PageHeader from '../components/ui/PageHeader.vue';
 import Disclosure from '../components/ui/Disclosure.vue';
 import SignVocabulary from '../components/patterns/SignVocabulary.vue';
 import SnippetVariants from '../components/patterns/SnippetVariants.vue';
+import PaleoAttributes from '../components/patterns/PaleoAttributes.vue';
 import PatternsTabs from '../components/patterns/PatternsTabs.vue';
 import PreferredIds from '../components/patterns/PreferredIds.vue';
 import { useToast } from '../composables/useToast';
@@ -191,6 +192,9 @@ const setupSummary = computed(() => ({
     signs: settings.customSigns.length
         ? `${settings.customSigns.length} sign${settings.customSigns.length === 1 ? '' : 's'}: ${settings.customSigns.map(s => s.key).join(' ')}`
         : 'No signs yet',
+    paleo: settings.paleoAttributes.length
+        ? settings.paleoAttributes.map(a => a.key).join(', ')
+        : 'none yet',
     snippetVariants: settings.hasSnippetVariantConfig()
         ? `${settings.snippetVariants.length} variant${settings.snippetVariants.length === 1 ? '' : 's'}`
         : 'Built-in a–g',
@@ -228,6 +232,9 @@ const stats = computed(() => ({
     <!-- Set-up: everything that defines the vocabulary is edited here, nowhere else. -->
     <Disclosure title="Signs" :summary="setupSummary.signs" :open="setupOpen === 'signs'">
         <SignVocabulary />
+    </Disclosure>
+    <Disclosure title="Paleographic attributes" :summary="setupSummary.paleo" :open="setupOpen === 'paleo'">
+        <PaleoAttributes />
     </Disclosure>
     <Disclosure title="Snippet variants" :summary="setupSummary.snippetVariants" :open="setupOpen === 'snippet-variants'">
         <SnippetVariants />

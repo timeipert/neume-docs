@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import PatternDisplay from '../PatternDisplay.vue';
 import PatternCode from '../PatternCode.vue';
 import SnippetThumb from './SnippetThumb.vue';
+import PaleoPicker from '../PaleoPicker.vue';
 import IiifSetup from '../iiif/IiifSetup.vue';
 import { useProjectContext } from '../../composables/useProject';
 import { useDirectSnippetsStore } from '../../stores/directSnippets';
@@ -15,6 +16,7 @@ import { projectPageLocation } from '../../utils/projectChoices';
 import { pseudoLabel } from '../../utils/neumeTable';
 import { fileToSnippet, imageFromPaste, imagesFromDrop } from '../../utils/snippetImages';
 import { findLine, lineLabel, signsOfLine, sortedLines } from '../../utils/lineSigns';
+import { paleoOf, paleoSuffix, withPaleo } from '../../utils/paleo';
 import { loneSignAttributes, validateAttribute, validateAttributes } from '../../utils/snippetAttributes';
 
 /**
@@ -85,6 +87,13 @@ function saveAttr(snippet, def, value) {
     if (snippet.kind === 'image') direct.updateSnippet(collection.value.id, snippet.id, { attrs: next });
     else annotations.updateAnnotation(snippet.source, snippet.folio, snippet.pattern, snippet.id, { attrs: next });
 }
+
+/** What a snippet says about how the sign is written: set at once, kept on the snippet itself. */
+function savePaleo(snippet, keys) {
+    if (snippet.kind === 'image') direct.updateSnippet(collection.value.id, snippet.id, { paleo: keys });
+    else annotations.updateAnnotation(snippet.source, snippet.folio, snippet.pattern, snippet.id, { paleo: keys });
+}
+const paleoLabel = (s) => paleoSuffix(paleoOf(s, settings.paleoKeys()));
 
 function openPage(folio, region) {
     if (!folio) return;
@@ -170,6 +179,7 @@ const shownLinePlaces = computed(() => (showAllPlaces.value ? linePlaces.value :
 // ---- screenshots of signs: adding ------------------------------------------
 
 const pending = ref(null);
+const pendingPaleo = ref([]);
 const attrs = reactive({});
 const dragging = ref(false);
 const reading = ref(false);
@@ -199,12 +209,14 @@ function addPending() {
     if (!c) return;
     direct.addPattern(c.id, props.code);
     direct.addSnippet(c.id, {
-        pattern: props.code, image: pending.value.dataUrl, attrs: check.value.values,
+        pattern: props.code, image: pending.value.dataUrl, attrs: check.value.values, paleo: pendingPaleo.value,
         width: pending.value.width, height: pending.value.height
     });
+    const written = withPaleo(props.code, pendingPaleo.value);
     pending.value = null;
+    pendingPaleo.value = [];
     for (const k of Object.keys(attrs)) delete attrs[k];
-    toast.show(`Snippet added to ${props.code}.`, { tone: 'success' });
+    toast.show(`Snippet added to ${written}.`, { tone: 'success' });
 }
 
 function onKey(e) {
@@ -250,7 +262,7 @@ onBeforeUnmount(() => {
                 <li v-for="s in mine" :key="s.id" :class="{ chosen: s.id === chosenId }">
                     <button class="snip" :title="s.place && s.place.label ? s.place.label : 'Snippet'" @click="chosenId = chosenId === s.id ? '' : s.id">
                         <span class="pic"><SnippetThumb :snippet="s" :width="92" :height="64" /></span>
-                        <span class="cap">{{ s.kind === 'image' ? (s.place && s.place.label) || '—' : `f. ${s.folio}${s.lineName ? ' · ' + s.lineName : ''}` }}</span>
+                        <span class="cap"><b v-if="paleoLabel(s)" class="paleo">{{ paleoLabel(s) }}</b> {{ s.kind === 'image' ? (s.place && s.place.label) || '—' : `f. ${s.folio}${s.lineName ? ' · ' + s.lineName : ''}` }}</span>
                     </button>
                 </li>
             </ul>
@@ -262,6 +274,7 @@ onBeforeUnmount(() => {
                     <button v-if="chosen.kind !== 'image' || chosen.lineId" class="ne-btn ne-btn--sm" @click="openSnippet(chosen)">{{ chosen.kind === 'image' ? 'Open the line →' : 'Open the page →' }}</button>
                     <button v-if="chosen.kind === 'image'" class="ne-btn ne-btn--danger ne-btn--sm" @click="removeShot(chosen)">Delete</button>
                 </div>
+                <PaleoPicker class="paleo-field" :model-value="paleoOf(chosen, settings.paleoKeys())" :code="code" @update:model-value="savePaleo(chosen, $event)" />
                 <div v-if="detailDefs.length" class="fields">
                     <div v-for="def in detailDefs" :key="def.key" class="ne-field">
                         <label :for="`cd-${chosen.id}-${def.key}`">{{ def.label }}</label>
@@ -322,6 +335,7 @@ onBeforeUnmount(() => {
             <form v-else class="pending" @submit.prevent="addPending">
                 <img :src="pending.dataUrl" alt="Preview of the new snippet" />
                 <div class="fields">
+                    <PaleoPicker v-model="pendingPaleo" :code="code" />
                     <div v-for="def in loneDefs" :key="def.key" class="ne-field">
                         <label :for="`np-${def.key}`">{{ def.label }}</label>
                         <input :id="`np-${def.key}`" v-model="attrs[def.key]" class="ne-input" :class="{ bad: attrs[def.key] && check.errors[def.key] }" :placeholder="def.hint" autocomplete="off" />
@@ -395,6 +409,8 @@ h3 code { text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
 .grid li.chosen .snip { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); background: var(--color-primary-light); }
 .pic { display: flex; align-items: center; justify-content: center; min-height: 64px; background: #f8fafc; border-radius: var(--radius-sm); overflow: hidden; }
 .pic :deep(img) { max-width: 100%; max-height: 90px; object-fit: contain; }
+.paleo { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--color-text); }
+.paleo-field { margin-top: var(--space-2); }
 .cap { font-size: 0.72rem; color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .detail { margin-top: var(--space-3); padding: var(--space-3); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
@@ -402,6 +418,7 @@ h3 code { text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
 .spacer { flex: 1; }
 .fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-3); }
 .fields .ne-input { padding: 0.4em 0.6em; font-size: 0.9rem; }
+.fields > .pp { grid-column: 1 / -1; }
 
 .line-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 .line-list li { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) 0; border-bottom: 1px solid var(--color-border); font-size: 0.88rem; }

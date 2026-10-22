@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router';
 import PatternDisplay from '../PatternDisplay.vue';
 import PatternCode from '../PatternCode.vue';
 import { MAX_SPECIAL_SIGNATURES, pseudoLabel } from '../../utils/neumeTable';
+import { useSettingsStore } from '../../stores/settings';
+import { paleoOf, paleoSlots, slotKey } from '../../utils/paleo';
 
 /**
  * The table of a project: two rows of headers — the group (a movement, a special
@@ -48,6 +50,27 @@ const select = computed(() => props.choose && props.mode === 'fill');
 const matrix = computed(() => props.mode === 'matrix');
 const isPseudo = (code) => !!pseudoLabel(code);
 const snippetsOf = (code) => props.snippets.get(code) || [];
+
+// ---- paleographic attributes: the places under a code -----------------------------------
+// Snippets with the same attributes stand at the same height. The places of a code are those any
+// snippet of the table has — in the matrix those of every project, so a place is where the others have it.
+const settings = useSettingsStore();
+const order = computed(() => settings.paleoKeys());
+const slotMap = computed(() => {
+    const map = new Map();
+    for (const g of props.groups) {
+        for (const c of g.columns) {
+            const all = matrix.value ? props.rows.flatMap(r => r.snippets.get(c.code) || []) : snippetsOf(c.code);
+            const slots = paleoSlots(all, order.value);
+            // Without any attribute there is one place, and nothing to show of it.
+            map.set(c.code, slots.length === 1 && !slots[0].key ? [] : slots);
+        }
+    }
+    return map;
+});
+const slotsOf = (code) => slotMap.value.get(code) || [];
+/** The snippets of a cell that stand in a place. */
+const inSlot = (list, slot) => list.filter(s => slotKey(paleoOf(s, order.value)) === slot.key);
 const occurrencesOf = (code) => (props.occurrences && props.occurrences.get(code)) || null;
 
 const columnCount = computed(() => props.groups.reduce((n, g) => n + g.columns.length, 0));
@@ -198,7 +221,17 @@ defineExpose({ reveal });
                                 :aria-label="`${r.name}, ${c.code}: ${(r.snippets.get(c.code) || []).length} snippets`"
                                 @click="emit('open-cell', { row: r, code: c.code })"
                             >
-                                <span v-if="(r.snippets.get(c.code) || []).length" class="stack" :class="{ many: (r.snippets.get(c.code) || []).length > 1 }">
+                                <span v-if="slotsOf(c.code).length" class="slots">
+                                    <span v-for="slot in slotsOf(c.code)" :key="slot.key" class="slot">
+                                        <span class="slot-label">{{ slot.label || '—' }}</span>
+                                        <span v-if="inSlot(r.snippets.get(c.code) || [], slot).length" class="stack" :class="{ many: inSlot(r.snippets.get(c.code) || [], slot).length > 1 }">
+                                            <span class="thumb"><slot name="thumb" :snippet="inSlot(r.snippets.get(c.code) || [], slot)[0]" :code="c.code" compact /></span>
+                                            <span v-if="inSlot(r.snippets.get(c.code) || [], slot).length > 1" class="n">{{ inSlot(r.snippets.get(c.code) || [], slot).length }}</span>
+                                        </span>
+                                        <span v-else class="thumb gap"></span>
+                                    </span>
+                                </span>
+                                <span v-else-if="(r.snippets.get(c.code) || []).length" class="stack" :class="{ many: (r.snippets.get(c.code) || []).length > 1 }">
                                     <span class="thumb"><slot name="thumb" :snippet="r.snippets.get(c.code)[0]" :code="c.code" /></span>
                                     <span v-if="(r.snippets.get(c.code) || []).length > 1" class="n">{{ (r.snippets.get(c.code) || []).length }}</span>
                                 </span>
@@ -228,7 +261,17 @@ defineExpose({ reveal });
                             :aria-label="snippetsOf(c.code).length ? `${snippetsOf(c.code).length} snippets for ${c.code}: open` : `Add a snippet for ${c.code}`"
                             @click="emit('open', c.code)"
                         >
-                            <span v-if="snippetsOf(c.code).length" class="stack" :class="{ many: snippetsOf(c.code).length > 1 }">
+                            <span v-if="slotsOf(c.code).length" class="slots">
+                                <span v-for="slot in slotsOf(c.code)" :key="slot.key" class="slot">
+                                    <span class="slot-label">{{ slot.label || '—' }}</span>
+                                    <span v-if="inSlot(snippetsOf(c.code), slot).length" class="stack" :class="{ many: inSlot(snippetsOf(c.code), slot).length > 1 }">
+                                        <span class="thumb"><slot name="thumb" :snippet="inSlot(snippetsOf(c.code), slot)[0]" :code="c.code" compact /></span>
+                                        <span v-if="inSlot(snippetsOf(c.code), slot).length > 1" class="n">{{ inSlot(snippetsOf(c.code), slot).length }}</span>
+                                    </span>
+                                    <span v-else class="thumb gap"></span>
+                                </span>
+                            </span>
+                            <span v-else-if="snippetsOf(c.code).length" class="stack" :class="{ many: snippetsOf(c.code).length > 1 }">
                                 <span class="thumb"><slot name="thumb" :snippet="snippetsOf(c.code)[0]" :code="c.code" /></span>
                                 <span v-if="snippetsOf(c.code).length > 1" class="n">{{ snippetsOf(c.code).length }}</span>
                             </span>
@@ -331,6 +374,12 @@ td.snip.active { background: #f1f6ff; box-shadow: inset 0 -3px 0 var(--color-pri
 .r-row th { font-size: 0.88rem; text-transform: none; letter-spacing: 0; color: var(--color-text); }
 .row-link { display: block; font-weight: 700; overflow-wrap: anywhere; }
 .r-row.current th { background: var(--color-primary-light); }
+/* places under a code: the same attributes at the same height */
+.slots { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.slot { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.slot-label { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.66rem; line-height: 1; color: var(--color-text-light); }
+.slots .thumb { width: 64px; height: 46px; }
+.thumb.gap { border: 1px dashed var(--line); background: transparent; box-shadow: none; }
 td.snip.m { height: 64px; }
 td.snip.m .cell { min-height: 64px; }
 td.snip.m .thumb { width: 64px; height: 46px; }

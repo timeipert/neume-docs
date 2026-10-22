@@ -6,7 +6,9 @@ import { usePatternLibraryStore } from '../stores/patternLibrary';
 import { useToast } from '../composables/useToast';
 import { useProjectContext } from '../composables/useProject';
 import { useColumnChoice } from '../composables/useColumnChoice';
+import { useSettingsStore } from '../stores/settings';
 import { getBaseCode } from '../utils/patternCode';
+import { filterByPaleo, paleoOf } from '../utils/paleo';
 import { groupSelected, selectColumn } from '../utils/projectTable';
 import ProjectTable from '../components/projects/ProjectTable.vue';
 import SegmentedControl from '../components/ui/SegmentedControl.vue';
@@ -43,7 +45,25 @@ const {
     hasTranscription, occurrencesLoaded, standardCodes, extendedCodes, needsIiif
 } = context;
 
+const settings = useSettingsStore();
 const extended = computed(() => props.scope === 'extended');
+
+// ---- paleographic attributes: show only the snippets that have them ----------------------
+// The columns tell codes apart by their notes and the virga; everything finer is an attribute of the
+// snippet, and puts snippets in rows under the code. This asks for the snippets that have an attribute, and hides the rest.
+const paleoUsed = computed(() => {
+    const order = settings.paleoKeys();
+    const used = new Set();
+    for (const list of context.snippets.value.values()) for (const s of list) paleoOf(s, order).forEach(k => used.add(k));
+    return [...order.filter(k => used.has(k)), ...[...used].filter(k => !order.includes(k))];
+});
+const paleoFilter = ref([]);
+function togglePaleo(key) {
+    paleoFilter.value = paleoFilter.value.includes(key) ? paleoFilter.value.filter(k => k !== key) : [...paleoFilter.value, key];
+}
+const shownSnippets = computed(() => (paleoFilter.value.length
+    ? new Map([...snippets.value].map(([code, list]) => [code, filterByPaleo(list, paleoFilter.value, settings.paleoKeys())]))
+    : snippets.value));
 const table = ref(null);
 
 // ---- what the table shows ----------------------------------------------------
@@ -165,13 +185,20 @@ const next = computed(() => (extended.value
                 </p>
             </template>
 
+            <div v-if="paleoUsed.length" class="paleo-filter" role="group" aria-label="Show only snippets with a paleographic attribute">
+                <span class="lab">Paleographic attributes</span>
+                <button v-for="k in paleoUsed" :key="k" type="button" class="chip" :class="{ on: paleoFilter.includes(k) }" :aria-pressed="paleoFilter.includes(k)" @click="togglePaleo(k)"><code>{{ k }}</code></button>
+                <button type="button" class="chip" :class="{ on: paleoFilter.includes('-') }" :aria-pressed="paleoFilter.includes('-')" title="Snippets without an attribute" @click="togglePaleo('-')">none</button>
+                <button v-if="paleoFilter.length" type="button" class="ne-btn ne-btn--ghost ne-btn--sm" @click="paleoFilter = []">Show all</button>
+            </div>
+
             <ProjectTable
                 ref="table"
                 mode="fill"
                 :choose="!extended"
                 :groups="groups"
                 :selected="selected"
-                :snippets="snippets"
+                :snippets="shownSnippets"
                 :occurrences="hasTranscription && occurrencesLoaded ? occurrences : null"
                 :glyphs="glyphs"
                 :removable="removable"
@@ -184,7 +211,7 @@ const next = computed(() => (extended.value
                 @open="openCell"
                 @remove="removeColumn"
             >
-                <template #thumb="{ snippet }"><SnippetThumb :snippet="snippet" :width="84" :height="60" /></template>
+                <template #thumb="{ snippet, compact }"><SnippetThumb :snippet="snippet" :width="compact ? 64 : 84" :height="compact ? 46 : 60" /></template>
             </ProjectTable>
 
             <footer class="next">
@@ -228,6 +255,12 @@ const next = computed(() => (extended.value
 .toolbar { display: flex; align-items: center; gap: var(--space-2) var(--space-3); flex-wrap: wrap; }
 .search { width: 280px; max-width: 100%; }
 .spacer { flex: 1; }
+.paleo-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.paleo-filter .lab { font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); margin-right: 4px; }
+.chip { display: inline-flex; align-items: baseline; padding: 1px 9px; font-size: 0.82rem; line-height: 1.6; border-radius: 999px; background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border-hover); cursor: pointer; }
+.chip code { background: transparent; padding: 0; font-weight: 700; }
+.chip:hover { border-color: var(--color-primary); }
+.chip.on { background: var(--color-primary); border-color: var(--color-primary-hover); color: #fff; }
 .unknown { display: flex; align-items: center; gap: var(--space-3); margin: 0; }
 .empty { max-width: 560px; margin: var(--space-5) auto; }
 .empty p { margin: 0 0 var(--space-3); }

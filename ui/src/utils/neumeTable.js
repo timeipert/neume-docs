@@ -37,6 +37,32 @@ import { getBaseCode } from './patternCode.js';
 export const CLEF_CODE = '(Clef)';
 export const CUSTOS_CODE = '(Custos)';
 
+/**
+ * A clef is written `(Clef-C)`, `(Clef-F)`, … — the letter says which. No space, since a space ends a code
+ * (see getBaseCode). The bare `(Clef)` is the clef whose kind is not told, kept for what was filed under it.
+ */
+const CLEF_RE = /^\(Clef(?:-([A-Za-z]+))?\)$/;
+export const clefCode = (letter) => `(Clef-${letter})`;
+/** The clefs the standard table has. More can be added: type `(Clef-G)` into the search. */
+export const STANDARD_CLEFS = [clefCode('C'), clefCode('F')];
+
+/** What a clef or custos column says, or '' for any other code. */
+export function pseudoLabel(code) {
+    const base = getBaseCode(code);
+    if (base === CUSTOS_CODE) return 'Custos';
+    const m = CLEF_RE.exec(base);
+    return m ? (m[1] ? `Clef ${m[1].toUpperCase()}` : 'Clef') : '';
+}
+
+/**
+ * The virga variants every standard table offers, chosen or not. They are columns of the standard
+ * table even where their shape is not one of STANDARD_DIRECTIONS (`*VeV`).
+ */
+export const STANDARD_VIRGA_SET = [
+    '*V', '[*Vd]', '*uV', '*Ve', '*VeV', '*Vdd', '[*Vdd]', '*[uVd]', '*uVd', '*uuV',
+    '[*u]uV', '[*Vdu]', '*[uVd]d', '*u[uVd]', '*VdduV', '[*Vddu]', '[*VdL]'
+];
+
 /** The directional columns of the standard table, in the order of the brief. */
 export const STANDARD_DIRECTIONS = ['*', '*d', '*u', '*e', '*dd', '*ud', '*uu', '*du', '*udd', '*uud', '*ddu'];
 
@@ -107,7 +133,7 @@ export function firstSpecialSign(code) {
 export function classify(code) {
     const base = getBaseCode(code);
 
-    if (base === CLEF_CODE) return { code: base, signature: base, direction: '', tones: 0, kind: 'clef', column: 'clef' };
+    if (CLEF_RE.test(base)) return { code: base, signature: base, direction: '', tones: 0, kind: 'clef', column: 'clef' };
     if (base === CUSTOS_CODE) return { code: base, signature: base, direction: '', tones: 0, kind: 'custos', column: 'custos' };
 
     const signature = signatureOf(base);
@@ -318,7 +344,7 @@ export function tableProgress(rows) {
     return {
         directions: directions.size,
         specials,
-        clef: list.some(r => r.pattern === CLEF_CODE),
+        clef: list.some(r => classify(r.pattern).kind === 'clef'),
         custos: list.some(r => r.pattern === CUSTOS_CODE),
         expanded: list.filter(r => tierOf(r) === 'expanded').length
     };

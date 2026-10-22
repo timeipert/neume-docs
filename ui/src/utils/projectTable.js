@@ -32,9 +32,10 @@
  */
 
 import {
-    CLEF_CODE,
     CUSTOS_CODE,
     SPECIAL_COLUMNS,
+    STANDARD_CLEFS,
+    STANDARD_VIRGA_SET,
     STANDARD_DIRECTIONS,
     MAX_SPECIAL_SIGNATURES,
     canSelectForStandard,
@@ -45,6 +46,29 @@ import {
 import { getBaseCode } from './patternCode.js';
 
 const natural = (a, b) => a.localeCompare(b, undefined, { numeric: true });
+
+/** The built-in sign of the virga. A code that differs from another only by it is that code's virga variant. */
+export const VIRGA_SIGN = 'V';
+
+/**
+ * The virga variants among some codes, without anyone having registered them: `*V` of `*`,
+ * `[*Vd]` of `[*d]`, `*uuVdd` of `*uudd`, `[*VdL]` of `[*dL]`. A code is one when taking the virga
+ * out leaves a code of a shape or of a special sign — a project's other signs leave it a code of its own.
+ *
+ * @param {Iterable<string>} codes
+ * @returns {Map<string, { base: string, label: string, id: string }>} variant → the code it is a variant of
+ */
+export function virgaVariants(codes) {
+    const out = new Map();
+    for (const raw of codes || []) {
+        const code = getBaseCode(raw);
+        if (!code.includes(VIRGA_SIGN)) continue;
+        const base = code.replaceAll(VIRGA_SIGN, '');
+        if (!['direction', 'special'].includes(classify(base).kind)) continue;
+        out.set(code, { base, label: 'Virga', id: '' });
+    }
+    return out;
+}
 
 /**
  * The group a code stands under, or null when it has no place in a table.
@@ -124,6 +148,9 @@ function slotOf(code) {
 export function buildLibrary(allCodes, freq, { variants = new Map() } = {}) {
     const byKey = new Map();
     const byCode = new Map();
+    const inSet = new Set(STANDARD_VIRGA_SET);
+    // The virga variants need no registering: they are found by their sign. Registered ones win.
+    variants = new Map([...virgaVariants([...allCodes || [], ...STANDARD_VIRGA_SET]), ...variants]);
     const variantOf = (code) => {
         const v = variants.get(getBaseCode(code));
         return v ? getBaseCode(v.base) : '';
@@ -144,7 +171,7 @@ export function buildLibrary(allCodes, freq, { variants = new Map() } = {}) {
         }
         const column = {
             code, signature: cl.signature, tones: cl.tones, categoryKey: cat.key, freq: freq.code(code),
-            baseFreq: freq.code(base || code), standard: cat.standard,
+            baseFreq: freq.code(base || code), standard: cat.standard || inSet.has(code),
             ...(base ? { variantOf: base, variantLabel: info.label || '', variantId: info.id || '' } : {})
         };
         byKey.get(cat.key).columns.push(column);
@@ -152,15 +179,23 @@ export function buildLibrary(allCodes, freq, { variants = new Map() } = {}) {
     };
 
     for (const code of allCodes || []) add(code);
-    // The shapes of the standard table exist even when the library has nothing for them yet.
+    // The shapes of the standard table exist even when the library has nothing for them yet,
+    // and so do its virga variants, its clefs and the custos.
     STANDARD_DIRECTIONS.forEach(add);
-    add(CLEF_CODE);
+    STANDARD_VIRGA_SET.forEach(add);
+    STANDARD_CLEFS.forEach(add);
     add(CUSTOS_CODE);
 
     // Length, then frequency: the signature (its notes, then how often it occurs, in any way of writing it),
     // then the ways of writing it; a variant follows the code it comes from.
     const baseOf = (c) => c.variantOf || c.code;
+    // Clefs and custos have no notes to order by: C, F, the clefs added since, then the custos.
+    const pseudoRank = (c) => (c.code === CUSTOS_CODE ? 2 : STANDARD_CLEFS.includes(c.code) ? 0 : 1);
     for (const cat of byKey.values()) {
+        if (cat.group === 'other') {
+            cat.columns.sort((a, b) => pseudoRank(a) - pseudoRank(b) || natural(a.code, b.code));
+            continue;
+        }
         cat.columns.sort((a, b) =>
             compareSignatures(a.signature, b.signature, freq)
             || b.baseFreq - a.baseFreq
@@ -209,6 +244,7 @@ export function tableCodes(project, mode) {
 /**
  * Which columns of a category to draw while choosing columns: everything that is
  * selected or already has something, plus the most frequent few — or all of them.
+ * The variants of a column that is drawn are drawn with it: a variant is shown with the patterns.
  *
  * @param {{ columns: LibraryColumn[] }} category
  * @param {{ keep?: Set<string>, expanded?: boolean, top?: number }} [options]
@@ -223,7 +259,7 @@ export function columnsToShow(category, { keep = new Set(), expanded = false, to
             .slice(0, top)
             .map(x => x.c.code)
     );
-    return columns.filter(c => frequent.has(c.code) || keep.has(c.code));
+    return columns.filter(c => frequent.has(c.code) || keep.has(c.code) || (c.variantOf && frequent.has(c.variantOf)));
 }
 
 // ---------------------------------------------------------------------------
@@ -241,11 +277,31 @@ export function selectColumn(columns, code, max = MAX_SPECIAL_SIGNATURES, varian
     const origin = variantOf(base) || base;
     const cat = categoryOf(origin);
     if (!cat) return { ok: false, reason: `${base} is not a neume shape, so it has no column.` };
-    if (!cat.standard) return { ok: false, reason: `${base} belongs to the extended table, not the standard table.` };
+    if (!cat.standard && !STANDARD_VIRGA_SET.includes(base)) return { ok: false, reason: `${base} belongs to the extended table, not the standard table.` };
     if (columns.includes(base)) return { ok: true, columns };
     const verdict = canSelectForStandard(columns.map(pattern => ({ pattern: variantOf(pattern) || pattern, tier: 'standard' })), origin, max);
     if (!verdict.ok) return { ok: false, reason: verdict.reason };
     return { ok: true, columns: [...columns, base] };
+}
+
+/**
+ * What the extended list holds that the standard table has a place for, moved there: a code of a
+ * standard shape (or a variant of one) is a column of the standard table, whatever way it came
+ * into the extended list. What the rules refuse — a fourth constellation of a sign — stays.
+ *
+ * @returns {{ columns: string[], extended: string[], moved: string[] }}
+ */
+export function promoteToStandard(columns, extended, variantOf = () => '') {
+    let current = [...columns];
+    const moved = [];
+    for (const code of extended) {
+        const result = selectColumn(current, code, undefined, variantOf);
+        if (result.ok && result.columns.length > current.length) {
+            current = result.columns;
+            moved.push(code);
+        }
+    }
+    return { columns: current, extended: extended.filter(c => !moved.includes(c)), moved };
 }
 
 export function deselectColumn(columns, code) {
@@ -326,6 +382,8 @@ export function checkCode(text) {
     const fail = (message) => ({ ok: false, code, message, category: null });
     if (!code) return fail('');
     if (/\s/.test(code)) return fail('A code has no spaces.');
+    if (classify(code).kind === 'clef') return { ok: true, code, message: '', category: categoryOf(code) };
+    if (/^\(clef/i.test(code)) return fail('A clef is written (Clef-C), (Clef-F), … with its letter.');
     if (!/^[*ude[\]{}A-Z]+$/.test(code)) return fail('A code is made of * u d e, upper-case signs, and [ ] for groups.');
 
     let depth = 0;

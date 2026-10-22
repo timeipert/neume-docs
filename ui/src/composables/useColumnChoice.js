@@ -1,6 +1,7 @@
 import { computed, nextTick, ref, watch } from 'vue';
 import { useProjectsStore } from '../stores/projects';
 import { useToast } from './useToast';
+import { STANDARD_VIRGA_SET } from '../utils/neumeTable';
 import { categoryOf, checkCode, columnsToShow, deselectColumn, selectColumn, suggestColumns } from '../utils/projectTable';
 
 /**
@@ -27,8 +28,8 @@ export function useColumnChoice(context, { table, active }) {
 
     // ---- what is shown -------------------------------------------------------
 
-    // A project that has no columns yet shows every possibility; once there are some, the ones it has.
-    const view = ref(project.value && project.value.columns.length ? 'chosen' : 'all');
+    // Every possibility is shown, whatever the project has chosen so far; the chosen ones are a view of their own.
+    const view = ref('all');
     const VIEWS = computed(() => [
         { value: 'all', label: 'All', title: 'Every code of the pattern library that can be in the standard table' },
         { value: 'chosen', label: `Chosen ${project.value.columns.length}`, title: 'Only the columns of this project' },
@@ -52,7 +53,8 @@ export function useColumnChoice(context, { table, active }) {
 
     /** The groups of the standard table, each with the columns to draw. */
     const groups = computed(() => {
-        const keep = new Set([...project.value.columns, ...annotatedCounts.value.keys()]);
+        // What is chosen or has snippets, and the virga variants every standard table offers.
+        const keep = new Set([...project.value.columns, ...annotatedCounts.value.keys(), ...STANDARD_VIRGA_SET]);
         const out = [];
         for (const cat of library.value.categories) {
             const all = cat.columns.filter(c => c.standard);

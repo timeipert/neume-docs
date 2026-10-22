@@ -5,6 +5,7 @@ import PatternDisplay from '../PatternDisplay.vue';
 import { usePatternLibraryStore } from '../../stores/patternLibrary';
 import { useToast } from '../../composables/useToast';
 import { checkCode } from '../../utils/projectTable';
+import { pseudoLabel } from '../../utils/neumeTable';
 
 /**
  * A code the pattern library does not have yet, added: typed in, checked against the
@@ -54,17 +55,21 @@ function add() {
             <p class="help">
                 The first note is <code>*</code>, then <code>u</code> up, <code>d</code> down, <code>e</code> equal.
                 <code>[ ]</code> joins notes into one group; an upper-case letter after a note is a sign (<code>L</code> liquescent, <code>O</code> oriscus, …).
+                A clef is <code>(Clef-C)</code>, <code>(Clef-F)</code>, <code>(Clef-G)</code> … with its letter.
             </p>
         </div>
 
         <p v-if="text.trim() && !check.ok" class="error" role="alert">{{ check.message }}</p>
 
         <div v-if="check.ok" class="preview">
-            <div class="draw"><PatternDisplay :pattern="check.code" :glyphs="glyphs" :scale="1.6" /></div>
+            <div class="draw">
+                <strong v-if="pseudoLabel(check.code)">{{ pseudoLabel(check.code) }}</strong>
+                <PatternDisplay v-else :pattern="check.code" :glyphs="glyphs" :scale="1.6" />
+            </div>
             <div>
                 <p class="line"><strong>{{ check.code }}</strong></p>
                 <p class="line ne-muted">
-                    Goes under <code>{{ check.category.label }}</code><template v-if="check.category.title !== check.category.label"> — {{ check.category.title }}</template>.
+                    Goes under <code>{{ check.category.label }}</code><template v-if="check.category.title && check.category.title !== check.category.label"> — {{ check.category.title }}</template>.
                 </p>
                 <p v-if="known" class="line ok">The library has it already.</p>
                 <p v-if="wrongTable" class="line warn">This is not a shape of the standard table. Add it to the extended table.</p>

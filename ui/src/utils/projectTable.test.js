@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildFrequency, STANDARD_DIRECTIONS } from './neumeTable';
+import { buildFrequency, pseudoLabel, STANDARD_DIRECTIONS, STANDARD_VIRGA_SET } from './neumeTable';
 import {
     categoryOf,
     buildLibrary,
@@ -10,7 +10,9 @@ import {
     deselectColumn,
     suggestColumns,
     filledCount,
-    checkCode
+    checkCode,
+    virgaVariants,
+    promoteToStandard
 } from './projectTable';
 
 const CM = {
@@ -26,6 +28,8 @@ const freq = buildFrequency(CM);
 const library = buildLibrary(Object.keys(CM), freq);
 const cat = (key) => library.byKey.get(key);
 const codes = (key) => cat(key).columns.map(c => c.code);
+/** The codes of a group without the virga variants every library has (STANDARD_VIRGA_SET). */
+const plain = (key) => cat(key).columns.filter(c => !STANDARD_VIRGA_SET.includes(c.code)).map(c => c.code);
 
 describe('the category of a code', () => {
     it('is its movement, whatever the brackets', () => {
@@ -86,42 +90,44 @@ describe('the library as two levels', () => {
         const keys = library.categories.map(c => c.key);
         expect(keys[keys.length - 1]).toBe('other');
         expect(keys.filter(k => k === 'other')).toHaveLength(1);
-        expect(codes('other')).toEqual(['(Clef)', '(Custos)']);
+        expect(codes('other')).toEqual(['(Clef-C)', '(Clef-F)', '(Custos)']);
     });
 
     it('has one rule for the shapes and for the codes under them: fewer notes first, then the more frequent', () => {
         const tones = library.categories.filter(c => c.group === 'direction').map(c => c.columns[0].tones);
         expect(tones).toEqual([...tones].sort((a, b) => a - b));
         // under *u: the plain ways by how often the signature is written
-        expect(codes('dir:*u')).toEqual(['*u', '[*u]']);
-        expect(codes('dir:*d')).toEqual(['[*d]', '*d']);
+        expect(plain('dir:*u')).toEqual(['*u', '[*u]']);
+        expect(plain('dir:*d')).toEqual(['[*d]', '*d']);
         // under a sign: fewer notes first, then the more frequent signature
-        expect(codes('sign:L')).toEqual(['*dL', '[*uL]']);
+        expect(plain('sign:L')).toEqual(['*dL', '[*uL]']);
         expect(codes('sign:O')).toEqual(['*uO']);
         expect(codes('sign:Q')).toEqual(['*uuQ']);
     });
 
     it('lists every way of writing a movement, the most frequent first', () => {
-        expect(codes('dir:*ud')).toEqual(['*ud', '[*u]d', '[*ud]', '*[ud]']);
-        expect(codes('dir:*u').slice(0, 2)).toEqual(['*u', '[*u]']);
+        expect(plain('dir:*ud')).toEqual(['*ud', '[*u]d', '[*ud]', '*[ud]']);
+        expect(plain('dir:*u').slice(0, 2)).toEqual(['*u', '[*u]']);
     });
 
     it('has the standard shapes even for an empty library', () => {
         const empty = buildLibrary([], freq);
         const labels = empty.categories.filter(c => c.group === 'direction').map(c => c.label);
         for (const d of STANDARD_DIRECTIONS) expect(labels).toContain(d);
-        expect(empty.byKey.get('other').columns.map(c => c.code)).toEqual(['(Clef)', '(Custos)']);
+        expect(empty.byKey.get('other').columns.map(c => c.code)).toEqual(['(Clef-C)', '(Clef-F)', '(Custos)']);
     });
 
     it('says which columns can be in the standard table', () => {
         expect(library.byCode.get('*dL').standard).toBe(true);
         expect(library.byCode.get('*ddd').standard).toBe(false);
-        expect(buildLibrary(['*uVd'], freq).byCode.get('*uVd').standard).toBe(false);
+        expect(buildLibrary(['*uVd'], freq).byCode.get('*uVd').standard).toBe(true);
+        expect(buildLibrary(['*uVdd'], freq).byCode.get('*uVdd').standard).toBe(true);
+        expect(buildLibrary(['*Vddd'], freq).byCode.get('*Vddd').standard).toBe(false);
     });
 
     it('counts a code once, however often it is offered', () => {
         const twice = buildLibrary(['*ud', '*ud', '*ud b'], freq);
-        expect(twice.byKey.get('dir:*ud').columns).toHaveLength(1);
+        expect(twice.byKey.get('dir:*ud').columns.filter(c => c.code === '*ud')).toHaveLength(1);
     });
 
     it('finds a column by its code', () => {
@@ -148,7 +154,7 @@ describe('code variants', () => {
     it('of a code with a built-in sign stand in the group of that sign, right after it', () => {
         const v = new Map([['*dVL', { base: '*dL', label: 'virga' }]]);
         const lib = buildLibrary(['*dL', '*dVL', '*uL'], freq, { variants: v });
-        expect(lib.byKey.get('sign:L').columns.map(c => c.code)).toEqual(['*dL', '*dVL', '*uL']);
+        expect(lib.byKey.get('sign:L').columns.map(c => c.code).filter(c => !STANDARD_VIRGA_SET.includes(c))).toEqual(['*dL', '*dVL', '*uL']);
         expect(lib.byCode.get('*dVL')).toMatchObject({ categoryKey: 'sign:L', variantOf: '*dL', standard: true });
     });
 
@@ -177,10 +183,87 @@ describe('code variants', () => {
         expect(selectColumn([], '*dVdd', 3, lib.variantOf).ok).toBe(false);
     });
 
-    it('without variants, a code with a sign of the project is under its shape, as an addition', () => {
-        const lib = buildLibrary(['*uVd'], freq);
-        expect(lib.byKey.get('dir:*ud').columns.find(c => c.code === '*uVd')).toMatchObject({ standard: false });
-        expect(selectColumn([], '*uVd').ok).toBe(false);
+    it('without variants, a code with another sign of the project is under its shape, as an addition', () => {
+        const lib = buildLibrary(['*uWd'], freq);
+        expect(lib.byKey.get('dir:*ud').columns.find(c => c.code === '*uWd')).toMatchObject({ standard: false });
+        expect(selectColumn([], '*uWd').ok).toBe(false);
+    });
+});
+
+describe('the standard set of virga variants', () => {
+    const lib = buildLibrary([], freq);
+    it('is in every library, and in the standard table', () => {
+        for (const code of STANDARD_VIRGA_SET) expect(lib.byCode.get(code), code).toMatchObject({ standard: true });
+        expect(lib.byCode.get('*VeV')).toMatchObject({ categoryKey: 'dir:*e', variantOf: '*e' });
+        expect(lib.byCode.get('[*VdL]')).toMatchObject({ categoryKey: 'sign:L', variantOf: '[*dL]' });
+        expect(selectColumn([], '*VeV', 3, lib.variantOf)).toEqual({ ok: true, columns: ['*VeV'] });
+    });
+
+    it('is drawn with the code it comes from', () => {
+        const shown = columnsToShow(lib.byKey.get('dir:*'), { top: 1 }).map(c => c.code);
+        expect(shown).toEqual(['*', '*V']);
+    });
+});
+
+describe('clefs', () => {
+    const lib = buildLibrary([], freq);
+    it('are C and F in the standard table, before the custos', () => {
+        expect(lib.byKey.get('other').columns.map(c => c.code)).toEqual(['(Clef-C)', '(Clef-F)', '(Custos)']);
+        expect(pseudoLabel('(Clef-F)')).toBe('Clef F');
+        expect(pseudoLabel('(Clef)')).toBe('Clef');
+        expect(pseudoLabel('(Custos)')).toBe('Custos');
+        expect(pseudoLabel('*ud')).toBe('');
+    });
+
+    it('can be added by their letter, and are chosen like any column', () => {
+        const check = checkCode('(Clef-G)');
+        expect(check).toMatchObject({ ok: true, code: '(Clef-G)' });
+        expect(check.category.key).toBe('other');
+        expect(checkCode('(Clef)').ok).toBe(true);
+        expect(checkCode('(Clef G)').ok).toBe(false);
+        expect(selectColumn([], '(Clef-G)')).toEqual({ ok: true, columns: ['(Clef-G)'] });
+        const withG = buildLibrary(['(Clef-G)'], freq);
+        expect(withG.byKey.get('other').columns.map(c => c.code)).toEqual(['(Clef-C)', '(Clef-F)', '(Clef-G)', '(Custos)']);
+    });
+});
+
+describe('virga variants', () => {
+    it('are found by their sign, without anyone registering them', () => {
+        const found = virgaVariants(['*V', '[*Vd]', '*uuVdd', '*dVL', '*ud', '*VQ']);
+        expect([...found.keys()]).toEqual(['*V', '[*Vd]', '*uuVdd', '*dVL', '*VQ']);
+        expect(found.get('*dVL').base).toBe('*dL');
+        expect(virgaVariants(['*uWd', '*uVWd']).size).toBe(0);
+        expect(found.get('[*Vd]').base).toBe('[*d]');
+        expect(found.get('*V').base).toBe('*');
+    });
+
+    it('make the standard shapes\' virga codes columns of the standard table', () => {
+        const lib = buildLibrary(['*V', '[*Vd]', '*Vddd'], freq, { variants: virgaVariants(['*V', '[*Vd]', '*Vddd']) });
+        expect(lib.byCode.get('*V')).toMatchObject({ categoryKey: 'dir:*', variantOf: '*', standard: true });
+        expect(lib.byCode.get('[*Vd]')).toMatchObject({ categoryKey: 'dir:*d', standard: true });
+        expect(lib.byCode.get('*Vddd').standard).toBe(false);
+    });
+
+    it('are drawn with the code they come from', () => {
+        const lib = buildLibrary(['*ud', '*uVd', '[*u]d', '*uudd', '*udu', '*udd'], freq, { variants: virgaVariants(['*uVd']) });
+        const category = { columns: lib.byKey.get('dir:*ud').columns };
+        const shown = columnsToShow(category, { top: 1 }).map(c => c.code);
+        expect(shown).toContain('*uVd');
+    });
+});
+
+describe('the extended list and the standard table', () => {
+    it('moves what the standard table has a place for', () => {
+        const variantOf = (c) => (c === '*Vd' ? '*d' : '');
+        const r = promoteToStandard(['*'], ['[*d]', '*Vd', '*ddd', '[*u]dd'], variantOf);
+        expect(r.columns).toEqual(['*', '[*d]', '*Vd', '[*u]dd']);
+        expect(r.extended).toEqual(['*ddd']);
+        expect(r.moved).toEqual(['[*d]', '*Vd', '[*u]dd']);
+    });
+
+    it('leaves what the rules refuse', () => {
+        const r = promoteToStandard(['*dL', '*uL', '*ddL'], ['*uuL'], () => '');
+        expect(r).toMatchObject({ columns: ['*dL', '*uL', '*ddL'], extended: ['*uuL'], moved: [] });
     });
 });
 
@@ -204,13 +287,14 @@ describe('choosing which columns to draw', () => {
     it('draws the most frequent few, and whatever is kept', () => {
         const big = buildLibrary(['*ud', '[*u]d', '[*ud]', '*[ud]'], buildFrequency({ '*ud': 10, '[*u]d': 9, '[*ud]': 8, '*[ud]': 1 }));
         const c = big.byKey.get('dir:*ud');
-        expect(columnsToShow(c, { top: 2 }).map(x => x.code)).toEqual(['*ud', '[*u]d']);
-        expect(columnsToShow(c, { top: 2, keep: new Set(['*[ud]']) }).map(x => x.code)).toEqual(['*ud', '[*u]d', '*[ud]']);
-        expect(columnsToShow(c, { top: 2, expanded: true })).toHaveLength(4);
+        const shown = (options) => columnsToShow(c, options).map(x => x.code).filter(x => !STANDARD_VIRGA_SET.includes(x));
+        expect(shown({ top: 2 })).toEqual(['*ud', '[*u]d']);
+        expect(shown({ top: 2, keep: new Set(['*[ud]']) })).toEqual(['*ud', '[*u]d', '*[ud]']);
+        expect(shown({ top: 2, expanded: true })).toHaveLength(4);
     });
 
     it('draws all of a small category', () => {
-        expect(columnsToShow(cat('dir:*ud'), { top: 4 })).toHaveLength(4);
+        expect(columnsToShow(cat('dir:*ud'), { top: 100 })).toHaveLength(cat('dir:*ud').columns.length);
     });
 });
 

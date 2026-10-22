@@ -12,7 +12,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { useToast } from '../../composables/useToast';
 import { categoryOf } from '../../utils/projectTable';
 import { projectPageLocation } from '../../utils/projectChoices';
-import { CLEF_CODE, CUSTOS_CODE } from '../../utils/neumeTable';
+import { pseudoLabel } from '../../utils/neumeTable';
 import { fileToSnippet, imageFromPaste, imagesFromDrop } from '../../utils/snippetImages';
 import { findLine, lineLabel, signsOfLine, sortedLines } from '../../utils/lineSigns';
 import { loneSignAttributes, validateAttribute, validateAttributes } from '../../utils/snippetAttributes';
@@ -50,7 +50,7 @@ const {
 const mine = computed(() => snippets.value.get(props.code) || []);
 const occurrence = computed(() => occurrences.value.get(props.code) || null);
 const category = computed(() => categoryOf(props.code));
-const isPseudo = computed(() => props.code === CLEF_CODE || props.code === CUSTOS_CODE);
+const isPseudo = computed(() => !!pseudoLabel(props.code));
 const inTable = computed(() => props.codes.includes(props.code));
 const here = computed(() => props.codes.indexOf(props.code));
 
@@ -224,11 +224,11 @@ onBeforeUnmount(() => {
 <aside class="drawer" aria-label="Snippets of this cell">
     <header class="head">
         <div class="glyph" aria-hidden="true">
-            <span v-if="isPseudo" class="pseudo">{{ code === CLEF_CODE ? 'Clef' : 'Custos' }}</span>
+            <span v-if="isPseudo" class="pseudo">{{ pseudoLabel(code) }}</span>
             <PatternDisplay v-else :pattern="code" :glyphs="glyphs" :scale="1.5" />
         </div>
         <div class="title">
-            <h2><PatternCode v-if="!isPseudo" :pattern="code" /><template v-else>{{ code === CLEF_CODE ? 'Clef' : 'Custos' }}</template></h2>
+            <h2><PatternCode v-if="!isPseudo" :pattern="code" /><template v-else>{{ pseudoLabel(code) }}</template></h2>
             <p class="sub">
                 {{ mine.length }} snippet{{ mine.length === 1 ? '' : 's' }}<template v-if="hasTranscription"> · {{ occurrence ? fmt(occurrence.count) : 'none' }} in the transcription</template>
             </p>

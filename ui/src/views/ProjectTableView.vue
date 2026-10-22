@@ -7,7 +7,7 @@ import { useToast } from '../composables/useToast';
 import { useProjectContext } from '../composables/useProject';
 import { useColumnChoice } from '../composables/useColumnChoice';
 import { getBaseCode } from '../utils/patternCode';
-import { groupSelected } from '../utils/projectTable';
+import { groupSelected, selectColumn } from '../utils/projectTable';
 import ProjectTable from '../components/projects/ProjectTable.vue';
 import SegmentedControl from '../components/ui/SegmentedControl.vue';
 import AddPatternDialog from '../components/projects/AddPatternDialog.vue';
@@ -105,7 +105,10 @@ const counts = computed(() => {
 function addColumn(code) {
     const p = project.value;
     if (p.columns.includes(code) || p.extended.includes(code)) return;
-    store.setExtended(p.id, [...p.extended, code]);
+    // A code the standard table has a place for is a column of the standard table.
+    const standard = selectColumn(p.columns, code, undefined, library.value.variantOf);
+    if (standard.ok) store.setColumns(p.id, standard.columns);
+    else store.setExtended(p.id, [...p.extended, code]);
     open(code);
 }
 

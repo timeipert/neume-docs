@@ -9,7 +9,7 @@ import { useToast } from './useToast';
 import { getBaseCode } from '../utils/patternCode';
 import { useTranscriptionData } from './useTranscriptionData';
 import { usePatternCatalog } from './usePatternCatalog';
-import { buildLibrary, filledCount, selectColumn, tableCodes } from '../utils/projectTable';
+import { buildLibrary, filledCount, promoteToStandard, selectColumn, tableCodes } from '../utils/projectTable';
 import { collectOccurrences, collectSnippets, collectionSnippets, foliosInRange } from '../utils/projectData';
 import { compareFolios } from '../utils/sorting';
 import { freeCollectionFor } from '../utils/projectLegacy';
@@ -54,17 +54,14 @@ export function useProjectLibrary() {
             const settings = useSettingsStore();
             return computed(() => {
                 // Code variants: a code the library derives from another by a sign of the project.
+                const codes = [...allCodes.value, ...store.projects.flatMap(p => [...p.columns, ...p.extended])];
                 const variants = new Map();
                 for (const [base, list] of Object.entries(settings.codeVariants || {})) {
                     for (const v of list || []) {
                         if (v && v.code) variants.set(getBaseCode(v.code), { base: getBaseCode(base), label: v.label || '', id: v.id || '' });
                     }
                 }
-                return buildLibrary(
-                    [...allCodes.value, ...store.projects.flatMap(p => [...p.columns, ...p.extended])],
-                    freq.value,
-                    { variants }
-                );
+                return buildLibrary(codes, freq.value, { variants });
             });
         });
     }
@@ -144,6 +141,23 @@ export function useProject(idRef) {
         extended: extendedCodes.value.length - standardCodes.value.length,
         extendedFilled: filledCount(extendedCodes.value, snippets.value) - filledCount(standardCodes.value, snippets.value)
     }));
+
+    // What the extended list holds that the standard table has a place for belongs in the standard table.
+    watch(
+        () => (project.value ? [project.value.id, project.value.columns, project.value.extended, library.value] : null),
+        () => {
+            const p = project.value;
+            if (!p || !p.extended.length) return;
+            const { columns, extended, moved } = promoteToStandard(p.columns, p.extended, library.value.variantOf);
+            if (!moved.length) return;
+            const before = { columns: [...p.columns], extended: [...p.extended] };
+            store.update(p.id, { columns, extended, columnsChosen: true });
+            toast.show(`${moved.length} column${moved.length === 1 ? '' : 's'} of the extended table belong${moved.length === 1 ? 's' : ''} to the standard table and ${moved.length === 1 ? 'was' : 'were'} chosen there.`, {
+                action: { label: 'Undo', run: () => store.update(p.id, before) }
+            });
+        },
+        { immediate: true }
+    );
 
     /** The collection that holds a screenshot project's images, made when first needed. */
     function ensureCollection() {

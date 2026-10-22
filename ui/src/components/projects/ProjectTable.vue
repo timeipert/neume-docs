@@ -3,7 +3,7 @@ import { computed, nextTick, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import PatternDisplay from '../PatternDisplay.vue';
 import PatternCode from '../PatternCode.vue';
-import { CLEF_CODE, CUSTOS_CODE, MAX_SPECIAL_SIGNATURES } from '../../utils/neumeTable';
+import { MAX_SPECIAL_SIGNATURES, pseudoLabel } from '../../utils/neumeTable';
 
 /**
  * The table of a project: two rows of headers — the group (a movement, a special
@@ -46,8 +46,7 @@ const emit = defineEmits(['toggle', 'open', 'remove', 'expand', 'variant', 'open
 
 const select = computed(() => props.choose && props.mode === 'fill');
 const matrix = computed(() => props.mode === 'matrix');
-const isPseudo = (code) => code === CLEF_CODE || code === CUSTOS_CODE;
-const pseudoLabel = (code) => (code === CLEF_CODE ? 'Clef' : 'Custos');
+const isPseudo = (code) => !!pseudoLabel(code);
 const snippetsOf = (code) => props.snippets.get(code) || [];
 const occurrencesOf = (code) => (props.occurrences && props.occurrences.get(code)) || null;
 

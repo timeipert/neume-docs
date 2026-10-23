@@ -266,7 +266,7 @@ export function useImageManifest() {
         const report = getAlignmentReport(source);
         if (report) {
             const hit = report.byFolio.get(normalizeFolioName(folioName));
-            if (hit && hit.canvas) return { ...hit.canvas, resolvedSource: iiifKey };
+            if (hit && hit.canvas) return { ...hit.canvas, resolvedFolio: hit.resolvedFolio, resolvedSource: iiifKey };
         }
 
         // 0b. Legacy offset/jump alignment, kept for existing configurations.
@@ -443,15 +443,22 @@ export function useImageManifest() {
     }
 
     /**
-     * Returns the physical folio name from the IIIF manifest. Not cached here:
-     * `fuzzyMatchIiifFolio` already resolves through the memoized alignment
-     * report below, so this call is already cheap (an O(1) map lookup), and a
-     * second cache on top of it would only reintroduce the staleness risk a
-     * plain cache has no reliable way to invalidate.
+     * Returns the physical folio name, in the app's own normalized spelling (no
+     * leading zeros, no "fol." prefix) — the form every annotation, region and
+     * table row is keyed by. Not cached here: `fuzzyMatchIiifFolio` already
+     * resolves through the memoized alignment report below, so this call is
+     * already cheap (an O(1) map lookup), and a second cache on top of it would
+     * only reintroduce the staleness risk a plain cache has no reliable way to
+     * invalidate.
+     *
+     * A manifest's own canvas label (`iiifMatch.folio`, e.g. "008r") is not used
+     * as-is: it is the manifest's spelling, not the app's, and storing under it
+     * would silently orphan annotations keyed by the normalized folio ("8r").
      */
     function getStandardFolio(source, folio) {
         const iiifMatch = fuzzyMatchIiifFolio(source, folio);
-        return iiifMatch ? iiifMatch.folio : (folio ? String(folio).replace(/^p\.?\s*/i, '').trim() : folio);
+        if (iiifMatch) return iiifMatch.resolvedFolio || normalizeFolioName(iiifMatch.folio);
+        return folio ? String(folio).replace(/^p\.?\s*/i, '').trim() : folio;
     }
 
     function hasTranscriptionData(source, folio) {

@@ -108,7 +108,7 @@ const codeLines = computed(() => (highlightHint.value ? highlightHint.value.line
 
 const active = ref(props.code || '');
 const variant = ref('');
-/** The paleographic attributes the next sign gets: set while drawing, the way the variant is. */
+/** The attributes the next sign gets: set while drawing, the way the variant is. */
 const paleo = ref([]);
 const followNeume = ref(''); // the sysId of the neume the next box is for, while drawing along the transcription
 watch(() => props.code, (code) => { if (code) active.value = code; });
@@ -457,7 +457,7 @@ const title = computed(() => (mode.value === 'whole' ? 'The page as a whole' : r
                     <span class="lab">Variant</span>
                     <button v-for="v in variantChoices" :key="v.key || '_base'" type="button" class="chip" :class="{ on: (variant || '') === v.key }" @click="variant = v.key">{{ v.label }}</button>
                 </div>
-                <PaleoPicker v-model="paleo" class="paleo-next" label="Paleographic attributes of the next sign" :code="active" />
+                <PaleoPicker v-model="paleo" class="paleo-next" label="Next sign" :code="active" />
                 <PatternPalette :model-value="active" :groups="groups" :glyphs="glyphs" :counts="counts" @update:model-value="choose" />
             </div>
 

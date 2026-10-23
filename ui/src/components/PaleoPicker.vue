@@ -1,20 +1,21 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useSettingsStore } from '../stores/settings';
 import { codeNotes, normalizePaleo, splitPaleo, withPaleo } from '../utils/paleo';
 
 /**
- * The paleographic attributes of a snippet, as buttons to switch on and off. An attribute is on one note, so
- * each note of the pattern has its row of buttons; the result is shown the way it is written, with the braces after
- * the notes they are on: `*V{r}du`. The attributes defined in the pattern library are offered, and — dashed — any a snippet
- * has that are no longer defined, so they are not lost by accident.
+ * The attributes of a snippet. They are for the ones who need them, so they stay out of the way: a button, "Add attributes",
+ * opens them. An attribute is on one note, so each note of the pattern has its row of buttons; the result is shown the way it is
+ * written, with the braces after the notes they are on — `[*V{e}d]` is `[*Vd]` with an `e` on the virga. What an attribute
+ * means is up to the person who defines it (a mark on the sign, a time, …). The ones defined in the pattern library are offered, and
+ * — dashed — any a snippet has that are no longer defined, so they are not lost by accident.
  */
 const props = defineProps({
     /** `{ key, note }` (a plain key is on the last note) */
     modelValue: { type: Array, default: () => [] },
-    /** a label above the buttons; false for none */
-    label: { type: [String, Boolean], default: 'Paleographic attributes' },
+    /** a label above (none by default: the button says what it is) */
+    label: { type: [String, Boolean], default: false },
     /** the pattern the attributes are on */
     code: { type: String, default: '' }
 });
@@ -30,6 +31,7 @@ const choices = computed(() => [
     ...[...new Set(entries.value.map(e => e.key))].filter(k => !order.value.includes(k)).map(k => ({ key: k, label: k, title: 'No longer defined', legacy: true }))
 ]);
 const written = computed(() => (entries.value.length ? withPaleo(base.value, entries.value) : ''));
+const open = ref(false);
 
 const isOn = (key, note) => entries.value.some(e => e.key === key && e.note === note);
 
@@ -41,33 +43,45 @@ function toggle(key, note) {
 
 <template>
 <div class="pp">
-    <span v-if="label" class="lab">{{ label }}<code v-if="written" class="result">{{ written }}</code></span>
-    <div v-if="choices.length && notes.length" class="rows">
-        <div v-for="(n, i) in notes" :key="i" class="row">
-            <code v-if="notes.length > 1" class="note" :title="`Note ${i + 1}`">{{ n.text }}</code>
-            <div class="chips" role="group" :aria-label="`Attributes of note ${i + 1}, ${n.text}`">
-                <button
-                    v-for="c in choices"
-                    :key="c.key"
-                    type="button"
-                    class="chip"
-                    :class="{ on: isOn(c.key, i), legacy: c.legacy }"
-                    :aria-pressed="isOn(c.key, i)"
-                    :title="c.title"
-                    @click="toggle(c.key, i)"
-                ><code>{{ c.key }}</code><span v-if="c.label !== c.key"> {{ c.label }}</span></button>
+    <span v-if="label" class="lab">{{ label }}</span>
+    <div class="head">
+        <button type="button" class="opener" :aria-expanded="open" @click="open = !open">
+            <span class="caret" aria-hidden="true">{{ open ? '▾' : '▸' }}</span>{{ entries.length ? 'Edit attributes' : 'Add attributes' }}
+        </button>
+        <code v-if="written" class="result">{{ written }}</code>
+    </div>
+    <template v-if="open">
+        <div v-if="choices.length && notes.length" class="rows">
+            <div v-for="(n, i) in notes" :key="i" class="row">
+                <code v-if="notes.length > 1" class="note" :title="`Note ${i + 1}`">{{ n.text }}</code>
+                <div class="chips" role="group" :aria-label="`Attributes of note ${i + 1}, ${n.text}`">
+                    <button
+                        v-for="c in choices"
+                        :key="c.key"
+                        type="button"
+                        class="chip"
+                        :class="{ on: isOn(c.key, i), legacy: c.legacy }"
+                        :aria-pressed="isOn(c.key, i)"
+                        :title="c.title"
+                        @click="toggle(c.key, i)"
+                    ><code>{{ c.key }}</code><span v-if="c.label !== c.key"> {{ c.label }}</span></button>
+                </div>
             </div>
         </div>
-    </div>
-    <p v-else-if="!choices.length" class="none">None defined yet. <RouterLink :to="{ path: '/patterns', query: { setup: 'paleo' } }">Define them in Patterns</RouterLink>.</p>
-    <p v-else class="none">This code has no notes to put an attribute on.</p>
+        <p v-else-if="!choices.length" class="none">No attributes defined yet. <RouterLink :to="{ path: '/patterns', query: { setup: 'paleo' } }">Define them in Patterns</RouterLink>.</p>
+        <p v-else class="none">This code has no notes to put an attribute on.</p>
+    </template>
 </div>
 </template>
 
 <style scoped>
 .pp { display: flex; flex-direction: column; gap: 4px; }
 .lab { font-size: 0.76rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
-.result { margin-left: 8px; font-size: 0.82rem; font-weight: 600; text-transform: none; letter-spacing: 0; color: var(--color-text); background: transparent; }
+.head { display: flex; align-items: center; gap: 8px; }
+.opener { display: inline-flex; align-items: center; gap: 4px; padding: 0; font-size: 0.82rem; font-weight: 600; color: var(--color-primary-dark); background: transparent; border: none; cursor: pointer; }
+.opener:hover { text-decoration: underline; }
+.caret { display: inline-block; width: 0.9em; }
+.result { font-size: 0.82rem; font-weight: 600; color: var(--color-text); background: transparent; }
 .rows { display: flex; flex-direction: column; gap: 3px; }
 .row { display: flex; align-items: center; gap: 8px; }
 .note { flex: 0 0 3.2em; font-size: 0.82rem; font-weight: 700; color: var(--color-text-muted); background: transparent; padding: 0; text-align: right; }

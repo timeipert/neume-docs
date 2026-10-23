@@ -4,7 +4,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { useToast } from '../../composables/useToast';
 
 /**
- * The paleographic attributes: what a snippet can say about the way a sign is written, beyond its code.
+ * The attributes: what a snippet can say beyond its code — how a sign is written, or when. Optional, for the ones who need them.
  * They are set when a snippet is made and written in braces after the code (`*Vdu{r}`), so what a key
  * means is defined here, once, and spelled the same way everywhere. The order is the order they are offered
  * in, and the order the places of a table follow.
@@ -35,12 +35,12 @@ function remove(a) {
 <template>
 <div class="pa">
     <p class="ne-muted intro">
-        What a snippet says about how a sign is written — set when the snippet is made. An attribute is on one note of the pattern and is written
-        in braces right after it, the way the sign of a code variant is: <code>*V{r}du</code> is <code>r</code> on the first note,
-        <code>*Vdu{r}</code> on the last, <code>*V{r,l}du{rl}</code> has three. A key is lower-case letters and digits and can be longer than one letter.
-        Define them here first, so the same thing is always spelled the same way.
-        The columns of a table tell codes apart by their notes and the virga (<code>[ * V u d e ]</code>); everything finer is an attribute, and
-        puts the snippets in rows under the code. Snippets with the same attribute on the same note stand at the same height in every manuscript.
+        For the ones who need them — a table works without. An attribute says something about a snippet beyond its code: a mark on the sign (an episem), how it is
+        written, or when (a period, a campaign). It is on one note of the pattern and is written in braces right after it, the way the sign of a code variant is:
+        with <code>e</code> for an episem, <code>[*Vd]</code> becomes <code>[*V{e}d]</code>. A key is lower-case letters and digits and can be longer than one letter
+        (<code>rl</code>); what it means is for you to say. Define them here, so the same thing is always spelled the same way, then use
+        <b>Add attributes</b> when a snippet is made. The columns of a table tell codes apart by their notes and the virga (<code>[ * V u d e ]</code>);
+        everything finer is an attribute, and can be filtered for above the table.
     </p>
     <table class="ne-table">
         <thead><tr><th class="key">Key</th><th>Label</th><th>What it means</th><th></th></tr></thead>

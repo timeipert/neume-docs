@@ -14,9 +14,13 @@ describe('a key', () => {
         expect(validatePaleoKey('averylongkeyindeed')).not.toBe('');
     });
 
-    it('is never only the letters of a movement, which braces use for a group', () => {
-        for (const k of ['u', 'd', 'e', 'ud', 'dde']) expect(validatePaleoKey(k)).toMatch(/group of notes/);
+    it('is never two or more letters of a movement, which braces use for a group of notes', () => {
+        for (const k of ['ud', 'dde', 'ee']) expect(validatePaleoKey(k)).toMatch(/group of notes/);
         expect(validatePaleoKey('ue1')).toBe('');
+    });
+
+    it('can be a single letter, even one of a movement: e for an episem', () => {
+        for (const k of ['e', 'u', 'd']) expect(validatePaleoKey(k)).toBe('');
     });
 
     it('is not defined twice', () => {
@@ -59,6 +63,11 @@ describe('the attributes in a code', () => {
         expect(splitPaleo('*V{r}d{rl,t2}u')).toEqual({ base: '*Vdu', keys: ['r', 'rl', 't2'], entries: [at('r', 0), at('rl', 1), at('t2', 1)] });
         expect(splitPaleo('[*V{r}d]').base).toBe('[*Vd]');
         expect(splitPaleo('*Vdu')).toEqual({ base: '*Vdu', keys: [], entries: [] });
+    });
+
+    it('can be an episem: [*Vd] with an e on the virga is [*V{e}d]', () => {
+        expect(withPaleo('[*Vd]', [at('e', 0)])).toBe('[*V{e}d]');
+        expect(splitPaleo('[*V{e}d]')).toEqual({ base: '[*Vd]', keys: ['e'], entries: [at('e', 0)] });
     });
 
     it('are not mistaken for braces that write a group of notes', () => {

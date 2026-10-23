@@ -233,7 +233,7 @@ const stats = computed(() => ({
     <Disclosure title="Signs" :summary="setupSummary.signs" :open="setupOpen === 'signs'">
         <SignVocabulary />
     </Disclosure>
-    <Disclosure title="Paleographic attributes" :summary="setupSummary.paleo" :open="setupOpen === 'paleo'">
+    <Disclosure title="Attributes (advanced code)" :summary="setupSummary.paleo" :open="setupOpen === 'paleo'">
         <PaleoAttributes />
     </Disclosure>
     <Disclosure title="Snippet variants" :summary="setupSummary.snippetVariants" :open="setupOpen === 'snippet-variants'">

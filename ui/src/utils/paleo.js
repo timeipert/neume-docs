@@ -14,20 +14,21 @@
  * A snippet that has plain keys (`['r']`, from before an attribute had a note) has them on the last note.
  *
  * Braces also write a group of notes (`*u{ud}`), so what is in them decides: a key is lower-case
- * letters and digits, and never only the letters of a movement (`u`, `d`, `e`), which is a group.
+ * letters and digits, and never two or more letters of a movement (`ud`, `dde`), which is a group; `e` is fine.
  *
  * Plain functions on plain data.
  */
 
 const KEY = /^[a-z0-9]{1,12}$/;
-const ONLY_NOTES = /^[ude]+$/;
+// Two or more movement letters in braces are a group of notes (`*u{ud}`); a single letter is a key like any other (`{e}`, an episem).
+const ONLY_NOTES = /^[ude]{2,}$/;
 
 /** Whether a key can be an attribute: an error to show, or '' when it is fine. */
 export function validatePaleoKey(key, existing = []) {
     const k = String(key ?? '').trim();
     if (!k) return 'An attribute needs a key.';
     if (!KEY.test(k)) return 'A key is lower-case letters and digits, up to 12, e.g. r or rl.';
-    if (ONLY_NOTES.test(k)) return `“${k}” is made of the letters of a movement (u, d, e), which braces use for a group of notes.`;
+    if (ONLY_NOTES.test(k)) return `“${k}” is made of the letters of a movement (u, d, e), which braces use for a group of notes. A single letter, or a key with another letter in it, is fine.`;
     if (existing.includes(k)) return `“${k}” is already there.`;
     return '';
 }

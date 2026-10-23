@@ -128,7 +128,7 @@ export const AREAS = [
                     variants && plural(variants, 'code variant'),
                     ids && plural(ids, 'preferred ID'),
                     snippetVariants && plural(snippetVariants, 'snippet variant'),
-                    paleo && plural(paleo, 'paleographic attribute')
+                    paleo && plural(paleo, 'attribute')
                 ])
             };
         },

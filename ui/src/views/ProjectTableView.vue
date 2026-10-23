@@ -185,8 +185,8 @@ const next = computed(() => (extended.value
                 </p>
             </template>
 
-            <div v-if="paleoUsed.length" class="paleo-filter" role="group" aria-label="Show only snippets with a paleographic attribute">
-                <span class="lab">Paleographic attributes</span>
+            <div v-if="paleoUsed.length" class="paleo-filter" role="group" aria-label="Show only snippets with an attribute">
+                <span class="lab">Attributes</span>
                 <button v-for="k in paleoUsed" :key="k" type="button" class="chip" :class="{ on: paleoFilter.includes(k) }" :aria-pressed="paleoFilter.includes(k)" @click="togglePaleo(k)"><code>{{ k }}</code></button>
                 <button type="button" class="chip" :class="{ on: paleoFilter.includes('-') }" :aria-pressed="paleoFilter.includes('-')" title="Snippets without an attribute" @click="togglePaleo('-')">none</button>
                 <button v-if="paleoFilter.length" type="button" class="ne-btn ne-btn--ghost ne-btn--sm" @click="paleoFilter = []">Show all</button>

@@ -27,6 +27,8 @@ const fromProject = computed(() => route.query.return_to === 'project');
 const inProjects = computed(() => route.path.startsWith('/projects') || fromProject.value);
 const inManuscripts = computed(() => !fromProject.value && ['/manuscripts', '/ommr', '/polygons', '/annotations'].some(p => route.path.startsWith(p)));
 const inPatterns = computed(() => route.path.startsWith('/patterns'));
+const inWorkspace = computed(() => route.path.startsWith('/workspace'));
+const inSettings = computed(() => route.path.startsWith('/settings'));
 
 // A menu left open over the new page is disorienting, so close on navigation.
 watch(() => route.path, () => { isMenuOpen.value = false; });
@@ -53,8 +55,8 @@ watch(() => route.path, () => { isMenuOpen.value = false; });
 
         <span class="nav-sep" aria-hidden="true"></span>
 
-        <RouterLink to="/workspace" active-class="active" @click="isMenuOpen = false">Workspace</RouterLink>
-        <RouterLink to="/settings" active-class="active" @click="isMenuOpen = false">Settings</RouterLink>
+        <RouterLink to="/workspace" :class="{ active: inWorkspace }" @click="isMenuOpen = false">Workspace</RouterLink>
+        <RouterLink to="/settings" :class="{ active: inSettings }" @click="isMenuOpen = false">Settings</RouterLink>
         <span class="nav-sep" aria-hidden="true"></span>
         <SaveReminder />
         <a href="manual/index.html" target="_blank" class="nav-util manual-link">Manual</a>

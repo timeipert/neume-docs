@@ -128,7 +128,7 @@ function onlyThisValue(not = false) {
 }
 
 function settingsOfFilters() {
-    router.push({ name: 'settings', query: { section: 'manuscript-metadata' } });
+    router.push({ name: 'settings_fields', query: { section: 'manuscript-metadata' } });
 }
 
 // ---- cells ------------------------------------------------------------------
@@ -398,7 +398,7 @@ function menuSettings() {
 /** Categories are made and ordered in Settings. */
 function arrangeColumns() {
     columnsOpen.value = false;
-    router.push({ name: 'settings', query: { section: 'manuscript-metadata' } });
+    router.push({ name: 'settings_fields', query: { section: 'manuscript-metadata' } });
 }
 
 function onResize(key, width, final) {

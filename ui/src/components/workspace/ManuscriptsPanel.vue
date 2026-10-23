@@ -37,7 +37,7 @@ function manage(source) {
 </script>
 
 <template>
-<Panel id="manuscripts" title="Manuscripts" description="The manuscripts you have worked on. Export some of them to share with a colleague, or delete the work on one of them.">
+<Panel id="manuscripts" title="Single manuscripts" description="Send only some manuscripts to a colleague, or delete the work on one of them.">
     <template #actions>
         <button class="ne-btn ne-btn--sm" :disabled="!chosen.length" @click="exportThese(chosen)">Export selected ({{ chosen.length }})</button>
     </template>

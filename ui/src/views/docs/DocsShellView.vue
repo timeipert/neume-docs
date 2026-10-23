@@ -130,7 +130,7 @@ function citeWhole() {
         <div v-if="includesLocal" class="preview ne-note ne-note--info">
             <strong>{{ isLocal ? 'Preview.' : 'Includes your own work.' }}</strong>
             Your own work is {{ previewUnpublished ? 'shown whether it is published or not' : 'shown as readers will see it' }}. Nobody else sees it, and links made here open only in this browser, until you put the files on a server —
-            <RouterLink to="/workspace#publish">Workspace → Publish a documentation</RouterLink>.
+            <RouterLink to="/workspace/share?section=publish">Workspace → Publish a documentation</RouterLink>.
             <label class="ne-check also"><input type="checkbox" :checked="previewUnpublished" @change="setPreviewUnpublished($event.target.checked)" /> Also show what is not published yet</label>
         </div>
 

@@ -1,29 +1,17 @@
 <script setup>
 import PageShell from '../components/ui/PageShell.vue';
-import ContentsPanel from '../components/workspace/ContentsPanel.vue';
-import ManuscriptsPanel from '../components/workspace/ManuscriptsPanel.vue';
-import StoragePanel from '../components/workspace/StoragePanel.vue';
+import WorkspaceTabs from '../components/workspace/WorkspaceTabs.vue';
 import BackupPanel from '../components/workspace/BackupPanel.vue';
-import MonodiExchangePanel from '../components/workspace/MonodiExchangePanel.vue';
-import RestorePointsPanel from '../components/workspace/RestorePointsPanel.vue';
-import PublishPanel from '../components/workspace/PublishPanel.vue';
-import GithubPanel from '../components/workspace/GithubPanel.vue';
-import ResetPanel from '../components/workspace/ResetPanel.vue';
+import ManuscriptsPanel from '../components/workspace/ManuscriptsPanel.vue';
 </script>
 
 <template>
-<PageShell title="Workspace" eyebrow="Your work">
+<PageShell title="Workspace" eyebrow="Your work" :toc="false">
     <template #subtitle>
-        <p>Everything you have made in the editor: what is in it, where it is kept, how to back it up, and how to clear it.</p>
+        <p>Take your work out of the editor as a file, or bring a file in.</p>
     </template>
-    <ContentsPanel />
-    <ManuscriptsPanel />
-    <StoragePanel />
+    <template #tabs><WorkspaceTabs /></template>
     <BackupPanel />
-    <MonodiExchangePanel />
-    <RestorePointsPanel />
-    <PublishPanel />
-    <GithubPanel />
-    <ResetPanel />
+    <ManuscriptsPanel />
 </PageShell>
 </template>

@@ -2,7 +2,11 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 import GlobalAnalysisView from '../views/GlobalAnalysisView.vue'
 import ManuscriptAnnotationsView from '../views/ManuscriptAnnotationsView.vue'
 import SettingsView from '../views/SettingsView.vue'
+import SettingsFieldsView from '../views/SettingsFieldsView.vue'
 import WorkspaceView from '../views/WorkspaceView.vue'
+import WorkspaceShareView from '../views/WorkspaceShareView.vue'
+import WorkspaceStorageView from '../views/WorkspaceStorageView.vue'
+import WorkspaceContentsView from '../views/WorkspaceContentsView.vue'
 import PatternLibraryView from '../views/PatternLibraryView.vue'
 import PolygonManagerView from '../views/PolygonManagerView.vue'
 import OmmrExplorerView from '../views/OmmrExplorerView.vue'
@@ -69,6 +73,20 @@ function inProjectFrame(to) {
 }
 
 const nothing = { render: () => null };
+
+// Which tab of a page holds each panel that other pages link to by ?section=<id>.
+const WORKSPACE_TABS = {
+  monodi: '/workspace/share', publish: '/workspace/share', github: '/workspace/share',
+  storage: '/workspace/storage', restore: '/workspace/storage',
+  contents: '/workspace/contents', reset: '/workspace/contents'
+}
+const SETTINGS_TABS = { 'manuscript-metadata': '/settings/fields', 'snippet-attributes': '/settings/fields' }
+function tabFor(tabs) {
+  return (to) => {
+    const path = tabs[to.query.section]
+    return path ? { path, query: to.query, replace: true } : true
+  }
+}
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -218,17 +236,45 @@ const router = createRouter({
     },
     // Collections of screenshots belong to the projects that use them.
     { path: '/custom-manuscripts', redirect: { name: 'projects' } },
+    // The workspace and the settings were one long page each; a link that still names a panel
+    // (?section=<id>) is sent to the tab that holds it.
     {
       path: '/workspace',
       name: 'workspace',
       component: WorkspaceView,
+      beforeEnter: tabFor(WORKSPACE_TABS),
       meta: { title: 'Workspace', requiresWorkspace: true }
+    },
+    {
+      path: '/workspace/share',
+      name: 'workspace_share',
+      component: WorkspaceShareView,
+      meta: { title: 'Workspace: share & publish', requiresWorkspace: true }
+    },
+    {
+      path: '/workspace/storage',
+      name: 'workspace_storage',
+      component: WorkspaceStorageView,
+      meta: { title: 'Workspace: storage & restore', requiresWorkspace: true }
+    },
+    {
+      path: '/workspace/contents',
+      name: 'workspace_contents',
+      component: WorkspaceContentsView,
+      meta: { title: 'Workspace: contents & reset', requiresWorkspace: true }
     },
     {
       path: '/settings',
       name: 'settings',
       component: SettingsView,
+      beforeEnter: tabFor(SETTINGS_TABS),
       meta: { title: 'Settings', requiresWorkspace: true }
+    },
+    {
+      path: '/settings/fields',
+      name: 'settings_fields',
+      component: SettingsFieldsView,
+      meta: { title: 'Settings: data fields', requiresWorkspace: true }
     },
     {
       path: '/polygons',

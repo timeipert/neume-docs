@@ -9,12 +9,12 @@ defineProps({
     id: { type: String, default: '' },
     title: { type: String, required: true },
     description: { type: String, default: '' },
-    tone: { type: String, default: 'default' } // 'default' | 'danger'
+    tone: { type: String, default: 'default' } // 'default' | 'danger' | 'primary'
 });
 </script>
 
 <template>
-<section class="panel" :class="{ 'panel--danger': tone === 'danger' }" :id="id || undefined" :data-toc="id ? title : undefined">
+<section class="panel" :class="{ 'panel--danger': tone === 'danger', 'panel--primary': tone === 'primary' }" :id="id || undefined" :data-toc="id ? title : undefined">
     <header class="panel-head">
         <div class="panel-titles">
             <h2>{{ title }}</h2>
@@ -37,6 +37,8 @@ defineProps({
     scroll-margin-top: var(--space-4);
 }
 .panel--danger { border-color: var(--color-danger-muted); }
+.panel--primary { border-color: var(--color-primary); border-width: 2px; box-shadow: var(--shadow-md, var(--shadow-sm)); }
+.panel--primary h2 { color: var(--color-primary-dark, var(--color-primary)); }
 .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-3) var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-4); }
 .panel-titles { min-width: 0; flex: 1 1 18rem; }
 h2 { margin: 0; font-size: 1.1rem; line-height: 1.3; }

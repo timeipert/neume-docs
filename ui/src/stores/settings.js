@@ -13,6 +13,9 @@ export const settingDefaults = () => ({
     globalDisplayIds: {},
     snippetSize: 60,
     snippetPadding: 0.3,
+    snippetUniformScale: true,
+    snippetReferenceSpan: 2.4,
+    snippetContextStyle: 'dim',
     backupLabel: 'My Backup',
     sourceAlignments: {},
     customSigns: withDefaultSigns([]),
@@ -35,7 +38,7 @@ export const settingDefaults = () => ({
  */
 export const SETTING_GROUPS = {
     // Display and table options: edited on the Settings page.
-    preferences: ['displayMode', 'autoFillIds', 'snippetSize', 'snippetPadding', 'frequencyBasis', 'snippetAttributes', 'backupLabel'],
+    preferences: ['displayMode', 'autoFillIds', 'snippetSize', 'snippetPadding', 'snippetUniformScale', 'snippetReferenceSpan', 'snippetContextStyle', 'frequencyBasis', 'snippetAttributes', 'backupLabel'],
     // Signs, code variants, preferred IDs, snippet variants: edited in the pattern library.
     library: ['globalDisplayIds', 'customSigns', 'codeVariants', 'discriminateSigns', 'snippetVariants', 'paleoAttributes'],
     // Hand-made folio pins and offsets: edited next to the page images.
@@ -56,10 +59,11 @@ export const SHARED_SETTING_KEYS = [
 const KINDS = {
     displayMode: ['svg', 'arrow', 'text'],
     frequencyBasis: ['corpus', 'snapshot'],
+    snippetContextStyle: ['plain', 'dim', 'blur'],
     globalDisplayIds: 'object', sourceAlignments: 'object', codeVariants: 'object', sourceMeta: 'object', snippetAttributes: 'object', metadataSchema: 'object', publication: 'object',
     customSigns: 'array', sourceMetaFields: 'array', snippetVariants: 'array', paleoAttributes: 'array',
-    autoFillIds: 'boolean', discriminateSigns: 'boolean',
-    snippetSize: 'number', snippetPadding: 'number',
+    autoFillIds: 'boolean', discriminateSigns: 'boolean', snippetUniformScale: 'boolean',
+    snippetSize: 'number', snippetPadding: 'number', snippetReferenceSpan: 'number',
     backupLabel: 'string'
 }
 
@@ -85,6 +89,18 @@ export const useSettingsStore = defineStore('settings', () => {
     const globalDisplayIds = ref({}) // { pattern: "customId" }
     const snippetSize = ref(60)
     const snippetPadding = ref(0.3)
+    // How a single sign/pattern is cropped wherever it is shown as its own picture (table
+    // cells, the pattern tree, galleries): held to one steady zoom level (snippetReferenceSpan,
+    // the height of that level in % of the page) instead of scaling each crop to fill its
+    // frame, so a small sign is shown with more of the page around it rather than magnified
+    // to look as big as a large one. Off reverts to the old behaviour: scaled to fit.
+    const snippetUniformScale = ref(true)
+    const snippetReferenceSpan = ref(2.4)
+    // How the context added around a sign by snippetUniformScale is drawn: 'plain' (no
+    // treatment), 'dim' (a wash the colour of the page background, so it darkens in a dark
+    // theme and lightens in a light one), or 'blur'. Has no visible effect when a sign already
+    // fills its frame, or when snippetUniformScale is off.
+    const snippetContextStyle = ref('dim')
     const backupLabel = ref("My Backup")
     const sourceAlignments = ref({}) // { [source]: { iiifType: 'paginated'|'foliated', dataType: 'paginated'|'foliated', offset: 0 } }
     // Code-changing variants (project-wide):
@@ -126,7 +142,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
     // --- Whole-store operations (backups, restore points, "reset") ---
     const fields = {
-        displayMode, autoFillIds, globalDisplayIds, snippetSize, snippetPadding, backupLabel,
+        displayMode, autoFillIds, globalDisplayIds, snippetSize, snippetPadding,
+        snippetUniformScale, snippetReferenceSpan, snippetContextStyle, backupLabel,
         sourceAlignments, customSigns, codeVariants, discriminateSigns, sourceMetaFields,
         sourceMeta, metadataSchema, publication, snippetVariants, paleoAttributes, snippetAttributes, frequencyBasis
     }
@@ -449,6 +466,9 @@ export const useSettingsStore = defineStore('settings', () => {
         globalDisplayIds,
         snippetSize,
         snippetPadding,
+        snippetUniformScale,
+        snippetReferenceSpan,
+        snippetContextStyle,
         backupLabel,
         sourceAlignments,
         customSigns,

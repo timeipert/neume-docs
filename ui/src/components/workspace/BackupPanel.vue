@@ -1,19 +1,23 @@
 <script setup>
 import { ref } from 'vue';
 import Panel from '../ui/Panel.vue';
+import Disclosure from '../ui/Disclosure.vue';
 import ImportMergeDialog from './ImportMergeDialog.vue';
 import { useDataManagement } from '../../composables/useDataManagement';
 import { useWorkspaceManagement } from '../../composables/useWorkspaceManagement';
 import { useSettingsStore } from '../../stores/settings';
+import { useSaveReminderStore } from '../../stores/saveReminder';
 import { useToast } from '../../composables/useToast';
 
 /**
- * Taking work out of the app as files and bringing it back. Export is one
- * button; the pieces (a few manuscripts, only the configuration) are offered
- * where they make sense. Import goes through a merge dialog when it would touch
+ * Taking work out of the app as files and bringing it back, side by side: the
+ * two things done most on this page. Export is one button; the pieces (a few
+ * manuscripts, only the configuration) are offered where they make sense. Import
+ * takes a file chosen or dropped, goes through a merge dialog when it would touch
  * manuscripts that already have work, and always keeps a restore point first.
  */
 const settings = useSettingsStore();
+const reminder = useSaveReminderStore();
 const { exportData, exportConfiguration, importConfiguration, analyzeImportFiles, executeImport } = useDataManagement();
 const mgmt = useWorkspaceManagement();
 const toast = useToast();
@@ -21,6 +25,7 @@ const toast = useToast();
 const withSettings = ref(true);
 const backupInput = ref(null);
 const pending = ref(null); // the analysis waiting for a merge decision
+const dragging = ref(false);
 
 function doExport() {
     exportData({ includeSettings: withSettings.value, onlyWithData: true });
@@ -51,8 +56,17 @@ function undoFor(point) {
     } : null;
 }
 
-async function onBackupPicked(event) {
+function onBackupPicked(event) {
     const files = event.target.files;
+    return takeFiles(files).finally(() => { event.target.value = null; });
+}
+
+function onDrop(event) {
+    dragging.value = false;
+    return takeFiles(event.dataTransfer?.files);
+}
+
+async function takeFiles(files) {
     if (!files || !files.length) return;
     try {
         const [result] = await analyzeImportFiles(files);
@@ -75,8 +89,6 @@ async function onBackupPicked(event) {
         }
     } catch (e) {
         toast.show(`Import failed: ${e.message}`, { tone: 'error' });
-    } finally {
-        event.target.value = null;
     }
 }
 
@@ -95,52 +107,68 @@ async function confirmMerge({ choices, importSettings }) {
 </script>
 
 <template>
-<Panel id="backup" title="Backup & share" description="Export your work as a file to keep, or to hand to a colleague. Only manuscripts that have work in them are included.">
-    <div class="block">
-        <div class="row">
-            <div class="grow">
-                <h3>Export a backup</h3>
-                <p class="ne-muted">Projects, annotations and screenshots. To send only some manuscripts, select them under “Manuscripts” above. “Configuration only” leaves the manuscript work out: the pattern library, metadata edits and preferences, for giving a colleague the same set-up.</p>
-            </div>
-            <div class="controls">
+<div class="transfer">
+    <Panel id="backup" title="Export" tone="primary" description="Everything you have made, in one file: projects, annotations and screenshots.">
+        <div class="xfer">
+            <button class="ne-btn ne-btn--primary big" @click="doExport">⬇ Download backup</button>
+            <p class="status" :class="{ stale: reminder.neverExported || reminder.changeCount > 0 }">
+                <template v-if="reminder.neverExported">No backup yet<template v-if="reminder.changeCount"> · {{ reminder.changeCount }} change{{ reminder.changeCount === 1 ? '' : 's' }} so far</template>.</template>
+                <template v-else-if="reminder.changeCount">{{ reminder.changeCount }} change{{ reminder.changeCount === 1 ? '' : 's' }} not in a backup yet · last backup {{ reminder.sinceExportLabel }}</template>
+                <template v-else>Everything is in your last backup ({{ reminder.sinceExportLabel }}).</template>
+            </p>
+            <Disclosure title="Options" summary="name, what to include">
                 <div class="ne-field label-field">
                     <label for="backup-label">Name of the backup</label>
                     <input id="backup-label" class="ne-input" v-model="settings.backupLabel" placeholder="My backup" />
                 </div>
                 <label class="ne-check"><input type="checkbox" v-model="withSettings" /> Include pattern library, metadata edits and preferences</label>
-                <div class="buttons">
-                    <button class="ne-btn ne-btn--primary" @click="doExport">Download backup</button>
-                    <button class="ne-btn" @click="doExportConfig">Configuration only</button>
-                </div>
-            </div>
+                <p class="ne-muted">To send only some manuscripts, use the table below.</p>
+                <button class="ne-btn ne-btn--sm" @click="doExportConfig">Configuration only (leave the manuscript work out)</button>
+            </Disclosure>
         </div>
-    </div>
+    </Panel>
 
-    <div class="block">
-        <div class="row">
-            <div class="grow">
-                <h3>Import</h3>
-                <p class="ne-muted">Open a backup, a manuscript file or a configuration file. If it covers manuscripts you already have work on, you choose per manuscript what happens. A restore point is kept before anything changes.</p>
-            </div>
-            <div class="controls">
-                <input ref="backupInput" type="file" accept=".json" multiple hidden @change="onBackupPicked" />
-                <div><button class="ne-btn ne-btn--primary" @click="backupInput.click()">Import a file…</button></div>
-            </div>
+    <Panel id="import" title="Import" description="Open a backup, a manuscript file or a configuration file.">
+        <div class="xfer">
+            <input ref="backupInput" type="file" accept=".json" multiple hidden @change="onBackupPicked" />
+            <button
+                type="button" class="drop" :class="{ over: dragging }"
+                @click="backupInput.click()"
+                @dragover.prevent="dragging = true" @dragenter.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop"
+            >
+                <strong>Choose a file…</strong>
+                <span>or drop it here</span>
+            </button>
+            <p class="ne-muted">If a file covers manuscripts you already have work on, you choose for each what happens. A restore point is kept first, so you can undo it.</p>
         </div>
-    </div>
+    </Panel>
 
     <ImportMergeDialog :analysis="pending" @cancel="pending = null" @confirm="confirmMerge" />
-</Panel>
+</div>
 </template>
 
 <style scoped>
-.block { padding: var(--space-4); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg); }
-.block + .block { margin-top: var(--space-3); }
-.row { display: flex; gap: var(--space-4) var(--space-5); align-items: flex-start; flex-wrap: wrap; }
-.grow { flex: 1 1 16rem; min-width: 0; }
-h3 { margin: 0 0 var(--space-1); font-size: 0.98rem; }
-p { margin: 0; font-size: 0.88rem; }
-.controls { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; flex: 0 1 20rem; }
-.buttons { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.transfer { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); align-items: stretch; margin-bottom: var(--space-5); }
+.transfer :deep(.panel) { margin-bottom: 0; }
+@media (max-width: 760px) { .transfer { grid-template-columns: 1fr; gap: var(--space-4); } }
+
+.xfer { display: flex; flex-direction: column; align-items: stretch; gap: var(--space-3); }
+.big { padding: 0.8em 1.4em; font-size: 1.05rem; }
+.status { margin: 0; font-size: 0.85rem; color: var(--color-text-muted); }
+.status.stale { color: var(--color-warning-dark); }
+.xfer :deep(.disclosure) { box-shadow: none; background: transparent; border: none; border-top: 1px solid var(--color-border); border-radius: 0; }
+.xfer :deep(.d-toggle) { padding-left: 0; padding-right: 0; border-radius: 0; }
+.xfer :deep(.d-body) { padding: var(--space-3) 0 0; }
+.xfer :deep(.d-body) { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
 .label-field { width: 100%; }
+p { margin: 0; font-size: 0.88rem; }
+
+.drop {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    padding: 1.1em 1em; min-height: 4.2rem; width: 100%;
+    border: 2px dashed var(--color-border-hover, var(--color-border)); border-radius: var(--radius-md);
+    background: var(--color-bg); color: var(--color-text); font-size: 1rem; cursor: pointer;
+}
+.drop span { font-size: 0.85rem; color: var(--color-text-muted); font-weight: 400; }
+.drop:hover, .drop.over { border-color: var(--color-primary); background: var(--color-primary-light); }
 </style>

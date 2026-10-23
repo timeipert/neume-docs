@@ -117,7 +117,7 @@ const isMine = (endpoint) => mine.value.includes(endpoint.id);
                     </RouterLink>
                     <footer>
                         <label class="ne-check small"><input type="checkbox" :checked="previewUnpublished" @change="setPreviewUnpublished($event.target.checked)" /> Also show what is not published</label>
-                        <RouterLink to="/workspace#publish" class="link">Publish…</RouterLink>
+                        <RouterLink to="/workspace/share?section=publish" class="link">Publish…</RouterLink>
                     </footer>
                 </li>
             </ul>

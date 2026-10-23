@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue';
+import { RouterLink } from 'vue-router';
 import Panel from '../ui/Panel.vue';
 import { useMonodiExchange } from '../../composables/useMonodiExchange';
 import { useLinkAssistant } from '../../composables/useLinkAssistant';
@@ -43,32 +44,14 @@ async function onPicked(event) {
 </script>
 
 <template>
-<Panel id="monodi" title="Exchange with Monodi-Zero" description="Line regions, snippets and neume table rows go to Monodi-Zero as a file, which attaches them to the transcription. What was made or linked there comes back the same way.">
+<Panel id="monodi" title="Exchange with Monodi-Zero" description="Your line regions, snippets and neume table rows travel to Monodi-Zero as a file, which attaches them to the transcription. What was made or linked there comes back the same way.">
     <div class="block">
         <div class="row">
             <div class="grow">
-                <h3>Send annotations</h3>
-                <p class="ne-muted">
-                    One file with the line regions, snippets and neume table rows of
-                    <template v-if="ex.sendable.value.length">{{ ex.sendable.value.length }} manuscript{{ ex.sendable.value.length === 1 ? '' : 's' }}</template>
-                    <template v-else>the manuscripts you work on</template>.
-                    Snippets you linked to a neume in the transcription keep that link, so Monodi-Zero can show the sign in the manuscript.
-                    Catalogue data is not sent: Monodi-Zero owns it.
-                </p>
-            </div>
-            <div class="controls">
-                <button class="ne-btn ne-btn--primary" :disabled="busy || !ex.sendable.value.length" @click="send">Download file for Monodi-Zero</button>
-            </div>
-        </div>
-    </div>
-    <div class="block">
-        <div class="row">
-            <div class="grow">
-                <h3>Link snippets to the transcription</h3>
+                <h3><span class="step">1</span> Link snippets to the transcription <span class="opt">(recommended)</span></h3>
                 <p class="ne-muted">
                     Monodi-Zero can show a sign in the manuscript only if its snippet is linked to the neume it depicts.
-                    This works the links out by matching each line region's snippets with the neumes of a transcription line,
-                    and you review them before anything is changed. Do it before sending.
+                    This matches each line region's snippets with the neumes of a transcription line; you review the links before anything changes.
                 </p>
             </div>
             <div class="controls">
@@ -79,8 +62,24 @@ async function onPicked(event) {
     <div class="block">
         <div class="row">
             <div class="grow">
-                <h3>Take annotations back</h3>
-                <p class="ne-muted">Open a file written by this editor or exported from Monodi-Zero. You see what it would add first; what you already have is not changed.</p>
+                <h3><span class="step">2</span> Send annotations</h3>
+                <p class="ne-muted">
+                    One file with the line regions, snippets and neume table rows of
+                    <template v-if="ex.sendable.value.length">{{ ex.sendable.value.length }} manuscript{{ ex.sendable.value.length === 1 ? '' : 's' }}</template>
+                    <template v-else>the manuscripts you work on</template>.
+                    Links to neumes are kept. Catalogue data is not sent: Monodi-Zero owns it.
+                </p>
+            </div>
+            <div class="controls">
+                <button class="ne-btn ne-btn--primary" :disabled="busy || !ex.sendable.value.length" @click="send">Download file for Monodi-Zero</button>
+            </div>
+        </div>
+    </div>
+    <div class="block">
+        <div class="row">
+            <div class="grow">
+                <h3><span class="step">3</span> Take annotations back</h3>
+                <p class="ne-muted">Open a file written by this editor or exported from Monodi-Zero. You see what it would add first; what you already have is not changed. The transcription itself comes in on the <RouterLink to="/manuscripts/corpus">Corpus</RouterLink> page.</p>
             </div>
             <div class="controls">
                 <input ref="input" type="file" accept=".json" hidden @change="onPicked" />
@@ -97,6 +96,8 @@ async function onPicked(event) {
 .row { display: flex; gap: var(--space-4) var(--space-5); align-items: flex-start; flex-wrap: wrap; }
 .grow { flex: 1 1 16rem; min-width: 0; }
 h3 { margin: 0 0 var(--space-1); font-size: 0.98rem; }
+.step { display: inline-grid; place-items: center; width: 1.45em; height: 1.45em; margin-right: 0.3em; border-radius: 50%; background: var(--color-primary-light); color: var(--color-primary-dark); font-size: 0.82em; font-weight: 700; }
+.opt { font-weight: 400; font-size: 0.82rem; color: var(--color-text-muted); }
 p { margin: 0; font-size: 0.88rem; }
-.controls { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; flex: 0 1 20rem; }
+.controls { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; flex: 0 1 14rem; }
 </style>

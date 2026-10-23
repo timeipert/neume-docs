@@ -692,7 +692,10 @@ try {
 
     await page.goto(`${base}/#/settings`);
     await page.waitForSelector('.panel');
-    assert.equal(await page.locator('.panel').count(), 4, 'Settings holds the global preferences, the manuscript metadata and the snippet attributes');
+    assert.equal(await page.locator('.panel').count(), 3, 'Settings shows the display preferences first');
+    await page.getByRole('link', { name: 'Data fields' }).click();
+    await page.waitForSelector('#snippet-attributes');
+    assert.equal(await page.locator('.panel').count(), 2, 'the second tab holds the manuscript metadata and the snippet attributes');
     // snippet attributes: a folio is a number and r or v, by default
     assert.ok(await page.locator('#snippet-attributes').count());
     assert.equal(await page.locator('#snippet-attributes tbody tr').count(), 3, 'folio, line and syllable');
@@ -761,7 +764,11 @@ try {
     step('one part is deleted and brought back with Undo');
 
     // Restore points were made on the way.
+    await page.getByRole('link', { name: 'Storage & restore' }).click();
+    await page.waitForSelector('#restore');
     assert.ok(await page.locator('#restore tbody tr').count() >= 1, 'a restore point was kept');
+    await page.getByRole('link', { name: 'Contents & reset' }).click();
+    await page.waitForSelector('[data-area="tables"]');
 
     // Delete all work needs a typed word.
     await page.getByRole('button', { name: 'Delete all work…' }).click();
@@ -775,8 +782,11 @@ try {
     step('delete all work asks for a typed word, then empties every part');
 
     // Restore from the list.
+    await page.getByRole('link', { name: 'Storage & restore' }).click();
+    await page.waitForSelector('#restore');
     await page.locator('#restore tbody tr').filter({ hasText: 'Before deleting all work' }).getByRole('button', { name: /Restore/ }).click();
     await page.locator('.md-dialog .md-foot .ne-btn--primary').click();
+    await page.getByRole('link', { name: 'Contents & reset' }).click();
     await page.waitForFunction(() => /table/.test(document.querySelector('[data-area="tables"] .holds')?.textContent || ''));
     assert.match(await holds('library'), /custom sign/);
     step('a restore point puts everything back');

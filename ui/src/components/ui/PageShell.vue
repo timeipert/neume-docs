@@ -1,12 +1,14 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
+import { useRoute } from 'vue-router';
 import PageHeader from './PageHeader.vue';
 import PageToc from './PageToc.vue';
 
 /**
  * The frame of a page made of panels: title block, an "On this page" index on
  * the left (hidden on narrow screens), and the panels in a readable column.
- * Settings, Workspace and the other panel pages share it, so they line up.
+ * Settings, Workspace and the other panel pages share it, so they line up. A page
+ * that is several views of one thing puts its tabs in the `tabs` slot, under the title.
  */
 defineProps({
     title: { type: String, required: true },
@@ -16,6 +18,16 @@ defineProps({
 });
 
 const column = ref(null);
+
+// Other pages link to a panel with ?section=<its id>.
+const route = useRoute();
+onMounted(async () => {
+    const id = typeof route.query.section === 'string' ? route.query.section : '';
+    if (!id) return;
+    await nextTick();
+    const panel = column.value?.querySelector(`[id="${CSS.escape(id)}"]`);
+    if (panel) panel.scrollIntoView({ block: 'start' });
+});
 </script>
 
 <template>
@@ -26,6 +38,7 @@ const column = ref(null);
             <template v-if="$slots.subtitle" #subtitle><slot name="subtitle" /></template>
             <template v-if="$slots.actions" #actions><slot name="actions" /></template>
         </PageHeader>
+        <slot name="tabs" />
         <slot />
     </div>
 </div>

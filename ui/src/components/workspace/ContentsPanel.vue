@@ -14,7 +14,7 @@ function askDelete(area) {
         title: `Delete: ${area.title}`,
         paragraphs: [
             `This deletes ${area.text}.`,
-            'A restore point is kept first, so you can take this back from the toast that follows or from “Restore points” below.'
+            'A restore point is kept first, so you can take this back from the toast that follows or from “Restore points” under Storage & restore.'
         ],
         confirmLabel: 'Delete',
         run: (options) => mgmt.clearArea(area.key, options),

@@ -195,6 +195,42 @@ export const useAnnotationsStore = defineStore('annotations', () => {
         }
     }
 
+    /**
+     * Re-files a snippet under a different pattern (the main case: a "*" read as "*V" once
+     * the virga is noticed). `updateAnnotation` cannot do this by itself: a legacy snippet's
+     * pattern is the key of the array it lives in, not a field on it, so it has to move arrays;
+     * a line's sign already carries its pattern as a field and is changed in place.
+     */
+    function changeAnnotationPattern(source, folio, oldPattern, id, newPattern) {
+        if (!newPattern || newPattern === oldPattern) return false
+
+        // 1. Legacy: move the item from the old pattern's bucket to the new one's.
+        const oldKey = `${source}_${folio}_${oldPattern}`
+        if (annotations.value[oldKey]) {
+            const idx = annotations.value[oldKey].findIndex(a => a.id === id)
+            if (idx !== -1) {
+                const [item] = annotations.value[oldKey].splice(idx, 1)
+                const newKey = `${source}_${folio}_${newPattern}`
+                if (!annotations.value[newKey]) annotations.value[newKey] = []
+                annotations.value[newKey].push(item)
+                return true
+            }
+        }
+
+        // 2. Region items: the pattern is a field on the item itself.
+        const pageRegions = getRegions(source, folio)
+        for (const r of pageRegions) {
+            if (regionItems.value[r.id]) {
+                const item = regionItems.value[r.id].find(i => i.id === id)
+                if (item) {
+                    item.pattern = newPattern
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
     // --- Region Actions ---
 
     function getRegions(source, folio) {
@@ -522,6 +558,7 @@ export const useAnnotationsStore = defineStore('annotations', () => {
         addAnnotation,
         removeAnnotation,
         updateAnnotation,
+        changeAnnotationPattern,
         getRegions,
         addRegion,
         updateRegion,

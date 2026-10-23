@@ -20,6 +20,7 @@ import ProjectShellView from '../views/ProjectShellView.vue'
 import ProjectTableView from '../views/ProjectTableView.vue'
 import ProjectAllView from '../views/ProjectAllView.vue'
 import ProjectLinesView from '../views/ProjectLinesView.vue'
+import ProjectReviewView from '../views/ProjectReviewView.vue'
 import ProjectTreeView from '../views/ProjectTreeView.vue'
 import ProjectPageView from '../views/ProjectPageView.vue'
 import StartView from '../views/StartView.vue'
@@ -166,6 +167,7 @@ const router = createRouter({
         { path: 'standard', name: 'project_standard', component: ProjectTableView, props: { scope: 'standard' }, meta: { title: 'Standard table' } },
         { path: 'extended', name: 'project_extended', component: ProjectTableView, props: { scope: 'extended' }, meta: { title: 'Extended table' } },
         { path: 'lines', name: 'project_lines', component: ProjectLinesView, meta: { title: 'Lines' } },
+        { path: 'review', name: 'project_review', component: ProjectReviewView, meta: { title: 'Review' } },
         { path: 'tree', name: 'project_tree', component: ProjectTreeView, meta: { title: 'Neume tree' } },
         { path: 'all', name: 'project_all', component: ProjectAllView, meta: { title: 'All manuscripts' } },
         // The page editor, inside the frame of the project.

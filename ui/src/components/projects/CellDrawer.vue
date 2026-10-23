@@ -8,17 +8,20 @@ import PaleoPicker from '../PaleoPicker.vue';
 import IiifSetup from '../iiif/IiifSetup.vue';
 import { useProjectContext } from '../../composables/useProject';
 import { useDirectSnippetsStore } from '../../stores/directSnippets';
-import { useAnnotationsStore } from '../../stores/annotations';
 import { useSettingsStore } from '../../stores/settings';
 import { useToast } from '../../composables/useToast';
 import { categoryOf } from '../../utils/projectTable';
 import { projectPageLocation } from '../../utils/projectChoices';
+import { snippetPlaceLabel } from '../../utils/projectData';
 import { pseudoLabel } from '../../utils/neumeTable';
 import { fileToSnippet, imageFromPaste, imagesFromDrop } from '../../utils/snippetImages';
 import { findLine, lineLabel, signsOfLine, sortedLines } from '../../utils/lineSigns';
 import { normalizePaleo, paleoOf, withPaleo } from '../../utils/paleo';
 import { isFavorite } from '../../utils/favorites';
-import { loneSignAttributes, validateAttribute, validateAttributes } from '../../utils/snippetAttributes';
+import { loneSignAttributes, validateAttributes } from '../../utils/snippetAttributes';
+import { useSnippetEdit } from '../../composables/useSnippetEdit';
+import { useSnippetRetag } from '../../composables/useSnippetRetag';
+import { usePatternDraft } from '../../composables/usePatternDraft';
 
 /**
  * Where the snippets of one cell are seen, found and added. What it offers depends
@@ -44,7 +47,6 @@ const router = useRouter();
 const route = useRoute();
 const toast = useToast();
 const direct = useDirectSnippetsStore();
-const annotations = useAnnotationsStore();
 const settings = useSettingsStore();
 const {
     project, glyphs, snippets, occurrences, hasTranscription, iiifAvailable, folios, collection, ensureCollection
@@ -78,29 +80,22 @@ const detailDefs = computed(() => (chosen.value && chosen.value.kind === 'image'
     : settings.getSnippetAttributes('sign')));
 const fieldErrors = reactive({});
 
-function saveAttr(snippet, def, value) {
-    const result = validateAttribute(def, value);
-    const key = `${snippet.id}:${def.key}`;
-    if (!result.ok) { fieldErrors[key] = result.message; return; }
-    fieldErrors[key] = '';
-    const next = { ...(snippet.attrs || {}), [def.key]: result.value };
-    if (!result.value) delete next[def.key];
-    if (snippet.kind === 'image') direct.updateSnippet(collection.value.id, snippet.id, { attrs: next });
-    else annotations.updateAnnotation(snippet.source, snippet.folio, snippet.pattern, snippet.id, { attrs: next });
-}
+const { saveAttr: saveSnippetAttr, savePaleo, saveFavorite } = useSnippetEdit(ensureCollection);
 
-/** What a snippet says about how the sign is written: set at once, kept on the snippet itself. */
-function savePaleo(snippet, keys) {
-    if (snippet.kind === 'image') direct.updateSnippet(collection.value.id, snippet.id, { paleo: keys });
-    else annotations.updateAnnotation(snippet.source, snippet.folio, snippet.pattern, snippet.id, { paleo: keys });
+function saveAttr(snippet, def, value) {
+    const result = saveSnippetAttr(snippet, def, value);
+    fieldErrors[`${snippet.id}:${def.key}`] = result.ok ? '' : result.message;
 }
 const paleoLabel = (s) => { const e = paleoOf(s, settings.paleoKeys(), props.code); return e.length ? withPaleo(props.code, e) : ''; };
 
+/** What pattern a snippet is filed under: wrong most often by a missed virga, so it can be fixed in place. */
+const { retag } = useSnippetRetag(ensureCollection);
+const {
+    draft: patternDraft, check: patternCheck, virgaCount: draftVirgaNotes, virgaOn: draftVirgaOn,
+    changed: patternChanged, set: setChosenPattern, toggleVirgaNote: toggleDraftVirga
+} = usePatternDraft(chosen, retag);
+
 /** A favourite is shown in the table, one under the other; without one, the first snippet is. */
-function saveFavorite(snippet, value) {
-    if (snippet.kind === 'image') direct.updateSnippet(collection.value.id, snippet.id, { favorite: value });
-    else annotations.updateAnnotation(snippet.source, snippet.folio, snippet.pattern, snippet.id, { favorite: value });
-}
 const favourites = computed(() => mine.value.filter(isFavorite).length);
 
 function openPage(folio, region) {
@@ -279,7 +274,7 @@ onBeforeUnmount(() => {
                     >{{ isFavorite(s) ? '★' : '☆' }}</button>
                     <button class="snip" :title="s.place && s.place.label ? s.place.label : 'Snippet'" @click="chosenId = chosenId === s.id ? '' : s.id">
                         <span class="pic"><SnippetThumb :snippet="s" :width="92" :height="64" /></span>
-                        <span class="cap"><b v-if="paleoLabel(s)" class="paleo">{{ paleoLabel(s) }}</b> {{ s.kind === 'image' ? (s.place && s.place.label) || '—' : `f. ${s.folio}${s.lineName ? ' · ' + s.lineName : ''}` }}</span>
+                        <span class="cap"><b v-if="paleoLabel(s)" class="paleo">{{ paleoLabel(s) }}</b> {{ snippetPlaceLabel(s) }}</span>
                     </button>
                 </li>
             </ul>
@@ -290,12 +285,25 @@ onBeforeUnmount(() => {
 
             <div v-if="chosen" class="detail">
                 <div class="detail-head">
-                    <strong>{{ chosen.kind === 'image' ? (chosen.place && chosen.place.label) || 'Snippet' : `f. ${chosen.folio}${chosen.lineName ? ' · ' + chosen.lineName : ''}` }}</strong>
+                    <strong>{{ snippetPlaceLabel(chosen) }}</strong>
                     <span class="spacer"></span>
                     <button v-if="chosen.kind !== 'image' || chosen.lineId" class="ne-btn ne-btn--sm" @click="openSnippet(chosen)">{{ chosen.kind === 'image' ? 'Open the line →' : 'Open the page →' }}</button>
                     <button v-if="chosen.kind === 'image'" class="ne-btn ne-btn--danger ne-btn--sm" @click="removeShot(chosen)">Delete</button>
                 </div>
                 <PaleoPicker class="paleo-field" :model-value="paleoOf(chosen, settings.paleoKeys(), code)" :code="code" @update:model-value="savePaleo(chosen, $event)" />
+                <div class="pattern-field">
+                    <label for="cd-pattern">Pattern</label>
+                    <form class="code-row" @submit.prevent="setChosenPattern">
+                        <input id="cd-pattern" v-model.trim="patternDraft" class="ne-input mono" list="cd-pattern-codes" spellcheck="false" autocomplete="off" aria-label="Pattern code" />
+                        <datalist id="cd-pattern-codes"><option v-for="c in codes" :key="c" :value="c" /></datalist>
+                        <button type="submit" class="ne-btn ne-btn--sm" :disabled="!patternCheck.ok || !patternChanged">Set</button>
+                    </form>
+                    <p v-if="patternDraft && !patternCheck.ok" class="error">{{ patternCheck.error }}</p>
+                    <div v-if="draftVirgaNotes" class="virga">
+                        <span class="lab">Virga on note</span>
+                        <button v-for="n in draftVirgaNotes" :key="n" type="button" class="vbtn" :class="{ on: draftVirgaOn.includes(n - 1) }" :aria-pressed="draftVirgaOn.includes(n - 1)" @click="toggleDraftVirga(n - 1)">{{ n }}</button>
+                    </div>
+                </div>
                 <div v-if="detailDefs.length" class="fields">
                     <div v-for="def in detailDefs" :key="def.key" class="ne-field">
                         <label :for="`cd-${chosen.id}-${def.key}`">{{ def.label }}</label>
@@ -441,6 +449,15 @@ h3 code { text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
 .detail { margin-top: var(--space-3); padding: var(--space-3); background: var(--color-bg); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
 .detail-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); flex-wrap: wrap; }
 .spacer { flex: 1; }
+.pattern-field { margin-top: var(--space-3); }
+.pattern-field label { display: block; font-size: 0.78rem; color: var(--color-text-muted); margin-bottom: 4px; }
+.code-row { display: flex; gap: var(--space-2); }
+.code-row .ne-input { flex: 1; min-width: 0; }
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.virga { display: flex; align-items: center; gap: var(--space-1); margin-top: var(--space-2); flex-wrap: wrap; }
+.lab { font-size: 0.78rem; color: var(--color-text-muted); margin-right: var(--space-1); }
+.vbtn { min-width: 2rem; padding: 0.25em 0.5em; border: 1px solid var(--color-border-hover); border-radius: var(--radius-md); background: var(--color-surface); font-weight: 700; cursor: pointer; }
+.vbtn.on { background: var(--color-primary); border-color: var(--color-primary); color: #fff; }
 .fields { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-3); }
 .fields .ne-input { padding: 0.4em 0.6em; font-size: 0.9rem; }
 .fields > .pp { grid-column: 1 / -1; }

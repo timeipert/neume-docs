@@ -33,6 +33,13 @@ export function describeRange(from, to) {
     return 'all folios';
 }
 
+/** Where a snippet is from, in words: "f. 8r · Line 6", or the label of a screenshot's place. */
+export function snippetPlaceLabel(snippet) {
+    if (!snippet) return '';
+    if (snippet.kind === 'image') return (snippet.place && snippet.place.label) || '—';
+    return `f. ${snippet.folio}${snippet.lineName ? ' · ' + snippet.lineName : ''}`;
+}
+
 /**
  * The snippets drawn on a manuscript's folios in a range, by code.
  *

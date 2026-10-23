@@ -6,6 +6,7 @@ import { useAnnotationsStore } from '../stores/annotations';
 import { projectCellLocation, projectPageLocation } from '../utils/projectChoices';
 import { groupSelected } from '../utils/projectTable';
 import { compareFolios } from '../utils/sorting';
+import FolioThumb from '../components/projects/FolioThumb.vue';
 import PageWorkbench from '../components/pages/PageWorkbench.vue';
 import AlignmentReview from '../components/manager/AlignmentReview.vue';
 import IiifSetup from '../components/iiif/IiifSetup.vue';
@@ -117,11 +118,12 @@ const back = () => router.push(projectCellLocation(project.value.id, { code: cod
         </div>
 
         <div v-if="!folio" class="choose">
-            <h2>Which folio?</h2>
-            <p class="ne-muted">The pages of {{ project.source }}<template v-if="folios.length"> in this project</template>. Pick one to mark line regions and signs on it.</p>
+            <h2>Scans</h2>
+            <p class="ne-muted">The pages of {{ project.source }}<template v-if="folios.length"> in this project</template>. Pick a page to open it and mark line regions and signs on it.</p>
             <ul v-if="cards.length" class="cards">
                 <li v-for="c in cards" :key="c.folio">
                     <button class="folio" @click="go({ folio: c.folio })">
+                        <FolioThumb :source="project.source" :folio="c.folio" />
                         <strong>f. {{ c.folio }}</strong>
                         <span class="ne-muted">
                             <template v-if="c.neumes">{{ c.neumes }} neume{{ c.neumes === 1 ? '' : 's' }}</template>
@@ -168,8 +170,8 @@ const back = () => router.push(projectCellLocation(project.value.id, { code: cod
 
 .choose { padding: var(--space-5) var(--space-6); overflow-y: auto; }
 .choose h2 { margin: 0 0 var(--space-1); font-size: 1.2rem; }
-.cards { list-style: none; margin: var(--space-4) 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: var(--space-2); }
-.folio { width: 100%; display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) var(--space-3); text-align: left; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.cards { list-style: none; margin: var(--space-4) 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-3); }
+.folio { width: 100%; display: flex; flex-direction: column; gap: 2px; padding: var(--space-2); text-align: left; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
 .folio:hover { border-color: var(--color-primary); box-shadow: var(--shadow-sm); background: var(--color-surface); }
 .folio .ne-muted { font-size: 0.78rem; }
 .typed { display: flex; gap: var(--space-2); max-width: 24rem; }

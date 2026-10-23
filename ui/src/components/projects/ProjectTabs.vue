@@ -12,14 +12,15 @@ const props = defineProps({
     project: { type: Object, required: true },
     /** from useProject */
     progress: { type: Object, required: true },
-    projectCount: { type: Number, default: 1 }
+    projectCount: { type: Number, default: 1 },
+    /** The project works on page images: its pages are a tab of their own. */
+    scans: { type: Boolean, default: false }
 });
 
 const route = useRoute();
 
-/** The page editor is entered from a cell, not a step of its own: it shows as a tab while it is open. */
+/** The page editor is also entered from a cell: that tab then says which folio is open. */
 const onPage = computed(() => route.name === 'project_page');
-const pageLabel = computed(() => (route.query.folio ? `Page f. ${route.query.folio}` : 'Page'));
 
 const tabs = computed(() => [
     { name: 'project_standard', label: 'Standard table', count: props.progress.columns ? `${props.progress.filled}/${props.progress.columns}` : '' },
@@ -28,7 +29,10 @@ const tabs = computed(() => [
     { name: 'project_review', label: 'Review', count: '' },
     { name: 'project_tree', label: 'Neume tree', count: '' },
     { name: 'project_all', label: 'All manuscripts', count: props.projectCount > 1 ? props.projectCount : '' }
-]);
+].concat(props.scans ? [{
+    name: 'project_page', label: 'Scans', title: 'The pages of the manuscript: mark line regions and signs on them',
+    count: onPage.value && route.query.folio ? `f. ${route.query.folio}` : ''
+}] : []));
 </script>
 
 <template>
@@ -40,10 +44,10 @@ const tabs = computed(() => [
         class="tab"
         :class="{ on: route.name === t.name, parent: onPage && t.name === (route.query.from === 'extended' ? 'project_extended' : 'project_standard') }"
         :aria-current="route.name === t.name ? 'step' : undefined"
+        :title="t.title"
     >
         {{ t.label }}<span v-if="t.count !== ''" class="count">{{ t.count }}</span>
     </RouterLink>
-    <span v-if="onPage" class="tab on page" aria-current="page">{{ pageLabel }}</span>
 </nav>
 </template>
 
@@ -53,7 +57,6 @@ const tabs = computed(() => [
 .tab:hover { color: var(--color-text); background: var(--color-surface-muted); }
 .tab.on { color: var(--color-primary-dark); border-bottom-color: var(--color-primary); }
 .tab.parent { color: var(--color-text); }
-.tab.page { cursor: default; background: var(--color-primary-light); border-radius: var(--radius-md) var(--radius-md) 0 0; }
 .count { align-self: center; padding: 0 7px; font-size: 0.72rem; line-height: 1.6; font-weight: 700; color: var(--color-text-muted); background: var(--color-surface-muted); border-radius: 999px; font-variant-numeric: tabular-nums; }
 .tab.on .count { color: var(--color-primary-dark); background: var(--color-primary-light); }
 </style>

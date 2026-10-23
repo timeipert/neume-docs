@@ -20,7 +20,9 @@ const toast = useToast();
 
 const id = computed(() => String(route.params.id));
 const context = useProject(id);
-const { project, progress, hasTranscription, manuscriptFolios } = context;
+const { project, progress, hasTranscription, manuscriptFolios, iiifAvailable } = context;
+// Page images are what this project works on, or there are some to look at anyway.
+const scans = computed(() => !!project.value && (project.value.images === 'iiif' || iiifAvailable.value));
 provide(PROJECT_CONTEXT, context);
 
 watch(id, (value) => store.markOpened(value), { immediate: true });
@@ -78,7 +80,7 @@ function remove() {
                     </template>
                 </PageHeader>
                 </template>
-                <ProjectTabs :id="id" :project="project" :progress="progress" :project-count="store.projects.length" />
+                <ProjectTabs :id="id" :project="project" :progress="progress" :project-count="store.projects.length" :scans="scans" />
             </div>
         </div>
 

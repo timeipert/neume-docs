@@ -311,7 +311,7 @@ watch([isVisible, regionUrl], () => {
     width: 16px;
     height: 16px;
     border: 2px solid rgba(255, 255, 255, 0.15);
-    border-top-color: var(--color-primary, #6366f1);
+    border-top-color: var(--color-primary, #9a2a1f);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

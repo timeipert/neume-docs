@@ -49,7 +49,7 @@ export async function saveToGithub(prepared, { fetchFn } = {}) {
     const session = useGithubSessionStore();
     if (!session.repo || !session.branch) throw new Error('Choose a repository and a branch first.');
     const token = await session.token({ fetchFn });
-    const message = prepared.kind === 'workspace' ? 'Save workspace backup from neume-docs' : 'Update documentation from neume-docs';
+    const message = prepared.kind === 'workspace' ? 'Save workspace backup from Neumedocs' : 'Update documentation from Neumedocs';
     const done = await commitFiles(
         { repo: session.repo, branch: session.branch, folder: session.folder, message, files: prepared.files },
         { token, fetchFn }

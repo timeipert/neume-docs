@@ -6,7 +6,8 @@
  *   neume-docs.json        the index: who made it, which metadata columns there are and which of
  *                          them may be filtered, the list of manuscripts with their metadata
  *   data/<manuscript>.json one file per manuscript: its pattern table and its snippets
- *   images/…               pictures of snippets, if they are kept as files
+ *   images/…               pictures of snippets, if they are kept as files (a snippet's `local` names its file;
+ *                          its `image` stays the address it was cut from)
  *
  * An endpoint is a place such a documentation is read from. The hosting of the app lists the
  * endpoints it offers (`endpoints.json`, next to the app); a person can also open any public
@@ -174,7 +175,7 @@ export function cleanEndpointList(raw) {
         for (let n = 2; seen.has(id); n++) id = `${slug(text(e.id, 60) || name || endpoint.repo || 'documentation')}-${n}`;
         seen.add(id);
         out.push({
-            id, ...endpoint, description, custom: false,
+            id, ...endpoint, description, custom: false, home: e.home === true,
             name: name || (endpoint.kind === 'github' ? `${endpoint.owner}/${endpoint.repo}` : endpoint.url)
         });
     }
@@ -217,6 +218,17 @@ export function repoWebUrl(endpoint) {
 
 // ---- the index ------------------------------------------------------------------------------------
 
+/** What the button under an introductory text leads to: the manuscripts of the documentation, or the editor. */
+export const SECTION_LINKS = ['collection', 'editor'];
+
+/** The introductory texts of a documentation: a heading, a text and, if wanted, a button under it; at most six. */
+function cleanSections(raw) {
+    return (Array.isArray(raw) ? raw : [])
+        .map(sec => ({ title: text(sec && sec.title, 80), text: text(sec && sec.text, 6000), link: SECTION_LINKS.includes(sec && sec.link) ? sec.link : '' }))
+        .filter(sec => sec.text)
+        .slice(0, 6);
+}
+
 /**
  * @returns {{ index: object } | { error: string }}
  */
@@ -240,6 +252,8 @@ export function cleanIndex(raw) {
             license: text(info.license, 200),
             doi: text(info.doi, 200),
             preferredCitation: text(info.preferredCitation, 600),
+            motto: text(info.motto, 600),
+            sections: cleanSections(info.sections),
             url: safeHttpUrl(info.url),
             year
         },
@@ -321,6 +335,8 @@ export function cleanManuscript(raw, fallbackId = '') {
             caption: text(s.caption, 300),
             image: cleanImageRef(s.image),
             zoom: cleanImageRef(s.zoom),
+            // the same cut-out kept as a file of the documentation; `image` still says where it comes from
+            ...(safeRelativePath(s.local) ? { local: safeRelativePath(s.local) } : {}),
             lineId: text(s.lineId, 160)
         });
     }

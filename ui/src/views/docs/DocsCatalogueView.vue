@@ -6,6 +6,7 @@ import { useDocs } from '../../composables/useDocsContext';
 import { useRowFilter } from '../../composables/useRowFilter';
 import { compareCells } from '../../utils/gridOps';
 import { decodeFilter, encodeFilter, fold } from '../../utils/manuscriptFilter';
+import { regionOf } from '../../utils/regions';
 
 /**
  * The manuscripts of a documentation, with the metadata its authors chose to show. What can be
@@ -65,6 +66,37 @@ const rows = computed(() => {
     return list;
 });
 
+// ---- grouping: the manuscripts under their region of origin (or any other column) ---------------------
+
+/** The columns worth grouping by: those that hold at least two different values. */
+const groupable = computed(() => columns.value.filter(c => new Set(entries.value.map(e => e.meta[c.key]).filter(Boolean)).size > 1));
+const preferred = computed(() => (groupable.value.find(c => /region/i.test(`${c.key} ${c.label}`)) || {}).key || '');
+const groupChoice = ref(typeof route.query.g === 'string' ? route.query.g : null); // null = not chosen: the region, if there is one
+const groupBy = computed(() => {
+    const key = groupChoice.value === null ? preferred.value : groupChoice.value;
+    return groupable.value.some(c => c.key === key) ? key : '';
+});
+watch(groupChoice, (g) => { router.replace({ query: { ...route.query, g: g === null ? undefined : (g || '-') } }); });
+if (groupChoice.value === '-') groupChoice.value = '';
+
+const sections = computed(() => {
+    if (!groupBy.value) return [{ key: '', label: '', rows: rows.value }];
+    const by = new Map();
+    for (const e of rows.value) {
+        const v = e.meta[groupBy.value] || '';
+        if (!by.has(v)) by.set(v, []);
+        by.get(v).push(e);
+    }
+    return [...by].sort(([a], [b]) => (!a ? 1 : !b ? -1 : a.localeCompare(b, undefined, { numeric: true })))
+        // a region of origin is called as on the front page ("Manuscripts of Aquitanian Origin"), and in its order
+        .map(([v, list]) => ({ key: v || '_none', label: v ? (isRegion.value ? regionOf(v).label : v) : 'Without a value', rank: isRegion.value ? regionOf(v).rank : 0, rows: list }))
+        .sort((a, b) => a.rank - b.rank);
+});
+/** The columns drawn: the one the rows are grouped by is said by the group heading. */
+const shownColumns = computed(() => columns.value.filter(c => c.key !== groupBy.value));
+const isRegion = computed(() => /region/i.test(`${groupBy.value} ${(columns.value.find(c => c.key === groupBy.value) || {}).label || ''}`));
+const colspan = computed(() => shownColumns.value.length + 4);
+
 function sortBy(key) {
     const s = sort.value;
     sort.value = s.key !== key ? { key, dir: 'asc' } : (s.dir === 'asc' ? { key, dir: 'desc' } : { key: 'source', dir: 'asc' });
@@ -92,11 +124,17 @@ const rowsCopy = computed(() => rows.value.map(r => r.source));
         <button v-if="columns.some(c => c.filter)" type="button" class="ne-btn ne-btn--sm" :class="{ on: panelOpen || filterCount }" :aria-pressed="panelOpen" @click="panelOpen = !panelOpen">
             Filter<template v-if="filterCount"> · {{ filterCount }}</template>
         </button>
+        <label v-if="groupable.length" class="groupby">Group by
+            <select class="ne-input" :value="groupBy" @change="groupChoice = $event.target.value">
+                <option value="">Nothing</option>
+                <option v-for="c in groupable" :key="c.key" :value="c.key">{{ c.label }}</option>
+            </select>
+        </label>
         <button v-if="filterCount || search" type="button" class="ne-btn ne-btn--sm ne-btn--ghost" @click="clearAll">Clear</button>
         <span class="grow"></span>
         <span class="count">{{ rows.length }} of {{ entries.length }} manuscripts</span>
         <RouterLink v-if="rows.length" :to="{ name: 'docs_table', params: { endpoint: docs.id.value }, query: tableQuery }" class="ne-btn ne-btn--sm ne-btn--primary">
-            {{ filterCount ? 'Compare these in the neume table →' : 'Neume table →' }}
+            {{ filterCount ? 'Compare these in the synopsis →' : 'Synopsis →' }}
         </RouterLink>
     </div>
 
@@ -126,14 +164,15 @@ const rowsCopy = computed(() => rows.value.map(r => r.source));
                 <thead>
                     <tr>
                         <th class="sticky"><button type="button" @click="sortBy('source')">Manuscript{{ arrow('source') }}</button></th>
-                        <th v-for="c in columns" :key="c.key"><button type="button" @click="sortBy(c.key)">{{ c.label }}{{ arrow(c.key) }}</button></th>
+                        <th v-for="c in shownColumns" :key="c.key"><button type="button" @click="sortBy(c.key)">{{ c.label }}{{ arrow(c.key) }}</button></th>
                         <th class="num"><button type="button" @click="sortBy('patterns')">Patterns{{ arrow('patterns') }}</button></th>
                         <th class="num"><button type="button" @click="sortBy('snippets')">Snippets{{ arrow('snippets') }}</button></th>
                         <th class="ref"><span class="sr-only">Link and cite</span></th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr v-for="e in rows" :key="e.id">
+                <tbody v-for="sec in sections" :key="sec.key">
+                    <tr v-if="groupBy" class="section"><th :colspan="colspan" scope="colgroup">{{ sec.label }} <span class="n">{{ sec.rows.length }}</span></th></tr>
+                    <tr v-for="e in sec.rows" :key="e.id">
                         <th scope="row" class="sticky">
                             <RouterLink :to="docs.manuscriptPath(e.id)" class="name">
                                 <strong>{{ e.source }}</strong>
@@ -141,7 +180,7 @@ const rowsCopy = computed(() => rows.value.map(r => r.source));
                             </RouterLink>
                             <span v-if="e.kind === 'collection'" class="own" title="Documented from screenshots, not from IIIF pages">screenshots</span>
                         </th>
-                        <td v-for="c in columns" :key="c.key">{{ e.meta[c.key] || '' }}</td>
+                        <td v-for="c in shownColumns" :key="c.key">{{ e.meta[c.key] || '' }}</td>
                         <td class="num">{{ e.patterns }}</td>
                         <td class="num">{{ e.snippets }}</td>
                         <td class="ref">
@@ -195,6 +234,10 @@ const rowsCopy = computed(() => rows.value.map(r => r.source));
 .ref { width: 2.2rem; text-align: center !important; }
 .ref-btn { border: none; background: none; cursor: pointer; opacity: 0.35; font-size: 1rem; }
 .ms tbody tr:hover .ref-btn, .ref-btn:focus-visible { opacity: 1; }
+.groupby { display: flex; align-items: center; gap: 6px; font-size: 0.84rem; color: var(--color-text-muted); }
+.groupby .ne-input { font-size: 0.84rem; padding: 0.25em 0.5em; }
+.ms .section th { position: sticky; left: 0; background: var(--color-bg); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-primary-dark); border-bottom: 2px solid var(--color-border); padding-top: 0.9em; }
+.n { margin-left: 4px; padding: 0 7px; border-radius: 999px; background: var(--color-surface-muted); color: var(--color-text-muted); font-size: 0.72rem; }
 .link { border: none; background: none; padding: 0; color: var(--color-primary); cursor: pointer; }
 .link:hover { text-decoration: underline; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }

@@ -95,11 +95,11 @@ function nudge(delta) { emit('set-offset', props.folioOffset + delta); }
                 <svg class="peek-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
                     <!-- context box -->
                     <rect :x="box.x" :y="box.y" :width="box.w" :height="box.h"
-                          fill="none" stroke="var(--color-primary, #6366f1)"
+                          fill="none" stroke="var(--color-primary, #9a2a1f)"
                           stroke-width="0.25" vector-effect="non-scaling-stroke" />
                     <!-- exact neume outline -->
                     <polygon :points="polygon"
-                             fill="rgba(99,102,241,0.15)"
+                             fill="rgba(154, 42, 31,0.15)"
                              stroke="#f59e0b" stroke-width="0.4"
                              vector-effect="non-scaling-stroke" />
                     <!-- exact note-head centres -->
@@ -165,8 +165,8 @@ function nudge(delta) { emit('set-offset', props.folioOffset + delta); }
 }
 .peek-error { color: #ef4444; font-size: 0.9rem; text-align: center; padding: 20px; }
 .spinner {
-    width: 28px; height: 28px; border: 3px solid rgba(99,102,241,0.25);
-    border-top-color: var(--color-primary, #6366f1); border-radius: 50%;
+    width: 28px; height: 28px; border: 3px solid rgba(154, 42, 31,0.25);
+    border-top-color: var(--color-primary, #9a2a1f); border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }

@@ -251,7 +251,7 @@ async function submitIiif() {
 .folio-side { display: flex; align-items: center; gap: 5px; flex: 0 0 auto; }
 .folio-tag { font-size: 0.82em; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--color-border, #e5e7eb); color: var(--color-text); }
 .folio-tag.via-position { background: #fef9c3; color: #854d0e; }
-.folio-tag.via-pinned { background: #dbeafe; color: #1e40af; }
+.folio-tag.via-pinned { background: var(--color-primary-light); color: var(--color-primary-dark); }
 .folio-tag.none { background: #fee2e2; color: #991b1b; }
 .folio-item.active .folio-tag { background: rgba(255,255,255,0.25); color: #fff; }
 .folio-item.unresolved { opacity: 0.7; }

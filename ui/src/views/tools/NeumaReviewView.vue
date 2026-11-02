@@ -13,7 +13,7 @@ import { filterSnippets, stateOf, summarize, summarizeByColumn } from '../../uti
 /**
  * A tool for going through the snippets of the Hungarian Neume Catalogue (neuma.zti.hu), one by one or
  * a screenful at a time: each is shown with the pattern its column proposes, and is accepted, corrected,
- * set aside or discarded. The decisions make a documentation neume-docs can read. It has no link in
+ * set aside or discarded. The decisions make a documentation Neumedocs can read. It has no link in
  * the editor; its address is `#/tools/neuma`.
  */
 const route = useRoute();
@@ -196,7 +196,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
         <template #actions>
             <span v-if="status === 'ready'" class="save" :class="`save-${review.saving.value}`" role="status">{{ SAVE_TEXT[review.saving.value] }}</span>
             <button v-if="status === 'ready'" type="button" class="ne-btn" :disabled="!review.canUndo.value" :title="review.canUndo.value ? `Undo: ${review.lastLabel.value}` : 'Nothing to undo'" @click="undo">Undo</button>
-            <RouterLink to="/" class="ne-btn ne-btn--ghost">neume-docs →</RouterLink>
+            <RouterLink to="/" class="ne-btn ne-btn--ghost">Neumedocs →</RouterLink>
         </template>
     </PageHeader>
 

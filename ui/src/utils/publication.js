@@ -5,12 +5,20 @@
  */
 
 export const defaultPublication = () => ({
-    title: '', description: '', authors: [], publisher: '', license: '', doi: '', url: '', year: '', preferredCitation: '',
+    title: '', description: '', motto: '', sections: [], authors: [], publisher: '', license: '', doi: '', url: '', year: '', preferredCitation: '',
     /** the keys of the metadata columns shown to readers; null = the ones that are safe to show */
     columns: null
 });
 
 const text = (v, max = 300) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+
+/** The introductory texts of the title page: a heading, a text and, if wanted, the button under it (`collection` or `editor`); at most six. */
+export function cleanSections(raw) {
+    return (Array.isArray(raw) ? raw : [])
+        .map(s => ({ title: text(s && s.title, 80), text: text(s && s.text, 6000), link: ['collection', 'editor'].includes(s && s.link) ? s.link : '' }))
+        .filter(s => s.text)
+        .slice(0, 6);
+}
 
 /** What is read from storage or a backup, made safe to use. */
 export function cleanPublication(raw) {
@@ -18,6 +26,8 @@ export function cleanPublication(raw) {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
     out.title = text(raw.title, 200);
     out.description = text(raw.description, 2000);
+    out.motto = text(raw.motto, 600);
+    out.sections = cleanSections(raw.sections);
     out.publisher = text(raw.publisher, 200);
     out.license = text(raw.license, 200);
     out.doi = text(raw.doi, 200);

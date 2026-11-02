@@ -29,7 +29,7 @@ const freq = buildFrequency(cmReference.patterns);
 
 const MODES = [
     { value: 'standard', label: 'Standard table', title: 'The standard selection of every manuscript, in the fixed columns' },
-    { value: 'expanded', label: 'Expanded documentation', title: 'The standard table plus whatever each manuscript documents beyond it' },
+    { value: 'expanded', label: 'Extended table', title: 'The standard table plus whatever each manuscript documents beyond it' },
     { value: 'codes', label: 'All codes', title: 'Every pattern code as a column of its own' }
 ];
 
@@ -46,6 +46,10 @@ const size = ref(80);               // the width of a snippet, in pixels
 const onlyWithSnippets = ref(true); // in the expanded table: leave out the extra columns nothing is in
 const sortMode = ref('tones');      // the order of the codes in "All codes"
 const onlyStarred = ref(false);
+const msSearch = ref('');           // narrows the rows by manuscript name
+const hideEmptyRows = ref(true);    // leave out manuscripts nothing is in
+const hideEmptyCols = ref(false);   // leave out columns nothing is in
+const groupSel = ref(new Set());    // the column groups chosen; none chosen = all
 const SORTS = [
     { value: 'tones', label: 'Tones, then frequency in the CM' },
     { value: 'freq', label: 'Frequency here' },
@@ -63,11 +67,27 @@ const filter = computed(() => decodeFilter(q('f')));
 const only = computed(() => new Set(q('only').split(',').filter(Boolean)));
 const metaOf = (id, key) => (docs.entry(id) || { meta: {} }).meta[key] || '';
 
+// "all manuscripts that have these codes": typed codes, any or all of them; kept in the address so it can be linked to
+const wantedCodes = computed(() => q('codes').split(/[\s,;]+/).filter(Boolean));
+const codeMode = computed(() => (q('cm') === 'any' ? 'any' : 'all'));
+const codeText = ref(q('codes').split(/[\s,;]+/).filter(Boolean).join(' '));
+watch(codeText, (t) => router.replace({ query: { ...route.query, codes: t.trim() ? t.trim().split(/\s+/).join(',') : undefined } }));
+function setCodeMode(m) { router.replace({ query: { ...route.query, cm: m === 'all' ? undefined : m } }); }
+function hasCodes(id) {
+    const data = dataOf(id);
+    if (!data) return false;
+    const have = new Set(data.snippets.flatMap(s => [s.pattern, getBaseCode(s.pattern)]));
+    return codeMode.value === 'any' ? wantedCodes.value.some(c => have.has(c)) : wantedCodes.value.every(c => have.has(c));
+}
+
 const shown = computed(() => {
     const ids = docs.entries.value.map(e => e.id);
     const filtered = Object.keys(filter.value.rules).length ? filterRows(filter.value, ids, metaOf) : ids;
     const set = new Set(filtered);
-    return docs.entries.value.filter(e => set.has(e.id) && (!only.value.size || only.value.has(e.id)));
+    const term = fold(msSearch.value.trim());
+    return docs.entries.value.filter(e => set.has(e.id) && (!only.value.size || only.value.has(e.id))
+        && (!wantedCodes.value.length || hasCodes(e.id))
+        && (!term || fold(`${e.source} ${e.name}`).includes(term)));
 });
 
 const selectionText = computed(() => Object.entries(filter.value.rules).map(([k, r]) => `${docs.columnLabel(k)}: ${describeRule(r)}`).join('; '));
@@ -84,6 +104,29 @@ function clearSelection() { router.replace({ query: { ...route.query, f: undefin
 
 const picking = ref(false);
 const pickSearch = ref('');
+/** Choosing manuscripts by what is known of them: a metadata column, and one of its values adds or takes away all that have it. */
+const pickColumns = computed(() => docs.columns.value.filter(c => { const n = new Set(docs.entries.value.map(e => e.meta[c.key]).filter(Boolean)).size; return n > 1 && n <= 40; }));
+const pickColumn = ref('');
+const pickValues = computed(() => {
+    const key = pickColumn.value || (pickColumns.value[0] || {}).key;
+    if (!key) return [];
+    const by = new Map();
+    for (const e of docs.entries.value) { const v = e.meta[key]; if (v) by.set(v, [...(by.get(v) || []), e.id]); }
+    return [...by].sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true })).map(([value, ids]) => ({ value, ids }));
+});
+function toggleValue(ids) {
+    const next = new Set(only.value);
+    const all = ids.every(id => next.has(id));
+    for (const id of ids) { if (all) next.delete(id); else next.add(id); }
+    setOnly(next);
+}
+/** Everything but what is chosen now. With nothing chosen (= all are shown) there is nothing to turn round. */
+function invertChoice() {
+    if (!only.value.size) return;
+    const next = new Set(docs.entries.value.map(e => e.id).filter(id => !only.value.has(id)));
+    setOnly(next.size === docs.entries.value.length ? new Set() : next);
+}
+const valueOn = (ids) => ids.every(id => only.value.has(id));
 const pickable = computed(() => {
     const term = fold(pickSearch.value);
     return docs.entries.value.filter(e => !term || fold(`${e.source} ${e.name}`).includes(term));
@@ -137,7 +180,7 @@ const cells = computed(() => {
     return { byEntry: out, inPlay };
 });
 
-const columnGroups = computed(() => {
+const allGroups = computed(() => {
     const { byEntry, inPlay } = cells.value;
     const hasContent = (col) => shown.value.some(e => (byEntry[e.id] || {})[col.key]);
     const q = colSearch.value.trim().toLowerCase();
@@ -169,8 +212,19 @@ const columnGroups = computed(() => {
         const standard = new Set(buildColumns('standard', [], freq).map(c => c.key));
         cols = cols.filter(c => standard.has(c.key) || hasContent(c));
     }
+    if (hideEmptyCols.value) cols = cols.filter(hasContent);
     return groupColumns(cols.filter(matches));
 });
+const columnGroups = computed(() => (groupSel.value.size ? allGroups.value.filter(g => groupSel.value.has(g.key)) : allGroups.value));
+function toggleGroupSel(key) {
+    const next = new Set(groupSel.value);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    groupSel.value = next;
+}
+/** The rows that are drawn: with the empty ones left out, if asked. */
+const rows = computed(() => (hideEmptyRows.value
+    ? shown.value.filter(e => columnGroups.value.some(g => g.columns.some(c => (cells.value.byEntry[e.id] || {})[c.key])))
+    : shown.value));
 const columnCount = computed(() => columnGroups.value.reduce((n, g) => n + g.columns.length, 0));
 
 const collapsed = ref(new Set());
@@ -225,10 +279,7 @@ useHighlight(ready);
             <template v-else>Every pattern code as a column of its own.</template>
         </span>
         <span class="grow"></span>
-        <span class="count">{{ shown.length }} of {{ docs.entries.value.length }} manuscripts · {{ columnCount }} column{{ columnCount === 1 ? '' : 's' }}</span>
-        <button type="button" class="ne-btn ne-btn--sm" :aria-expanded="picking" @click="picking = !picking">
-            Manuscripts: {{ only.size ? `${only.size} chosen` : 'all' }} <span aria-hidden="true">{{ picking ? '▴' : '▾' }}</span>
-        </button>
+        <span class="count">{{ rows.length }} of {{ docs.entries.value.length }} manuscripts · {{ columnCount }} column{{ columnCount === 1 ? '' : 's' }}</span>
     </div>
 
     <div class="tools tools--sub">
@@ -238,6 +289,21 @@ useHighlight(ready);
         <label class="inline">Snippet size
             <input v-model.number="size" type="range" min="48" max="160" step="8" aria-label="Snippet size" /> <span class="px">{{ size }}px</span>
         </label>
+        <button type="button" class="ne-btn ne-btn--sm" :aria-expanded="picking" @click="picking = !picking">
+            Choose manuscripts: {{ only.size ? `${only.size} chosen` : 'all' }} <span aria-hidden="true">{{ picking ? '▴' : '▾' }}</span>
+        </button>
+        <div class="find">
+            <input v-model="msSearch" type="search" class="ne-input" placeholder="Find a manuscript…" aria-label="Find a manuscript" @keydown.esc="msSearch = ''" />
+        </div>
+        <div class="find codes">
+            <input v-model="codeText" type="search" class="ne-input" placeholder="Manuscripts with codes: *u *dd …" aria-label="Show only manuscripts that have these codes" @keydown.esc="codeText = ''" />
+            <select v-if="wantedCodes.length > 1" class="ne-input" :value="codeMode" aria-label="Which of the codes" @change="setCodeMode($event.target.value)">
+                <option value="all">have all</option>
+                <option value="any">have any</option>
+            </select>
+        </div>
+        <label class="ne-check small" title="Leave out the manuscripts nothing is in"><input v-model="hideEmptyRows" type="checkbox" /> Hide empty rows</label>
+        <label class="ne-check small" title="Leave out the columns nothing is in"><input v-model="hideEmptyCols" type="checkbox" /> Hide empty columns</label>
         <label v-if="mode === 'expanded'" class="ne-check small" title="Leave out the extra columns that nothing is in"><input v-model="onlyWithSnippets" type="checkbox" /> Only columns with snippets</label>
         <label v-if="mode === 'codes'" class="inline">Order
             <select v-model="sortMode" class="ne-input"><option v-for="o in SORTS" :key="o.value" :value="o.value">{{ o.label }}</option></select>
@@ -248,6 +314,12 @@ useHighlight(ready);
         <button type="button" class="link" @click="collapseAll">Fold all</button>
     </div>
 
+    <div v-if="allGroups.length > 1" class="groupbar" role="group" aria-label="Show only these column groups">
+        <span class="hint">Column groups</span>
+        <button type="button" class="pill" :class="{ on: !groupSel.size }" @click="groupSel = new Set()">All ({{ allGroups.length }})</button>
+        <button v-for="g in allGroups" :key="g.key" type="button" class="pill" :class="{ on: groupSel.has(g.key) }" :aria-pressed="groupSel.has(g.key)" @click="toggleGroupSel(g.key)">{{ g.label }} <span class="n">{{ g.columns.length }}</span></button>
+    </div>
+
     <div v-if="selectionText" class="selection ne-note ne-note--info">
         <span>Selection from the manuscripts list: <strong>{{ selectionText }}</strong></span>
         <RouterLink :to="{ name: 'docs_catalogue', params: { endpoint: docs.id.value }, query: { f: q('f') } }" class="link">Change it</RouterLink>
@@ -255,9 +327,16 @@ useHighlight(ready);
     </div>
 
     <div v-if="picking" class="picker">
+        <div v-if="pickColumns.length" class="pills">
+            <label class="inline">Choose by
+                <select :value="pickColumn || (pickColumns[0] || {}).key" class="ne-input" @change="pickColumn = $event.target.value"><option v-for="c in pickColumns" :key="c.key" :value="c.key">{{ c.label }}</option></select>
+            </label>
+            <button v-for="v in pickValues" :key="v.value" type="button" class="pill" :class="{ on: valueOn(v.ids) }" :aria-pressed="valueOn(v.ids)" @click="toggleValue(v.ids)">{{ v.value }} ({{ v.ids.length }})</button>
+        </div>
         <input v-if="docs.entries.value.length > 8" v-model="pickSearch" type="search" class="ne-input" placeholder="Find a manuscript…" aria-label="Find a manuscript" />
         <div class="pills">
             <button type="button" class="pill" :class="{ on: !only.size }" @click="setOnly(new Set())">All ({{ docs.entries.value.length }})</button>
+            <button type="button" class="pill invert" :disabled="!only.size" title="Show everything except the manuscripts chosen now" @click="invertChoice">Invert the choice</button>
             <button v-for="e in pickable" :key="e.id" type="button" class="pill" :class="{ on: only.has(e.id) }" :aria-pressed="only.has(e.id)" @click="toggleOnly(e.id)">{{ e.source }}</button>
             <span v-if="!pickable.length" class="hint">No manuscript matches.</span>
         </div>
@@ -269,6 +348,7 @@ useHighlight(ready);
 
     <p v-if="loading" class="status" role="status">Reading the manuscripts…</p>
     <p v-else-if="!shown.length" class="ne-empty">No manuscript is selected. <button type="button" class="link" @click="clearSelection">Show all</button></p>
+    <p v-else-if="!rows.length" class="ne-empty">Nothing matches the settings. <button type="button" class="link" @click="msSearch = ''; hideEmptyRows = false; hideEmptyCols = false; groupSel = new Set()">Reset them</button></p>
     <p v-else-if="!columnCount" class="ne-empty">None of these manuscripts has snippets for this view. Try “Expanded documentation”.</p>
 
     <div v-else class="matrix-wrap">
@@ -295,7 +375,7 @@ useHighlight(ready);
                 </tr>
             </thead>
             <tbody>
-                <tr v-for="e in shown" :key="e.id" :class="{ 'row-target': isTargetRow(e) }">
+                <tr v-for="e in rows" :key="e.id" :class="{ 'row-target': isTargetRow(e) }">
                     <th scope="row" class="ms sticky" :class="{ 'is-target': isTargetRow(e) && !targetCol }" :data-target="isTargetRow(e) && !targetCol ? 'true' : null">
                         <RouterLink :to="docs.manuscriptPath(e.id)" class="ms-link"><strong>{{ e.source }}</strong> <span aria-hidden="true">→</span></RouterLink>
                         <span v-if="e.name && e.name !== e.source" class="sub">{{ e.name }}</span>
@@ -338,7 +418,9 @@ useHighlight(ready);
 .link:hover { text-decoration: underline; }
 .status, .ne-empty { color: var(--color-text-muted); text-align: center; padding: var(--space-5); margin: 0; }
 
-.tools--sub { gap: var(--space-4); }
+.tools--sub { gap: var(--space-2) var(--space-4); }
+.table-page { gap: var(--space-2); }
+.matrix-wrap { max-height: calc(100vh - 11rem) !important; }
 .find .ne-input { width: 16rem; max-width: 100%; font-size: 0.86rem; padding: 0.3em 0.7em; }
 .inline { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--color-text-muted); }
 .inline .ne-input { font-size: 0.82rem; padding: 0.2em 0.4em; }
@@ -348,6 +430,10 @@ useHighlight(ready);
 .snip-star { position: absolute; top: 0; right: 0; border: none; background: rgba(255,255,255,0.75); border-radius: 4px; padding: 0 3px; font-size: 0.9rem; line-height: 1.2; cursor: pointer; color: var(--color-text-light); opacity: 0; }
 .snip-wrap:hover .snip-star, .snip-star.on, .snip-star:focus-visible { opacity: 1; }
 .snip-star.on { color: #e0a100; }
+.codes { display: flex; gap: 6px; }
+.pill.invert { border-style: dashed; }
+.pill:disabled { opacity: 0.45; cursor: default; }
+.groupbar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .picker { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-surface); }
 .picker .ne-input { max-width: 18rem; font-size: 0.86rem; padding: 0.3em 0.6em; }
 .pills { display: flex; flex-wrap: wrap; gap: 6px; max-height: 9rem; overflow-y: auto; }

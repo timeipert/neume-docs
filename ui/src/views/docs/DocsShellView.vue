@@ -3,6 +3,7 @@ import { computed, ref, shallowRef, watch } from 'vue';
 import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router';
 import CiteDialog from '../../components/docs/CiteDialog.vue';
 import StarredDialog from '../../components/docs/StarredDialog.vue';
+import PicturesDialog from '../../components/docs/PicturesDialog.vue';
 import { provideDocs } from '../../composables/useDocsContext';
 import { openDocumentation, previewUnpublished, setPreviewUnpublished, useDocumentations } from '../../composables/useDocumentations';
 import { LOCAL_ID, combineId, combinedParts, isCombineId } from '../../utils/documentation';
@@ -36,6 +37,7 @@ const ready = computed(() => state.value.status === 'ready');
 
 // ---- the starred snippets ---------------------------------------------------------------------
 const starsOpen = ref(false);
+const picturesOpen = ref(false);
 function showStarred({ entry, snippet }) {
     starsOpen.value = false;
     router.push({ path: docs.manuscriptPath(entry.id), query: { snippet: snippet.id } });
@@ -71,13 +73,13 @@ const latestPath = computed(() => (pinnedVersion.value ? `/docs/${encodeURICompo
 
 const tabs = computed(() => [
     { label: 'Manuscripts', badge: ready.value ? state.value.index.manuscripts.length : undefined, to: docs.path(), active: route.name === 'docs_catalogue' || route.name === 'docs_manuscript' },
-    { label: 'Neume table', to: docs.path('/table'), active: route.name === 'docs_table' },
+    { label: 'Synopsis', to: docs.path('/table'), active: route.name === 'docs_table' },
     { label: 'About', to: docs.path('/about'), active: route.name === 'docs_about' }
 ]);
 
 watch([ready, info, () => route.params.source, () => route.name], () => {
-    const page = route.name === 'docs_manuscript' ? `${route.params.source} — ` : route.name === 'docs_table' ? 'Neume table — ' : route.name === 'docs_about' ? 'About — ' : '';
-    document.title = ready.value ? `${page}${info.value.title} — neume-docs` : 'Documentation — neume-docs';
+    const page = route.name === 'docs_manuscript' ? `${route.params.source} — ` : route.name === 'docs_table' ? 'Synopsis — ' : route.name === 'docs_about' ? 'About — ' : '';
+    document.title = ready.value ? `${page}${info.value.title}${info.value.title === 'Neumedocs' ? '' : ' — Neumedocs'}` : 'Documentation — Neumedocs';
 }, { immediate: true });
 
 // A dialog about one thing must not stay open over another page.
@@ -92,17 +94,13 @@ function citeWhole() {
 </script>
 
 <template>
-<div class="docs">
+<div class="docs docs-classic">
     <header class="bar">
-        <RouterLink to="/" class="brand" aria-label="neume-docs start">
-            <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="16" height="16"><ellipse cx="8" cy="8" rx="4.2" ry="3.2" transform="rotate(-18 8 8)" fill="currentColor"/><ellipse cx="16" cy="16" rx="4.2" ry="3.2" transform="rotate(-18 16 16)" fill="currentColor"/></svg></span>
-            neume-docs
+        <RouterLink to="/docs" class="brand" aria-label="Front page">
+            Neumedocs
         </RouterLink>
-        <nav class="crumbs" aria-label="Where you are">
-            <RouterLink to="/docs">Documentations</RouterLink>
-            <span aria-hidden="true">/</span>
-            <span class="here">{{ ready ? info.title : (state.endpoint ? state.endpoint.name : endpoint) }}</span>
-        </nav>
+        <!-- the name of the documentation, unless it is the site's own name -->
+        <span v-if="(ready ? info.title : '') !== 'Neumedocs'" class="crumbs here">{{ ready ? info.title : (state.endpoint ? state.endpoint.name : endpoint) }}</span>
  <span class="grow"></span>
         <button v-if="ready" type="button" class="stars" :title="docs.stars.count.value ? 'The snippets you starred' : 'Star snippets to collect them here'" @click="starsOpen = true">
             <span aria-hidden="true">{{ docs.stars.count.value ? '★' : '☆' }}</span> Starred<span v-if="docs.stars.count.value" class="stars-n">{{ docs.stars.count.value }}</span>
@@ -164,6 +162,7 @@ function citeWhole() {
                         <li v-if="!candidates.length" class="none">There is nothing else to combine with. Documentations are listed on the start page.</li>
                     </ul>
                 </div>
+                <button v-if="ready && !combined" type="button" class="ne-btn" title="Keep the snippet pictures in this browser, so they load at once" @click="picturesOpen = true">Pictures…</button>
                 <button type="button" class="ne-btn" :title="combined ? 'Each documentation in a combination is cited on its own' : 'A link to this documentation and suggestions for citing it'" @click="citeWhole">{{ combined ? 'How to cite…' : 'Cite…' }}</button>
             </div>
         </section>
@@ -179,6 +178,7 @@ function citeWhole() {
         </main>
     </template>
 
+    <PicturesDialog v-if="ready && !combined" :open="picturesOpen" @close="picturesOpen = false" />
     <StarredDialog :open="starsOpen" @close="starsOpen = false" @open-snippet="showStarred" />
 
     <CiteDialog
@@ -195,18 +195,18 @@ function citeWhole() {
 
 <style scoped>
 .docs { min-height: 100%; background: var(--color-bg); display: flex; flex-direction: column; }
-.bar { display: flex; align-items: center; gap: var(--space-4); padding: 0 var(--space-4); min-height: 48px; background: var(--color-nav-bg); color: var(--color-text-light); }
-.brand { display: inline-flex; align-items: center; gap: var(--space-2); color: #fff !important; font-weight: 700; text-decoration: none; white-space: nowrap; }
-.mark { display: inline-flex; width: 24px; height: 24px; align-items: center; justify-content: center; border-radius: 7px; background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%); }
-.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: 0.86rem; min-width: 0; }
-.crumbs a { color: var(--color-text-light); text-decoration: none; }
-.crumbs a:hover { color: #fff; }
-.here { color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* a running head, as at the top of a printed page: the name, where one is, a hairline below */
+.bar { display: flex; align-items: center; gap: var(--space-4); padding: 0 var(--space-5); min-height: 52px; background: var(--color-bg); border-bottom: 1px solid var(--color-border); color: var(--color-text-muted); }
+.brand { color: var(--color-text) !important; font-size: 1.15rem; text-decoration: none; white-space: nowrap; letter-spacing: 0.01em; }
+.crumbs { display: flex; align-items: center; gap: var(--space-2); font-size: 0.92rem; font-style: italic; min-width: 0; }
+.crumbs a { color: var(--color-text-muted); text-decoration: none; }
+.crumbs a:hover { color: var(--color-primary); text-decoration: underline; }
+.here { color: var(--color-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .grow { flex: 1; }
-.bar .ne-btn--ghost { color: var(--color-text-light); }
-.stars { border: 1px solid rgba(255,255,255,0.2); background: transparent; color: #fff; border-radius: var(--radius-md); padding: 0.25em 0.7em; font-size: 0.84rem; cursor: pointer; }
-.stars:hover { background: rgba(255,255,255,0.1); }
-.stars-n { margin-left: 6px; padding: 0 6px; border-radius: 999px; background: #e0a100; color: #1e293b; font-weight: 700; font-size: 0.74rem; }
+.bar .ne-btn--ghost { color: var(--color-text-muted); }
+.stars { border: 1px solid var(--color-border); background: transparent; color: var(--color-text); border-radius: var(--radius-md); padding: 0.2em 0.7em; font: inherit; font-size: 0.9rem; cursor: pointer; }
+.stars:hover { border-color: var(--color-border-hover); }
+.stars-n { margin-left: 6px; color: var(--color-primary); font-weight: 600; }
 
 .center { max-width: 44rem; margin: var(--space-6) auto; padding: 0 var(--space-4); width: 100%; box-sizing: border-box; }
 .problem p { margin: var(--space-2) 0; }
@@ -214,9 +214,9 @@ function citeWhole() {
 .preview { margin: var(--space-3) var(--space-5) 0; }
 
 .head { display: flex; gap: var(--space-4); align-items: flex-start; justify-content: space-between; padding: var(--space-5) var(--space-5) var(--space-3); }
-.head h1 { margin: 0; font-size: 1.7rem; letter-spacing: -0.01em; }
-.authors { margin: 4px 0 0; color: var(--color-text-muted); }
-.description { margin: var(--space-2) 0 0; max-width: 70ch; color: var(--color-text); }
+.head h1 { margin: 0; font-size: 2rem; }
+.authors { margin: 4px 0 0; color: var(--color-text-muted); font-style: italic; }
+.description { margin: var(--space-2) 0 0; max-width: 70ch; color: var(--color-text-muted); font-style: italic; font-size: 1.05rem; }
 .head-actions { flex: none; display: flex; gap: var(--space-2); align-items: flex-start; }
 .combine { position: relative; }
 .combine-menu { position: absolute; right: 0; top: calc(100% + 4px); z-index: 50; min-width: 16rem; margin: 0; padding: 4px; list-style: none; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); box-shadow: var(--shadow-lg); }
@@ -230,10 +230,10 @@ function citeWhole() {
 .also { display: inline-flex; margin-left: var(--space-3); font-size: 0.86rem; }
 
 .tabs { display: flex; gap: var(--space-1); padding: 0 var(--space-5); border-bottom: 1px solid var(--color-border); }
-.tab { padding: 0.55em 1em; color: var(--color-text-muted); text-decoration: none; border-bottom: 2px solid transparent; margin-bottom: -1px; font-weight: 600; font-size: 0.92rem; }
+.tab { padding: 0.5em 1em; color: var(--color-text-muted); text-decoration: none; border-bottom: 1px solid transparent; margin-bottom: -1px; font-variant: small-caps; letter-spacing: 0.06em; font-size: 1.05rem; }
 .tab:hover { color: var(--color-text); }
-.tab.on { color: var(--color-primary-hover); border-bottom-color: var(--color-primary); }
-.badge { margin-left: 6px; padding: 0 7px; border-radius: 999px; background: var(--color-surface-muted); font-size: 0.74rem; color: var(--color-text-muted); }
+.tab.on { color: var(--color-text); border-bottom-color: var(--color-primary); }
+.badge { margin-left: 6px; font-size: 0.85rem; color: var(--color-text-light); font-variant: normal; }
 
 .page { flex: 1; min-height: 0; padding: var(--space-4) var(--space-5) var(--space-6); }
 @media (max-width: 720px) { .head { flex-direction: column; } .head, .tabs, .page { padding-left: var(--space-3); padding-right: var(--space-3); } .preview { margin-left: var(--space-3); margin-right: var(--space-3); } }

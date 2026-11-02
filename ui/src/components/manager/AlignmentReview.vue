@@ -213,7 +213,7 @@ function removeLegacy() {
 .skip-btn.active { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 .data-dot { color: #16a34a; margin-left: 2px; }
 .via { font-size: 0.75rem; padding: 1px 7px; border-radius: 10px; background: var(--color-border, #eee); }
-.via.pinned { background: #dbeafe; color: #1e40af; }
+.via.pinned { background: var(--color-primary-light); color: var(--color-primary-dark); }
 .via.label { background: #dcfce7; color: #166534; }
 .via.position { background: #fef9c3; color: #854d0e; }
 .via.skipped, .via.divider { background: transparent; color: var(--color-text-muted, #999); }

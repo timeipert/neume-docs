@@ -595,7 +595,7 @@ const virtualLines = computed(() => {
 .mini-loader { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--color-primary); font-weight: 600; }
 .spinner {
     width: 16px; height: 16px;
-    border: 2px solid rgba(59, 130, 246, 0.2);
+    border: 2px solid rgba(154, 42, 31, 0.2);
     border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;

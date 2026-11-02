@@ -170,6 +170,6 @@ watch([isVisible, regionUrl], () => { if (isVisible.value) load(); });
     font-size: 0.8rem; color: var(--color-text-muted);
 }
 .strip-error { color: #ef4444; }
-.sp { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.15); border-top-color: var(--color-primary, #6366f1); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.sp { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.15); border-top-color: var(--color-primary, #9a2a1f); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 </style>

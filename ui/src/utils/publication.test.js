@@ -59,3 +59,16 @@ describe('telling what is typed from what is stored', () => {
         expect(samePublicationValue(null, ['a'])).toBe(false);
     });
 });
+
+describe('the introduction of a publication', () => {
+    it('keeps a motto and up to six texts, each with something in it', () => {
+        const out = cleanPublication({ motto: ' A line ', sections: [{ title: 'Study', text: 'x' }, { title: 'Empty', text: '  ' }, ...Array.from({ length: 8 }, () => ({ title: 't', text: 'y' }))] });
+        expect(out.motto).toBe('A line');
+        expect(out.sections).toHaveLength(6);
+        expect(out.sections[0]).toEqual({ title: 'Study', text: 'x', link: '' });
+    });
+    it('starts without either', () => {
+        expect(defaultPublication().motto).toBe('');
+        expect(defaultPublication().sections).toEqual([]);
+    });
+});

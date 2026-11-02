@@ -11,6 +11,9 @@ import { useDocs } from '../../composables/useDocsContext';
 import { useHighlight } from '../../composables/useHighlight';
 import { loadManuscript } from '../../composables/useDocumentations';
 import { stripSignKeys } from '../../utils/signs';
+import cmReference from '../../data/cmReference.json';
+import { buildFrequency, sortCodes } from '../../utils/neumeTable';
+import { compareChantPatterns } from '../../utils/sorting';
 
 /**
  * One manuscript of a documentation: its metadata, its patterns (as the hierarchy of the pattern
@@ -79,9 +82,46 @@ const patternRows = computed(() => {
 const rowByCode = computed(() => new Map(patternRows.value.map(r => [r.pattern, r])));
 const codes = computed(() => patternRows.value.map(r => r.pattern));
 
-const patternView = ref('tree');
+// the table is the overview of the printed volumes; the hierarchy is the other way to read the same patterns
+const patternView = ref('table');
 const PATTERN_VIEWS = [{ value: 'tree', label: 'Hierarchy' }, { value: 'table', label: 'Table' }];
 const tree = ref(null);
+
+// what the reader sets for the table: a search, the tier, whether snippets exist, the order
+const freq = buildFrequency(cmReference.patterns);
+const pSearch = ref('');
+const pTier = ref('');
+const pHas = ref('');
+const pSort = ref('cm');
+const PATTERN_SORTS = [
+    { value: 'cm', label: 'Order of the CM (tones, then frequency)' },
+    { value: 'ref', label: 'Ref ID' },
+    { value: 'count', label: 'Most snippets first' },
+    { value: 'alpha', label: 'Alphabetical (ignoring [ ])' },
+    { value: 'length', label: 'Neume length' }
+];
+const refNumber = (r) => { const n = parseFloat(r.refId); return Number.isFinite(n) ? n : Infinity; };
+const tableRows = computed(() => {
+    const term = pSearch.value.trim().toLowerCase();
+    let rows = patternRows.value.filter(r => (!term || `${r.pattern} ${r.refId} ${r.notes}`.toLowerCase().includes(term))
+        && (!pTier.value || r.tier === pTier.value)
+        && (!pHas.value || (pHas.value === 'with' ? r.count > 0 : r.count === 0)));
+    const by = new Map(rows.map(r => [r.pattern, r]));
+    if (pSort.value === 'cm') return sortCodes(rows.map(r => r.pattern), freq).map(c => by.get(c));
+    if (pSort.value === 'ref') return [...rows].sort((a, b) => refNumber(a) - refNumber(b) || a.pattern.localeCompare(b.pattern));
+    if (pSort.value === 'count') return [...rows].sort((a, b) => b.count - a.count || a.pattern.localeCompare(b.pattern));
+    return [...rows].sort((a, b) => compareChantPatterns(a.pattern, b.pattern, pSort.value));
+});
+const tiers = computed(() => [...new Set(patternRows.value.map(r => r.tier).filter(Boolean))]);
+const filtering = computed(() => !!(pSearch.value || pTier.value || pHas.value));
+function clearPatternFilter() { pSearch.value = ''; pTier.value = ''; pHas.value = ''; }
+
+const THUMBS = 8;
+const openThumbs = ref(new Set());
+const thumbsOf = (row) => (openThumbs.value.has(row.pattern) ? row.snippets : row.snippets.slice(0, THUMBS));
+function moreThumbs(row) { openThumbs.value = new Set([...openThumbs.value, row.pattern]); }
+/** Where a pattern occurs, as short as it can be said: the folios. */
+const foliosOf = (row) => [...new Set(row.snippets.map(s => s.folio).filter(Boolean))].join(', ');
 
 // ---- snippets -----------------------------------------------------------------------------------
 
@@ -160,7 +200,7 @@ const metaList = computed(() => (entry.value ? docs.columns.value.filter(c => en
             </div>
             <div class="title-actions">
                 <button type="button" class="ne-btn" @click="docs.cite({ kind: 'manuscript', source: entry.source, entryId: entry.id }, `/m/${encodeURIComponent(entry.id)}`)">Link and cite…</button>
-                <button type="button" class="ne-btn" @click="showInTable">In the neume table →</button>
+                <button type="button" class="ne-btn" @click="showInTable">In the synopsis →</button>
             </div>
         </header>
 
@@ -185,6 +225,24 @@ const metaList = computed(() => (entry.value ? docs.columns.value.filter(c => en
                         <SegmentedControl v-model="patternView" :options="PATTERN_VIEWS" label="Show the patterns as" size="sm" />
                     </template>
                 </div>
+                <div v-if="patternRows.length && patternView === 'table'" class="ptools">
+                    <input v-model="pSearch" type="search" class="ne-input" placeholder="Find a pattern, Ref ID or note…" aria-label="Find a pattern" @keydown.esc="pSearch = ''" />
+                    <select v-model="pTier" class="ne-input" aria-label="Which table">
+                        <option value="">All tables</option>
+                        <option v-for="t in tiers" :key="t" :value="t">{{ t }}</option>
+                    </select>
+                    <select v-model="pHas" class="ne-input" aria-label="Snippets">
+                        <option value="">With and without snippets</option>
+                        <option value="with">Only with snippets</option>
+                        <option value="without">Only without snippets</option>
+                    </select>
+                    <label class="inline">Order
+                        <select v-model="pSort" class="ne-input"><option v-for="o in PATTERN_SORTS" :key="o.value" :value="o.value">{{ o.label }}</option></select>
+                    </label>
+                    <span class="grow"></span>
+                    <span class="hint">{{ tableRows.length }} of {{ patternRows.length }}</span>
+                    <button v-if="filtering" type="button" class="link" @click="clearPatternFilter">Clear</button>
+                </div>
                 <p v-if="!patternRows.length" class="ne-empty">No patterns are documented for this manuscript.</p>
 
                 <PatternHierarchyTree v-else-if="patternView === 'tree'" ref="tree" :codes="codes" :custom-signs="docs.signList.value" default-open v-slot="{ code }">
@@ -205,10 +263,12 @@ const metaList = computed(() => (entry.value ? docs.columns.value.filter(c => en
                     </div>
                 </PatternHierarchyTree>
 
-                <table v-else class="patterns">
-                    <thead><tr><th>Pattern</th><th>Ref ID</th><th>Table</th><th>Notes</th><th class="num">Snippets</th><th></th><th class="ref"><span class="sr-only">Link and cite</span></th></tr></thead>
+                <div v-else class="patterns-wrap">
+                <table class="patterns">
+                    <thead><tr><th>Pattern</th><th>Ref ID</th><th>Table</th><th>Notes</th><th class="num">Snippets</th><th>Folios</th><th>Snippets shown</th><th class="ref"><span class="sr-only">Link and cite</span></th></tr></thead>
                     <tbody>
-                        <tr v-for="row in patternRows" :key="row.pattern" :class="{ 'is-target': row.pattern === targetPattern }" :data-target="row.pattern === targetPattern ? 'true' : null">
+                        <tr v-if="!tableRows.length"><td colspan="8" class="ne-empty">No pattern matches. <button type="button" class="link" @click="clearPatternFilter">Clear the filter</button></td></tr>
+                        <tr v-for="row in tableRows" :key="row.pattern" :class="{ 'is-target': row.pattern === targetPattern }" :data-target="row.pattern === targetPattern ? 'true' : null">
                             <td class="glyph"><DocPattern :pattern="row.pattern" :signs="docs.signs.value" /></td>
                             <td class="refid">{{ row.refId || '–' }}</td>
                             <td><span v-if="row.tier" class="tier" :class="row.tier">{{ row.tier }}</span></td>
@@ -217,13 +277,16 @@ const metaList = computed(() => (entry.value ? docs.columns.value.filter(c => en
                                 <button v-if="row.count" type="button" class="link" :title="`Show only the snippets of ${row.pattern}`" @click="shownPattern = shownPattern === row.pattern ? '' : row.pattern">{{ row.count }}</button>
                                 <template v-else>0</template>
                             </td>
+                            <td class="folios">{{ foliosOf(row) }}</td>
                             <td class="thumbs">
-                                <button v-for="s in row.snippets.slice(0, 5)" :key="s.id" type="button" class="thumb" :aria-label="`Open the snippet from ${s.folio || 'this manuscript'}`" @click="look(s, row.snippets)"><DocSnippet :snippet="s" :width="56" /></button>
+                                <button v-for="s in thumbsOf(row)" :key="s.id" type="button" class="thumb" :aria-label="`Open the snippet from ${s.folio || 'this manuscript'}`" @click="look(s, row.snippets)"><DocSnippet :snippet="s" :width="56" /></button>
+                                <button v-if="row.snippets.length > thumbsOf(row).length" type="button" class="more" @click="moreThumbs(row)">+{{ row.snippets.length - THUMBS }}</button>
                             </td>
                             <td class="ref"><button type="button" class="ref-btn" :aria-label="`Link to and cite ${row.pattern}`" title="Link and cite" @click="citeRow(row)">⛓</button></td>
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </section>
 
             <section aria-labelledby="snippets-title">
@@ -299,6 +362,17 @@ h3 { margin: 0; font-size: 1.1rem; display: flex; align-items: baseline; gap: va
 .loc:hover { background: var(--color-primary-muted); }
 .none { font-size: 0.82rem; color: var(--color-text-light); }
 
+.ptools { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; margin-bottom: var(--space-2); }
+.ptools .ne-input { font-size: 0.86rem; padding: 0.3em 0.6em; }
+.ptools input[type=search] { width: 16rem; max-width: 100%; }
+.inline { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--color-text-muted); }
+.hint { font-size: 0.84rem; color: var(--color-text-muted); }
+.patterns-wrap { overflow: auto; max-height: calc(100vh - 12rem); border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); }
+.patterns-wrap .patterns { border: none; border-radius: 0; overflow: visible; }
+.patterns thead th { position: sticky; top: 0; z-index: 2; }
+.folios { max-width: 11rem; font-size: 0.78rem; color: var(--color-text-muted); }
+.thumbs { white-space: normal !important; min-width: 14rem; }
+.more { border: 1px dashed var(--color-border-hover); background: none; border-radius: var(--radius-sm); padding: 2px 8px; color: var(--color-text-muted); cursor: pointer; vertical-align: top; }
 .patterns { width: 100%; border-collapse: collapse; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); overflow: hidden; font-size: 0.9rem; }
 .patterns th, .patterns td { padding: 0.5em 0.8em; border-bottom: 1px solid var(--color-surface-muted); text-align: left; vertical-align: middle; }
 .patterns thead th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted); background: var(--color-bg); }
@@ -309,7 +383,6 @@ h3 { margin: 0; font-size: 1.1rem; display: flex; align-items: baseline; gap: va
 .tier.standard { background: var(--color-primary-light); color: var(--color-primary-dark); }
 .note { max-width: 24rem; color: var(--color-text-muted); }
 .num { text-align: right !important; font-variant-numeric: tabular-nums; }
-.thumbs { white-space: nowrap; }
 .thumb { border: none; background: none; padding: 0; margin-right: 4px; cursor: pointer; }
 .ref { width: 2.2rem; text-align: center !important; }
 .ref-btn { border: none; background: none; cursor: pointer; opacity: 0.35; font-size: 1rem; }

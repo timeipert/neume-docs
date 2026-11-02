@@ -325,7 +325,7 @@ defineExpose({ reveal });
 /* A table of equal columns that is as wide as its columns, in a card that is as wide as the table. */
 .pt-scroll { overflow: auto; width: fit-content; max-width: 100%; border: 1px solid var(--color-border); border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-sm); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-.pt { --line: #e8edf3; --group: #cfd9e6; --shape: #3b82f6; --sign: #8b5cf6; --other: #64748b; --rowhead: 124px; --colw: 112px;
+.pt { --line: var(--color-border); --group: var(--color-border-hover); --shape: var(--color-primary); --sign: #6b4f2a; --other: var(--color-text-light); --rowhead: 124px; --colw: 112px;
       border-collapse: separate; border-spacing: 0; font-size: 0.88rem; width: max-content; min-width: 0; }
 .pt th, .pt td { border-bottom: 1px solid var(--line); padding: 0; background: var(--color-surface); }
 .pt tbody tr:last-child th, .pt tbody tr:last-child td { border-bottom: none; }
@@ -344,9 +344,9 @@ tbody th small { display: block; margin-top: 2px; font-size: 0.72rem; font-weigh
 
 /* level 1: the group, tinted by what kind of group it is */
 .l1 th.cat { position: sticky; top: 0; z-index: 2; text-align: left; padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--line); }
-.cat--shape { background: #f6f9ff !important; box-shadow: inset 0 2px 0 var(--shape); }
-.cat--sign { background: #f9f7ff !important; box-shadow: inset 0 2px 0 var(--sign); }
-.cat--other { background: #f6f8fa !important; box-shadow: inset 0 2px 0 var(--other); }
+.cat--shape { background: var(--color-primary-light) !important; box-shadow: inset 0 2px 0 var(--shape); }
+.cat--sign { background: #f3eddf !important; box-shadow: inset 0 2px 0 var(--sign); }
+.cat--other { background: var(--color-surface-muted) !important; box-shadow: inset 0 2px 0 var(--other); }
 .cat-inner { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; position: sticky; left: calc(var(--rowhead) + var(--space-3)); width: max-content; max-width: 100%; }
 .cat-name { display: inline-flex; align-items: baseline; gap: var(--space-2); }
 .cat-name code { font-size: 1.2rem; font-weight: 800; background: transparent; padding: 0; color: var(--color-text); }

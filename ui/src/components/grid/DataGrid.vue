@@ -642,7 +642,7 @@ td.readonly { background: #fafbfc; color: var(--color-text-muted); cursor: defau
 td.readonly.frozen { background: #f5f7fa; color: var(--color-text); }
 td.number { text-align: right; font-variant-numeric: tabular-nums; }
 td.selected { background: var(--color-primary-light); }
-td.readonly.selected { background: #dbeafe; }
+td.readonly.selected { background: var(--color-primary-light); }
 td.active { outline: 2px solid var(--color-primary); outline-offset: -2px; background: var(--color-surface); z-index: 2; }
 td.edited { background: #fffbeb; }
 td.edited.selected { background: #e0ecff; }

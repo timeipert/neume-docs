@@ -1,6 +1,6 @@
 # Viewing and Publishing Documentations
 
-neume-docs has two ways in. **View documentations** is for reading what others have published; **Editor** is for making your own. They meet in the middle: what you publish from the editor is what the viewer shows.
+Neumedocs has two ways in. **View documentations** is for reading what others have published; **Editor** is for making your own. They meet in the middle: what you publish from the editor is what the viewer shows.
 
 ## Reading a documentation
 
@@ -47,3 +47,7 @@ The site's list is the file `endpoints.json` next to the app (`ui/public/endpoin
 ```
 
 Anyone who copies the app can change the list. Endpoints are read-only: the viewer only fetches files and never writes to them.
+
+**A front page.** One endpoint can carry `"home": true`. The viewer's start page (`#/docs`) then shows that documentation as a title page: its motto, title and subtitle (the documentation's description), its introduction texts as cards side by side, and below them its manuscripts grouped by region of origin, each with its date. The region and the date are read from the metadata columns whose key or label contains "region" and "date"/"Datierung". Other endpoints are then listed beneath, under *Other documentations*. State 2026-10-28: the app's own list names `timeipert/cm-notation-docs` (Neumedocs) as its front page; the invented example in `ui/public/docs-demo/` is no longer listed but can still be added as `{ "name": "Example", "url": "./docs-demo/" }`.
+
+**Introduction texts.** In *Workspace → Publish a documentation*, *Motto* and *Introduction texts* fill `info.motto` and `info.sections` of `neume-docs.json`. Each text has a heading, the text (a blank line starts a new paragraph) and, if wanted, a button under it: *Enter the collection* or *Open the editor*. A documentation that is not a site's front page shows these texts on its *About* page.

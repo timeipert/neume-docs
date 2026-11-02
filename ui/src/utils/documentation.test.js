@@ -257,3 +257,16 @@ describe('documentations together', () => {
         expect(combinedParts('gh:a/b')).toEqual([]);
     });
 });
+
+describe('the introduction in the index', () => {
+    it('reads a motto and texts, and drops texts without content', () => {
+        const { index } = cleanIndex({ ...INDEX, info: { ...INDEX.info, motto: 'Quote', sections: [{ title: 'Study', text: 'Body', link: 'collection' }, { title: 'x', text: '' }, { title: 'Odd', text: 'y', link: 'javascript:' }] } });
+        expect(index.info.motto).toBe('Quote');
+        expect(index.info.sections).toEqual([{ title: 'Study', text: 'Body', link: 'collection' }, { title: 'Odd', text: 'y', link: '' }]);
+    });
+    it('has none when the index says nothing', () => {
+        const { index } = cleanIndex(INDEX);
+        expect(index.info.motto).toBe('');
+        expect(index.info.sections).toEqual([]);
+    });
+});

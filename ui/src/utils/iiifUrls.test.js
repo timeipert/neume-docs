@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { nativeWidth, pageUrls, regionUrls } from './iiifUrls';
+import { alternativeUrls, nativeWidth, pageUrls, regionUrls, withAlternatives } from './iiifUrls';
 
 const S = 'https://iiif.example/img/1';
 
@@ -79,5 +79,25 @@ describe('the addresses of a whole page', () => {
     it('are the one address of a page that has no service', () => {
         expect(pageUrls('', 'scans/A/1r.jpg')).toEqual(['scans/A/1r.jpg']);
         expect(pageUrls(null, null)).toEqual([]);
+    });
+});
+
+describe('asking for the same cut-out another way', () => {
+    const crop = 'https://iiif.example/images/X/page.tif/pct:14.63,33.14,3.65,3.52/300,/0/default.jpg';
+    it('offers the maximum and the part at its own size, for a server that refuses to enlarge', () => {
+        expect(alternativeUrls(crop)).toEqual([
+            'https://iiif.example/images/X/page.tif/pct:14.63,33.14,3.65,3.52/max/0/default.jpg',
+            'https://iiif.example/images/X/page.tif/pct:14.63,33.14,3.65,3.52/full/0/default.jpg'
+        ]);
+    });
+    it('has nothing for an address that is not a cut-out, or is one already', () => {
+        expect(alternativeUrls('https://example.org/picture.jpg')).toEqual([]);
+        expect(alternativeUrls('images/Pa_833/1.jpg')).toEqual([]);
+        expect(alternativeUrls('https://iiif.example/i/pct:1,2,3,4/max/0/default.jpg')).toEqual(['https://iiif.example/i/pct:1,2,3,4/full/0/default.jpg']);
+    });
+    it('puts the alternatives after every address, nothing twice', () => {
+        const list = withAlternatives([crop, '', crop]);
+        expect(list).toHaveLength(3);
+        expect(list[0]).toBe(crop);
     });
 });

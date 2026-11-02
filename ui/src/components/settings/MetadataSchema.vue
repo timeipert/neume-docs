@@ -78,6 +78,14 @@ function createColumn(cat) {
     newColumn.value = { ...newColumn.value, [cat.key]: '' };
 }
 
+/** The fields about the notation itself that the Neumedocs plan names; the catalogue already has the manuscript's own fields. */
+const PROJECT_FIELDS = ['Scribal hand', 'Repertoire', 'Notation type', 'Notation subtype'];
+const missingProjectFields = computed(() => PROJECT_FIELDS.filter(l => !table.columns.value.some(c => c.label === l)));
+function addProjectFields() {
+    for (const label of missingProjectFields.value) table.addProjectColumn(label, 'text', 'project');
+    toast.show('The project fields are added to “Your fields”. Fill them in the Manuscripts table.');
+}
+
 const settingsFor = ref('');
 
 function reset() {
@@ -137,6 +145,7 @@ function reset() {
         <input v-model="newCategory" class="ne-input" placeholder="A new category, e.g. Notation" aria-label="New category" />
         <button type="submit" class="ne-btn" :disabled="!newCategory.trim()">Add category</button>
         <span class="grow"></span>
+        <button v-if="missingProjectFields.length" type="button" class="ne-btn ne-btn--ghost" :title="`Adds: ${missingProjectFields.join(', ')}`" @click="addProjectFields">Add the project fields</button>
         <button type="button" class="ne-btn ne-btn--ghost" :disabled="!changed" title="Back to the four categories, no checks, the original order, the filters as the columns suggest them. Saved filters stay." @click="reset">Start over</button>
     </form>
 

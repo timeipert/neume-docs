@@ -1877,7 +1877,7 @@ onMounted(() => {
     font-weight: 600;
 }
 .proj-badge {
-    background: rgba(99, 102, 241, 0.12);
+    background: rgba(154, 42, 31, 0.12);
     color: var(--color-primary);
 }
 .proj-badge.has-match {
@@ -1889,7 +1889,7 @@ onMounted(() => {
     color: var(--color-text-muted);
 }
 .iiif-badge.ok { background: rgba(16, 185, 129, 0.15); color: var(--color-success); }
-.iiif-badge.loading { background: rgba(99, 102, 241, 0.12); color: var(--color-primary); }
+.iiif-badge.loading { background: rgba(154, 42, 31, 0.12); color: var(--color-primary); }
 .iiif-badge.error, .iiif-badge.unlinked { background: rgba(245, 158, 11, 0.14); color: var(--color-warning, #f59e0b); }
 
 .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -1923,7 +1923,7 @@ onMounted(() => {
 }
 .progress-banner {
     display: flex; align-items: center; justify-content: center; gap: 10px;
-    background: rgba(99, 102, 241, 0.12);
+    background: rgba(154, 42, 31, 0.12);
     border-bottom: 1px solid var(--color-primary);
     color: var(--color-primary);
 }
@@ -2077,7 +2077,7 @@ onMounted(() => {
 }
 .pattern-item:hover { background: var(--color-surface-hover, rgba(255,255,255,0.03)); }
 .pattern-item.active {
-    background: var(--color-primary-soft, rgba(99, 102, 241, 0.15));
+    background: var(--color-primary-soft, rgba(154, 42, 31, 0.15));
     border-left: 3px solid var(--color-primary);
 }
 .pattern-item-left { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
@@ -2089,7 +2089,7 @@ onMounted(() => {
 }
 .pat-selected-badge {
     font-size: 0.7rem; font-weight: 700; color: var(--color-primary);
-    background: rgba(99, 102, 241, 0.15); padding: 2px 6px; border-radius: 10px;
+    background: rgba(154, 42, 31, 0.15); padding: 2px 6px; border-radius: 10px;
 }
 .include-cb { cursor: pointer; accent-color: var(--color-primary); }
 
@@ -2125,10 +2125,10 @@ onMounted(() => {
 }
 .snippet-card.selected {
     border-color: var(--color-primary);
-    background: var(--color-primary-soft, rgba(99, 102, 241, 0.08));
+    background: var(--color-primary-soft, rgba(154, 42, 31, 0.08));
     box-shadow: 0 0 0 2px var(--color-primary);
 }
-.snippet-card.rep { border-color: rgba(99, 102, 241, 0.6); }
+.snippet-card.rep { border-color: rgba(154, 42, 31, 0.6); }
 
 .snippet-wrap { position: relative; width: 100%; display: flex; justify-content: center; }
 .btn-peek {
@@ -2150,7 +2150,7 @@ onMounted(() => {
 .snippet-density { font-size: 0.68rem; color: var(--color-text-muted); }
 .rep-badge {
     font-size: 0.68rem; font-weight: 700; color: var(--color-primary);
-    background: rgba(99, 102, 241, 0.15); padding: 1px 5px; border-radius: 8px;
+    background: rgba(154, 42, 31, 0.15); padding: 1px 5px; border-radius: 8px;
 }
 .select-indicator {
     font-size: 0.75rem; font-weight: 700; color: var(--color-primary);
@@ -2312,6 +2312,6 @@ onMounted(() => {
     margin-bottom: 10px;
 }
 .img-source-badge.local { background: rgba(16, 185, 129, 0.15); color: var(--color-success); }
-.img-source-badge.iiif { background: rgba(99, 102, 241, 0.12); color: var(--color-primary); }
+.img-source-badge.iiif { background: rgba(154, 42, 31, 0.12); color: var(--color-primary); }
 .img-source-badge.none { background: rgba(245, 158, 11, 0.14); color: var(--color-warning, #f59e0b); }
 </style>

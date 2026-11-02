@@ -217,14 +217,14 @@ const cursor = computed(() => (gesture && gesture.pan ? 'grabbing' : space.value
 
 .shade { position: absolute; pointer-events: none; box-shadow: 0 0 0 5000px rgba(15, 23, 42, 0.5); border: 1px dashed rgba(255, 255, 255, 0.55); box-sizing: border-box; }
 
-.box { position: absolute; box-sizing: border-box; border: 2px solid var(--color-primary); background: rgba(59, 130, 246, 0.12); border-radius: 2px; }
+.box { position: absolute; box-sizing: border-box; border: 2px solid var(--color-primary); background: rgba(154, 42, 31, 0.12); border-radius: 2px; }
 .box--line { border-color: #22c55e; background: rgba(34, 197, 94, 0.1); }
 .box--line:hover { background: rgba(34, 197, 94, 0.28); cursor: pointer; }
 .box--sign { border-color: #f59e0b; background: rgba(245, 158, 11, 0.16); }
 .box--sign:hover { background: rgba(245, 158, 11, 0.32); cursor: pointer; }
 .box.active { border-width: 3px; background: rgba(245, 158, 11, 0.3); box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7); }
 .box.faint { opacity: 0.5; }
-.box--draft { border-style: dashed; border-color: #fff; background: rgba(59, 130, 246, 0.28); pointer-events: none; }
+.box--draft { border-style: dashed; border-color: #fff; background: rgba(154, 42, 31, 0.28); pointer-events: none; }
 .tag { position: absolute; left: -2px; top: -22px; padding: 1px 7px; font-size: 0.74rem; font-weight: 700; line-height: 1.5; white-space: nowrap; color: #fff; background: rgba(15, 23, 42, 0.88); border-radius: 4px; pointer-events: none; }
 .tag.inside { top: 2px; left: 2px; }
 .box--line .tag { background: #15803d; }

@@ -149,7 +149,7 @@ const boxPoints = (b) => `${b.x},${b.y} ${b.x + b.w},${b.y} ${b.x + b.w},${b.y +
 .no-pic { margin: 0; padding: var(--space-4); text-align: center; font-size: 0.82rem; color: var(--color-text-muted); }
 .marks { position: absolute; inset: 0; width: 100%; height: 100%; }
 .mark { fill: rgba(34, 197, 94, 0.12); stroke: var(--color-success); stroke-width: 1; cursor: pointer; }
-.mark:hover { fill: rgba(59, 130, 246, 0.3); stroke: var(--color-primary); stroke-width: 2; }
+.mark:hover { fill: rgba(154, 42, 31, 0.3); stroke: var(--color-primary); stroke-width: 2; }
 .mark-label { position: absolute; transform: translate(-10%, -105%); padding: 0 4px; border: 1px solid #000; border-radius: 2px; background: #fff; font-size: 10px; line-height: 1.3; white-space: nowrap; cursor: pointer; opacity: 0.85; }
 .mark-label:hover { opacity: 1; background: var(--color-primary-light); }
 </style>

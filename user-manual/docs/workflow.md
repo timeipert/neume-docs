@@ -1,6 +1,6 @@
 # Core Workflow
 
-The typical research process in neume-docs follows these four steps. For detailed instructions on each step, follow the links to the dedicated feature pages.
+The typical research process in Neumedocs follows these four steps. For detailed instructions on each step, follow the links to the dedicated feature pages.
 
 ## 0. Load Data
 The editor starts without data. Load a Monodi-Zero workspace or a Corpus Monodicum project on the **Corpus** page.

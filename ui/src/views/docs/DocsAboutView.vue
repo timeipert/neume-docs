@@ -40,6 +40,13 @@ const webUrl = computed(() => (state.value.source && state.value.source.webUrl) 
     <section>
         <h2>About this documentation</h2>
         <p v-if="info.description" class="description">{{ info.description }}</p>
+        <blockquote v-if="info.motto" class="motto">{{ info.motto }}</blockquote>
+        <div v-if="info.sections && info.sections.length" class="intro-texts">
+            <article v-for="(sec, i) in info.sections" :key="i">
+                <h3 v-if="sec.title">{{ sec.title }}</h3>
+                <p v-for="(para, j) in sec.text.split(/\n{2,}/)" :key="j">{{ para }}</p>
+            </article>
+        </div>
         <dl>
             <div v-if="info.authors.length"><dt>{{ info.authors.length === 1 ? 'Author' : 'Authors' }}</dt><dd>{{ info.authors.join(', ') }}</dd></div>
             <div v-if="info.publisher"><dt>Publisher</dt><dd>{{ info.publisher }}</dd></div>
@@ -80,4 +87,8 @@ dl div { display: contents; }
 dt { font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); padding-top: 2px; }
 dd { margin: 0; overflow-wrap: anywhere; }
 .hint { font-size: 0.84rem; color: var(--color-text-muted); }
+.motto { margin: var(--space-3) 0; font-family: Georgia, 'Times New Roman', serif; font-style: italic; color: var(--color-text-muted); max-width: 60ch; }
+.intro-texts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: var(--space-5); margin: var(--space-3) 0 var(--space-4); }
+.intro-texts h3 { margin: 0 0 var(--space-2); font-size: 1.05rem; }
+.intro-texts p { margin: 0 0 var(--space-2); line-height: 1.6; font-size: 0.93rem; }
 </style>

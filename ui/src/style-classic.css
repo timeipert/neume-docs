@@ -1,0 +1,74 @@
+/*
+ * The classical look of the whole app, the editor and the viewer alike: the pages are set like a
+ * printed edition — a book face, ink on paper, hairline rules, and one colour, the red of a rubric,
+ * for what can be followed. It works by giving the app's own colour tokens (style.css) other values,
+ * so every component, and the dialogs that are drawn outside the page, follow without changes of
+ * their own. Where a component has a hard-coded colour, it is a bug in that component, not a reason
+ * to restore the old tokens.
+ */
+body {
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+
+    --color-bg: #fbfaf7;
+    --color-surface: #fffefb;
+    --color-surface-muted: #f3f0e9;
+    --color-nav-bg: #fbfaf7;
+
+    --color-border: #e2dccf;
+    --color-border-hover: #c9c0ae;
+
+    --color-text: #1f1d1a;
+    --color-text-muted: #5f5a52;
+    --color-text-light: #8a847a;
+
+    --color-primary: #9a2a1f;
+    --color-primary-hover: #7f2219;
+    --color-primary-active: #6b1c15;
+    --color-primary-light: #f6ebe7;
+    --color-primary-dark: #6b1c15;
+    --color-primary-muted: #ddbfb8;
+    --color-accent: #9a2a1f;
+    --color-accent-light: #f6ebe7;
+    --color-accent-dark: #6b1c15;
+
+    --radius-sm: 2px;
+    --radius-md: 2px;
+    --radius-lg: 3px;
+
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: 0 6px 24px rgba(31, 29, 26, 0.12);
+
+    --ring: 0 0 0 2px rgba(154, 42, 31, 0.35);
+
+    background: var(--color-bg);
+    font-family: var(--serif);
+    font-variant-numeric: lining-nums;
+    accent-color: var(--color-primary);
+}
+
+body h1,
+body h2,
+body h3,
+body h4 { font-family: var(--serif); font-weight: 400; letter-spacing: 0.005em; }
+
+body .ne-btn { font-family: var(--serif); font-size: 0.95em; box-shadow: none; }
+body .ne-input,
+body select,
+body input { font-family: var(--serif); }
+body code,
+body .ne-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+/* Labels that the app sets in capitals are set in small capitals, as in print. */
+body thead th,
+body .ms .section th,
+body .groups th {
+    text-transform: none !important;
+    font-variant: small-caps;
+    letter-spacing: 0.05em !important;
+    font-size: 0.92rem !important;
+    font-weight: 400 !important;
+}
+
+/* Tiers and similar marks are words in italics, not coloured pills. */
+body .tier { background: none !important; padding: 0 !important; font-style: italic; font-size: 0.92rem !important; color: var(--color-text-muted) !important; }

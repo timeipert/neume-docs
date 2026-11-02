@@ -37,11 +37,8 @@ watch(() => route.path, () => { isMenuOpen.value = false; });
 <template>
   <div class="app-shell">
     <nav v-if="!isPublic && !isSetup" class="top-nav">
-      <RouterLink to="/" class="nav-brand" aria-label="neume-docs start">
-        <span class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="20" height="20"><ellipse cx="8" cy="8" rx="4.2" ry="3.2" transform="rotate(-18 8 8)" fill="currentColor"/><ellipse cx="16" cy="16" rx="4.2" ry="3.2" transform="rotate(-18 16 16)" fill="currentColor"/></svg>
-        </span>
-        <span class="brand-text">neume-docs</span>
+      <RouterLink to="/" class="nav-brand" aria-label="Neumedocs start">
+        <span class="brand-text">Neumedocs</span>
       </RouterLink>
       <button class="hamburger-btn" @click="isMenuOpen = !isMenuOpen" :aria-expanded="isMenuOpen" aria-controls="nav-links" aria-label="Toggle navigation">
         <span v-if="!isMenuOpen">☰</span>
@@ -91,45 +88,31 @@ watch(() => route.path, () => { isMenuOpen.value = false; });
   overflow: hidden;
 }
 
+/* A running head, as at the top of a printed page: the name, the places, a hairline below. */
 .top-nav {
   flex: 0 0 auto;
-  min-height: 58px;
-  background: linear-gradient(180deg, #263449 0%, var(--color-nav-bg) 100%);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  min-height: 52px;
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
-  padding: 0 var(--space-4);
+  padding: 0 var(--space-5);
   gap: var(--space-4);
   justify-content: space-between;
   position: relative;
   z-index: 100;
-  box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 4px 16px rgba(0,0,0,0.18);
 }
 
 .nav-brand {
-  font-weight: 700;
-  font-size: 1.12rem;
-  color: var(--color-surface) !important;
+  font-size: 1.15rem;
+  color: var(--color-text) !important;
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
   text-decoration: none;
   white-space: nowrap;
 }
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(59,130,246,0.35);
-}
-.nav-brand:hover .brand-mark { transform: translateY(-1px); }
-.brand-mark, .nav-brand:hover .brand-mark { transition: transform 0.2s ease; }
 
 .nav-links {
   display: flex;
@@ -139,46 +122,47 @@ watch(() => route.path, () => { isMenuOpen.value = false; });
 
 .nav-links a {
   position: relative;
-  color: var(--color-text-light);
+  color: var(--color-text-muted);
   text-decoration: none;
-  font-size: 0.9rem;
-  font-weight: 500;
+  font-size: 1.05rem;
+  font-weight: 400;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
   white-space: nowrap;
-  padding: var(--space-2) 0.5rem;
+  padding: var(--space-2) 0.6rem;
   border-radius: var(--radius-md);
-  transition: color 0.15s ease, background 0.15s ease;
 }
 
 .nav-links a:hover {
-  color: var(--color-surface);
-  background: rgba(255, 255, 255, 0.07);
+  color: var(--color-text);
 }
 
 .nav-links a.active {
-  color: var(--color-surface);
-  background: rgba(255, 255, 255, 0.1);
-  font-weight: 600;
+  color: var(--color-text);
 }
-/* Active underline indicator */
+/* The place one is at is marked by a rule in the rubric red under it */
 .nav-links a.active::after {
   content: "";
   position: absolute;
-  left: 12px; right: 12px; bottom: -1px;
-  height: 2px; border-radius: 2px;
-  background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+  left: 0.6rem; right: 0.6rem; bottom: -1px;
+  height: 1px;
+  background: var(--color-primary);
 }
 
 .nav-sep {
-  width: 1px; height: 22px;
-  background: rgba(255,255,255,0.12);
+  width: 1px; height: 18px;
+  background: var(--color-border);
   margin: 0 var(--space-2);
 }
 
 .nav-util {
-  color: var(--color-text-light) !important;
-  font-size: 0.85rem;
+  color: var(--color-text-muted) !important;
+  font-size: 0.95rem !important;
+  font-style: italic;
+  font-variant: normal !important;
+  letter-spacing: 0 !important;
 }
-.nav-util:hover { color: var(--color-surface) !important; background: rgba(255,255,255,0.07); }
+.nav-util:hover { color: var(--color-primary) !important; }
 
 .main-content {
   flex: 1;
@@ -209,21 +193,21 @@ watch(() => route.path, () => { isMenuOpen.value = false; });
 
 /* Scrollbar styling for Webkit */
 .main-content::-webkit-scrollbar { width: 8px; height: 8px; }
-.main-content::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+.main-content::-webkit-scrollbar-thumb { background: var(--color-border-hover); border-radius: 4px; }
 
 /* Responsive Nav */
 .hamburger-btn {
   display: none;
   background: transparent;
   border: none;
-  color: var(--color-surface);
+  color: var(--color-text);
   font-size: 1.5rem;
   padding: 0.5rem;
   cursor: pointer;
 }
 
-/* The full bar needs about 960px; below that the menu folds into a column. */
-@media (max-width: 980px) {
+/* The full bar, set in the book face, needs about 1130px; below that the menu folds into a column. */
+@media (max-width: 1180px) {
   .hamburger-btn {
     display: block;
   }
@@ -236,8 +220,8 @@ watch(() => route.path, () => { isMenuOpen.value = false; });
     background: var(--color-nav-bg);
     flex-direction: column;
     padding: var(--space-4);
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    box-shadow: var(--shadow-lg);
+    border-bottom: 1px solid var(--color-border);
     transform: translateY(-150%);
     opacity: 0;
     pointer-events: none;
@@ -256,6 +240,8 @@ watch(() => route.path, () => { isMenuOpen.value = false; });
     margin: 0;
   }
 
+  .nav-links a.active::after { display: none; }
+  .nav-links a.active { color: var(--color-primary); }
   .nav-sep { width: 100%; height: 1px; margin: var(--space-2) 0; }
   /* Room to spell the save status out in the opened menu. */
   .nav-links :deep(.pill-label) { display: inline !important; }

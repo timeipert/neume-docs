@@ -45,6 +45,9 @@ watch(() => settings.publication, (p) => {
     if (parseAuthors(authorsText.value).join('\n') !== p.authors.join('\n')) authorsText.value = p.authors.join('\n');
 });
 
+function addSection() { draft.sections = [...(draft.sections || []), { title: '', text: '', link: '' }]; }
+function removeSection(i) { draft.sections = draft.sections.filter((_, n) => n !== i); }
+
 const LICENSES = ['CC BY 4.0', 'CC BY-SA 4.0', 'CC BY-NC 4.0', 'CC0 1.0', 'ODbL 1.0'];
 
 // ---- what readers are shown ---------------------------------------------------------------------
@@ -71,22 +74,25 @@ const gaps = computed(() => publicationGaps(cleanPublication({ ...draft, authors
 
 const running = ref(false);
 const result = ref(null); // { tone, text }
+const withPictures = ref(false);
+const pictureProgress = ref(null); // { done, total, failed } while the pictures are fetched
 
 async function download() {
     if (running.value) return;
     running.value = true;
     result.value = null;
     try {
-        const r = await downloadDocumentation();
+        const r = await downloadDocumentation({ pictures: withPictures.value, onProgress: (p) => { pictureProgress.value = p; } });
         result.value = {
             tone: 'success',
-            text: `${r.name}: ${r.manuscripts} manuscript${r.manuscripts === 1 ? '' : 's'}, ${r.snippets} snippet${r.snippets === 1 ? '' : 's'}${r.images ? `, ${r.images} picture${r.images === 1 ? '' : 's'} as files` : ''}. Unzip it into a public GitHub repository — the README in the ZIP says how readers then open it.`
+            text: `${r.name}: ${r.manuscripts} manuscript${r.manuscripts === 1 ? '' : 's'}, ${r.snippets} snippet${r.snippets === 1 ? '' : 's'}${r.images ? `, ${r.images} picture${r.images === 1 ? '' : 's'} as files` : ''}. Unzip it into a public GitHub repository — the README in the ZIP says how readers then open it.${r.failures && r.failures.length ? ` ${r.failures.length} picture${r.failures.length === 1 ? '' : 's'} could not be fetched from the library and ${r.failures.length === 1 ? 'is' : 'are'} not in the ZIP; the viewer fetches ${r.failures.length === 1 ? 'it' : 'them'} from the library as before.` : ''}`
         };
         toast.show('Documentation downloaded.', { tone: 'success' });
     } catch (e) {
         result.value = { tone: 'error', text: e?.message || 'The documentation could not be made.' };
     } finally {
         running.value = false;
+        pictureProgress.value = null;
     }
 }
 
@@ -151,6 +157,27 @@ async function downloadPages() {
             <label class="field wide">Home page <span class="opt">(optional)</span>
                 <input v-model="draft.url" class="ne-input" placeholder="https://…" />
             </label>
+            <label class="field wide">Motto <span class="opt">(optional — a short quotation shown above the manuscripts)</span>
+                <input v-model="draft.motto" class="ne-input" />
+            </label>
+            <div class="field wide">
+                <span>Introduction texts <span class="opt">(optional — shown side by side on the title page; up to six)</span></span>
+                <div v-for="(sec, i) in draft.sections" :key="i" class="section-edit">
+                    <input v-model="sec.title" class="ne-input" placeholder="Heading, e.g. Study" :aria-label="`Heading of text ${i + 1}`" />
+                    <textarea v-model="sec.text" class="ne-input" rows="5" placeholder="Text. A blank line starts a new paragraph." :aria-label="`Text ${i + 1}`"></textarea>
+                    <div class="section-row">
+                        <label class="inline">Button under it
+                            <select v-model="sec.link" class="ne-input">
+                                <option value="">None</option>
+                                <option value="collection">Enter the collection</option>
+                                <option value="editor">Open the editor</option>
+                            </select>
+                        </label>
+                        <button type="button" class="ne-btn ne-btn--sm ne-btn--ghost" @click="removeSection(i)">Remove</button>
+                    </div>
+                </div>
+                <button v-if="(draft.sections || []).length < 6" type="button" class="ne-btn ne-btn--sm" @click="addSection">Add a text</button>
+            </div>
             <label class="field wide">How you would like to be cited <span class="opt">(optional — readers can choose it as one of the styles)</span>
                 <textarea v-model="draft.preferredCitation" class="ne-input" rows="2" placeholder="Author, A. 2026. Title of the documentation. Publisher."></textarea>
             </label>
@@ -174,9 +201,14 @@ async function downloadPages() {
             <ul><li v-for="g in gaps" :key="g">{{ g }}</li></ul>
         </div>
 
+        <label class="ne-check pictures-option">
+            <input v-model="withPictures" type="checkbox" :disabled="running" />
+            Also put the snippet pictures in the ZIP as files <span class="opt">(fetched from the libraries' IIIF servers a few at a time, which takes a while; the documentation still says where each comes from, and the viewer then shows them at once)</span>
+        </label>
+
         <div class="actions">
             <RouterLink to="/docs/local" class="ne-btn">Preview as readers see it →</RouterLink>
-            <button class="ne-btn ne-btn--primary" :disabled="running || !count" :title="count ? '' : 'Nothing is published yet'" @click="download">{{ running ? 'Making the files…' : 'Download documentation (ZIP)' }}</button>
+            <button class="ne-btn ne-btn--primary" :disabled="running || !count" :title="count ? '' : 'Nothing is published yet'" @click="download">{{ running ? (pictureProgress && pictureProgress.total ? `Fetching pictures… ${pictureProgress.done} of ${pictureProgress.total}${pictureProgress.failed ? `, ${pictureProgress.failed} not loaded` : ''}` : 'Making the files…') : 'Download documentation (ZIP)' }}</button>
             <span class="ne-muted">{{ count }} published manuscript{{ count === 1 ? '' : 's' }}</span>
         </div>
         <p v-if="result" class="ne-note result" :class="`ne-note--${result.tone}`">{{ result.text }}</p>
@@ -205,4 +237,8 @@ async function downloadPages() {
 .actions { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
 .result { margin: 0; }
 @media (max-width: 720px) { .form { grid-template-columns: 1fr; } }
+.section-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.section-row .inline { display: flex; align-items: center; gap: 6px; font-size: 0.82rem; }
+.section-edit { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 10px; padding: 8px; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.pictures-option { display: block; margin: var(--space-3) 0 0; font-size: 0.9rem; }
 </style>

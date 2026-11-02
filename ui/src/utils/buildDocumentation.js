@@ -247,7 +247,9 @@ export function buildDocumentation({
         info: {
             title: publication.title, description: publication.description, authors: publication.authors,
             publisher: publication.publisher, license: publication.license, doi: publication.doi,
-            preferredCitation: publication.preferredCitation || '', url: publication.url, year: publication.year
+            preferredCitation: publication.preferredCitation || '', url: publication.url, year: publication.year,
+            ...(publication.motto ? { motto: publication.motto } : {}),
+            ...(publication.sections && publication.sections.length ? { sections: publication.sections } : {})
         },
         columns: indexColumns,
         signs: Object.fromEntries(Object.entries(signGlyphs).map(([key, glyph]) => {

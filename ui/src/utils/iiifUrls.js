@@ -19,6 +19,29 @@ const trim = (url) => String(url || '').replace(/\/+$/, '');
 const unique = (list) => [...new Set(list.filter(Boolean))];
 
 /**
+ * The other ways to ask for the same picture, when an address made by the editor is refused: the size is
+ * changed to what the server calls its maximum (`max`), then to the part at its own size (`full`). A server of
+ * Image API 3 (iiif.diamm.net, say) refuses a width larger than the part has — "upscaling should be prefixed
+ * with ^" — and a cut-out of a neume is always smaller than the width asked for.
+ * Anything that is not an address of that shape has no alternatives.
+ *
+ * @param {string} url e.g. https://host/iiif/id/pct:1,2,3,4/300,/0/default.jpg
+ * @returns {string[]}
+ */
+export function alternativeUrls(url) {
+    const m = /^(.*\/)(pct:[\d.,]+|[\d,]+|full|square)\/(\^?!?[\d,]+|max|\^max|full)\/(\d+\/default\.(?:jpg|png))$/.exec(String(url || ''));
+    if (!m) return [];
+    const [, front, region, size, tail] = m;
+    return ['max', 'full'].map(s => `${front}${region}/${s}/${tail}`).filter(u => u !== url);
+}
+
+/** Every address, each followed by its alternatives at the end of the list, nothing twice. */
+export function withAlternatives(urls) {
+    const all = urls.filter(Boolean);
+    return [...new Set([...all, ...all.flatMap(alternativeUrls)])];
+}
+
+/**
  * The width a part can have at the page's own size, if that can be told: the part's share of the page
  * in percent, of the page's width (the manifest's canvas — usually, not always, the image's pixels).
  * Null when it cannot.

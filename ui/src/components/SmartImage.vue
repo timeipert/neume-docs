@@ -95,7 +95,7 @@ watch(() => props.src, (newSrc) => {
     width: 24px;
     height: 24px;
     border: 2.5px solid rgba(255, 255, 255, 0.15);
-    border-top-color: var(--color-primary, #6366f1);
+    border-top-color: var(--color-primary, #9a2a1f);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
 }

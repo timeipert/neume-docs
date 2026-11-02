@@ -1,6 +1,6 @@
 # Loading Data
 
-neume-docs starts **empty**: it ships with no manuscripts. Everything you see is built from what you load on the **Corpus** page.
+Neumedocs starts **empty**: it ships with no manuscripts. Everything you see is built from what you load on the **Corpus** page.
 
 ## What you can load
 

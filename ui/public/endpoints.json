@@ -1,10 +1,11 @@
 {
   "endpoints": [
     {
-      "id": "example",
-      "name": "Example documentation",
-      "description": "Made-up manuscripts that ship with the app, to try the viewer with.",
-      "url": "./docs-demo/"
+      "id": "neumedocs",
+      "name": "Neumedocs",
+      "description": "Digital Charts of Diastematic Neumes in the Latin West",
+      "repo": "timeipert/cm-notation-docs",
+      "home": true
     }
   ]
 }

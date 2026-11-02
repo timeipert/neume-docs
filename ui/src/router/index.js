@@ -97,12 +97,14 @@ const router = createRouter({
       component: SetupView,
       meta: { title: 'Workspace Setup' }
     },
-    // The start: read documentations, or make your own in the editor.
+    // The entry page is the viewer's front page (#/docs); the editor is reached from there.
+    { path: '/', redirect: '/docs' },
+    // The former start page (read documentations, or make your own in the editor), kept at its own address.
     {
-      path: '/',
+      path: '/start',
       name: 'start',
       component: StartView,
-      meta: { title: 'neume-docs', bare: true }
+      meta: { title: 'Neumedocs', bare: true }
     },
     // Documentations that others have published: read-only, no workspace needed.
     {
@@ -339,8 +341,8 @@ router.beforeEach(async (to, from) => {
 })
 
 router.afterEach((to) => {
-  // A documentation names its own pages (see DocsShellView).
-  if (to.path.startsWith('/docs/')) return;
+  // A documentation names its own pages (see DocsShellView), and the viewer's front page names itself (DocsHomeView).
+  if (to.path.startsWith('/docs/') || to.name === 'docs') return;
   let title = to.meta.title || '';
 
   if (typeof to.name === 'string' && to.name.startsWith('project') && to.params.id) {
@@ -365,9 +367,9 @@ router.afterEach((to) => {
   }
 
   if (title) {
-    document.title = `${title} — neume-docs`;
+    document.title = `${title} — Neumedocs`;
   } else {
-    document.title = 'neume-docs';
+    document.title = 'Neumedocs';
   }
 })
 

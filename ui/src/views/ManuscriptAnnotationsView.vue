@@ -431,7 +431,7 @@ watch([() => route.query.gallery, dataLoading], ([gallery, isLoading]) => {
     width: 100%; padding: 10px 14px; border: 1px solid var(--color-border-hover); border-radius: 8px; 
     font-size: 0.95rem; background: var(--color-bg); transition: all 0.2s;
 }
-.search-input:focus { border-color: var(--color-primary); outline: none; background: var(--color-surface); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+.search-input:focus { border-color: var(--color-primary); outline: none; background: var(--color-surface); box-shadow: 0 0 0 3px rgba(154, 42, 31, 0.1); }
 
 .notes-textarea.large {
     min-height: 240px;
@@ -446,7 +446,7 @@ watch([() => route.query.gallery, dataLoading], ([gallery, isLoading]) => {
     font-family: inherit;
     transition: all 0.2s;
 }
-.notes-textarea.large:focus { background: var(--color-surface); box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+.notes-textarea.large:focus { background: var(--color-surface); box-shadow: 0 0 0 3px rgba(154, 42, 31, 0.1); }
 
 .pattern-list { flex: 1; overflow-y: auto; background: white; margin-top: 15px; border: 1px solid var(--color-border); border-radius: 8px; }
 .pattern-item {

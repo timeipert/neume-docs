@@ -87,7 +87,7 @@ h4 { margin: 0; font-size: 0.95rem; display: flex; gap: 8px; align-items: baseli
 .no-picture { position: absolute; left: 0; right: 0; top: 4px; margin: 0; text-align: center; font-size: 0.72rem; color: var(--color-text-muted); }
 .marks { position: absolute; inset: 0; width: 100%; height: 100%; }
 .mark { fill: rgba(34, 197, 94, 0.12); stroke: var(--color-success); stroke-width: 1; cursor: pointer; transition: fill 0.12s; }
-.mark.on, .mark:hover { fill: rgba(59, 130, 246, 0.3); stroke: var(--color-primary); stroke-width: 2; }
+.mark.on, .mark:hover { fill: rgba(154, 42, 31, 0.3); stroke: var(--color-primary); stroke-width: 2; }
 .mark.star { stroke: #e0a100; }
 .mark.target { fill: rgba(245, 158, 11, 0.4); stroke: var(--color-warning); stroke-width: 3; }
 .label { position: absolute; transform: translate(-10%, -105%); padding: 0 4px; background: #fff; border: 1px solid #000; border-radius: 2px; font: 600 10px/1.3 var(--font-mono, ui-monospace, monospace); white-space: nowrap; pointer-events: none; opacity: 0.85; }

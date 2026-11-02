@@ -189,7 +189,7 @@ onBeforeUnmount(() => document.removeEventListener('keydown', onKey));
 .dims { margin: 0; font-size: 0.74rem; color: var(--color-text-muted); }
 .cell { position: relative; align-self: flex-start; max-width: 100%; border: 1px solid var(--color-border); background: #fff; }
 .cell img { display: block; max-width: 100%; height: auto; }
-.mark { position: absolute; border: 2px solid var(--color-primary); background: rgba(59, 130, 246, 0.12); pointer-events: none; }
+.mark { position: absolute; border: 2px solid var(--color-primary); background: rgba(154, 42, 31, 0.12); pointer-events: none; }
 .facts { margin: 0; display: grid; gap: 2px; font-size: 0.82rem; }
 .fact { display: grid; grid-template-columns: 6.5rem minmax(0, 1fr); gap: var(--space-2); }
 .fact dt { color: var(--color-text-muted); font-weight: 600; }

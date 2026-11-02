@@ -12,7 +12,7 @@ import { RouterLink } from 'vue-router';
 <div class="start">
     <header class="top">
         <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><ellipse cx="8" cy="8" rx="4.2" ry="3.2" transform="rotate(-18 8 8)" fill="currentColor"/><ellipse cx="16" cy="16" rx="4.2" ry="3.2" transform="rotate(-18 16 16)" fill="currentColor"/></svg></span>
-        <h1>neume-docs</h1>
+        <h1>Neumedocs</h1>
         <p class="tag">Documenting the neume shapes of manuscripts against the <em>Corpus Monodicum</em>.</p>
     </header>
 

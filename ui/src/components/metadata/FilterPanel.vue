@@ -25,7 +25,9 @@ const props = defineProps({
     /** the siglums of the manuscripts shown, for copying */
     sigla: { type: Array, default: () => [] },
     /** the filters typed into the column headings are on */
-    headings: { type: Boolean, default: false }
+    headings: { type: Boolean, default: false },
+    /** the page has column headings to type filters into (a grid); a list of projects has not */
+    headingFilters: { type: Boolean, default: true }
 });
 const emit = defineEmits(['close', 'update:headings', 'settings', 'share']);
 
@@ -171,7 +173,7 @@ async function copySigla() {
     </div>
 
     <footer class="foot">
-        <label v-if="f.editable" class="ne-check" title="A text box in each column heading: type to keep the rows that contain it (= exact, ! without)">
+        <label v-if="f.editable && headingFilters" class="ne-check" title="A text box in each column heading: type to keep the rows that contain it (= exact, ! without)">
             <input type="checkbox" :checked="headings" @change="emit('update:headings', $event.target.checked)" />
             Type filters into the column headings
         </label>

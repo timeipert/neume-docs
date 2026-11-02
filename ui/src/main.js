@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import './style.css'
+import './style-classic.css'
 import App from './App.vue'
 import router from './router'
 import { useGithubSessionStore } from './stores/githubSession'

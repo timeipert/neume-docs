@@ -1,9 +1,9 @@
 # Getting Started
 
-Welcome to the **neume-docs** user manual.
+Welcome to the **Neumedocs** user manual.
 
 ## What is this tool?
-**neume-docs** is a lightweight research application for **musicologists** working with medieval chant manuscripts and their digital transcriptions in the *Corpus Monodicum* (CM).
+**Neumedocs** is a lightweight research application for **musicologists** working with medieval chant manuscripts and their digital transcriptions in the *Corpus Monodicum* (CM).
 
 It bridges the gap between abstract melodic data and the physical graphical reality of a manuscript. You can:
 1. Load a transcribed corpus and see which neume patterns occur in each manuscript.

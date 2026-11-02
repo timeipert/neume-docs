@@ -1,5 +1,3 @@
-> **Where this code is edited.** The source of this app is the folder `apps/neume-docs` of [timeipert/monodi-platform](https://github.com/timeipert/monodi-platform/tree/main/apps/neume-docs). The repository [timeipert/neume-docs](https://github.com/timeipert/neume-docs) receives a copy of that folder and deploys it; it is not edited directly (a commit there stops the copy). How the copy works: `docs/sync.md` in monodi-platform.
-
 # Neumedocs
 
 A research tool for documenting the neume shapes of a manuscript against the *Corpus Monodicum* (CM). Load a transcribed corpus, make a **project** for a range of folios, fill in its **Neume Table**, link the shapes to the scans, and compare manuscripts side by side.
@@ -161,3 +159,7 @@ npm run build:reference -- /path/to/Corpus-Monodicum-project
 Everything is stored in the browser (IndexedDB for the corpus, localStorage and an optional project folder for your tables and annotations). Because the browser owns the storage, make regular backups, or connect a project folder (both on the *Workspace* page). Every deletion there keeps a restore point first, so it can be undone.
 
 The tool was part-wise created with the help of Large Language Models.
+
+---
+
+> **Where this code is edited.** The source of this app is the folder `apps/neume-docs` of [timeipert/monodi-platform](https://github.com/timeipert/monodi-platform/tree/main/apps/neume-docs). The repository [timeipert/neume-docs](https://github.com/timeipert/neume-docs) receives a copy of that folder and deploys it; it is not edited directly (a commit there stops the copy). How the copy works: `docs/sync.md` in monodi-platform.

@@ -13,6 +13,7 @@
     "crawl:mmmo": "node scripts/crawl-mmmo.mjs"
   },
   "dependencies": {
+    "@monodi/core": "file:vendor/cm-core",
     "canvg": "^4.0.3",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",

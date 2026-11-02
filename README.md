@@ -127,6 +127,8 @@ The reader (`ui/src/services/corpus`) reproduces the pattern extraction of the e
 ui/                          the Vue 3 app
   src/services/corpus/       reading and storing a corpus (reader, analysis, IndexedDB, worker)
   src/utils/neumeTable.js    ordering, standard table, special signs, columns — pure functions, tested
+  src/utils/neumeTree.js     the picture and box size of the neume tree; the tree logic itself is `@monodi/core` (vendor/cm-core)
+  vendor/cm-core             shared code (the neume tree, also used by Monodi-Zero): a link to packages/core in the monorepo, a copy in this repository; edit it in the monorepo only
   src/composables/           useTranscriptionData (the loaded corpus), usePatternCatalog (library + frequencies)
   src/utils/project*.js      projects: the two-level table, folio ranges and snippets, old work as projects, publishing (pure, tested)
   src/stores/projects.js     the projects (saved with the workspace)

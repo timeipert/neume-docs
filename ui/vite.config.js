@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import { configDefaults } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
 import { existsSync } from 'node:fs'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -34,6 +35,8 @@ async function neumaImport() {
 export default defineConfig(async () => ({
   plugins: [vue(), scriptPolicy, await neumaImport()].filter(Boolean),
   server: { fs: { allow: ['..'] } },
+  // vendor/cm-core is the shared code (packages/core in the monorepo, see its README.md); it tests itself there.
+  test: { exclude: [...configDefaults.exclude, 'vendor/**'] },
   base: './',
   build: {
     outDir: '../dist',

@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
+import '@monodi/core/theme.css'
 import './style.css'
 import './style-classic.css'
 import App from './App.vue'

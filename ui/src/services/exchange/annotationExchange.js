@@ -10,7 +10,7 @@
  *
  * The record shapes are Monodi's own (`Source.equivalents / annotationRegions /
  * annotationItems`), so the same fields travel through a shared repository later.
- * See INTEGRATION-PLAN.md in the monodi-light repository.
+ * See apps/monodi/documentation/INTEGRATION-PLAN.md in the monodi-platform repository.
  *
  * Pure functions on plain data: no stores, no DOM. Callers hand in what they hold
  * and apply the plan they get back.

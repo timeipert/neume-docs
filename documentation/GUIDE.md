@@ -29,7 +29,7 @@ The transcription lives in Monodi-Zero, the annotations here, and a file carries
 
 - **Linking snippets to the transcription**: *Workspace → Exchange with Monodi-Zero → Find links…* works out which snippet depicts which neume, by aligning each line region's snippets (left to right) with the neumes of one transcription line by pattern, and shows the proposals with a confidence (high, medium, low) to tick before anything is changed. A restore point is kept first. A source loaded before the reading order was kept has to be loaded again.
 
-The file format and the reasoning are in `INTEGRATION-PLAN.md` of the monodi-light repository; the code is `ui/src/services/exchange/`.
+The file format and the reasoning are in `apps/monodi/documentation/INTEGRATION-PLAN.md` in the monodi-platform repository; the code is `ui/src/services/exchange/`.
 
 ### Projects (new)
 

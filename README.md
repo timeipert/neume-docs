@@ -2,7 +2,7 @@
 
 A research tool for documenting the neume shapes of a manuscript against the *Corpus Monodicum* (CM, an edition of medieval monophonic chant). Load a transcribed corpus, make a project for a range of folios, and fill its neume table from the manuscript. Everything is stored in the browser: back up the workspace regularly.
 
-Features, pattern codes, code layout and the MMMO catalogue: [GUIDE.md](GUIDE.md). The user manual is in `user-manual/`.
+Features, pattern codes, code layout and the MMMO catalogue: [GUIDE.md](documentation/GUIDE.md). The user manual is in `user-manual/`.
 
 ```bash
 cd ui
@@ -12,7 +12,7 @@ npm test         # unit tests
 npm run build    # production build into ./dist
 ```
 
-Node.js 20 or newer. End-to-end test: see [GUIDE.md](GUIDE.md#running-it).
+Node.js 20 or newer. End-to-end test: see [GUIDE.md](documentation/GUIDE.md#running-it).
 
 ## Where to start (a guide for newcomers)
 
@@ -25,6 +25,7 @@ State 2026-11-05. The app is the Vue 3 single-page application in `ui/`; everyth
 | `ui/scripts/` | Node scripts: `verify-build.mjs` (runs after the build), `build-glyphs.mjs`, `build-cm-reference.mjs`, `crawl-mmmo*.{mjs,sh}`, `split-corpus.mjs`, `make-demo-docs.mjs`, `e2e-smoke.mjs`. |
 | `neuma-import/` | A separate Node module that collects the Hungarian Neume Catalogue and writes `ui/public/hung/`. See `neuma-import/GUIDE.md`. |
 | `auth-proxy/` | A Cloudflare Worker that completes the GitHub sign-in. See `auth-proxy/README.md`. |
+| `documentation/` | `GUIDE.md` (features, data and publishing) and `UI-CONVENTIONS.md` (rules every page of the interface follows). |
 | `user-manual/` | The VitePress user manual; `npm run build:manual` copies it to `ui/public/manual`. |
 | `glyphs/` | SVG files of the built-in neume glyphs; `npm run build:glyphs` turns them into `ui/src/data/glyphs.js`. |
 | `examples/` | Output folder of `ui/scripts/split-corpus.mjs`; only its README is tracked. |

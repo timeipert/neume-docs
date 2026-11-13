@@ -4,7 +4,8 @@ import { RouterLink, useRoute } from 'vue-router';
 
 /**
  * The steps of a project as tabs, always in view: the standard table (where the columns
- * are chosen and filled), the extended table, the neume tree they make, all manuscripts side by side. Any of them
+ * are chosen and filled), the extended table, the neume tree they make, the page layout of the manuscript, all
+ * manuscripts side by side. Any of them
  * can be entered at any time; the order only says what usually comes next.
  */
 const props = defineProps({
@@ -28,6 +29,7 @@ const tabs = computed(() => [
     { name: 'project_lines', label: 'Lines', count: '' },
     { name: 'project_review', label: 'Review', count: '' },
     { name: 'project_tree', label: 'Neume tree', count: '' },
+    { name: 'project_layout', label: 'Page layout', title: 'Writing space, staves, colourings and clefs of the manuscript', count: props.project.layout ? '✓' : '' },
     { name: 'project_all', label: 'All manuscripts', count: props.projectCount > 1 ? props.projectCount : '' }
 ].concat(props.scans ? [{
     name: 'project_page', label: 'Scans', title: 'The pages of the manuscript: mark line regions and signs on them',

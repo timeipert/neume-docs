@@ -52,6 +52,17 @@ describe('the projects store', () => {
         expect(store.setColumns(p.id, ['*u']).columnsChosen).toBe(true);
     });
 
+    it('keeps the page layout normalised, and an empty one as null', () => {
+        const p = store.create({ source: 'A' });
+        expect(p.layout).toBeNull();
+        store.setLayout(p.id, { sections: [{ staves: { lineCount: 4, lineColour: 'pink' } }] });
+        const layout = store.get(p.id).layout;
+        expect(layout.version).toBe(1);
+        expect(layout.sections[0].staves).toMatchObject({ lineCount: 4, lineColour: '' });
+        store.setLayout(p.id, { sections: [{}] });
+        expect(store.get(p.id).layout).toBeNull();
+    });
+
     it('keeps what was done to the neume tree, as notations only', () => {
         const p = store.create({ source: 'A' });
         expect(p.tree).toEqual({ grown: [], hidden: [] });

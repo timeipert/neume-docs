@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
 import { legacyDrafts } from '../utils/projectLegacy'
 import { getBaseCode } from '../utils/patternCode'
+import { isEmptyLayout, normalisePageLayout } from '@monodi/core/page-layout'
 
 export const FOCUS = ['transcription', 'manuscript']
 export const IMAGES = ['iiif', 'screenshots']
@@ -24,6 +25,8 @@ export const SNIPPETS = ['lines', 'signs']
  *   extended          the codes added beyond it
  *   tree              what was done to the neume tree: `grown` the boxes that were gone on from, `hidden` the boxes left out
  *                     (each by its notation, e.g. `*u-d`; see utils/neumeTree)
+ *   layout            the page layout of the manuscript in this project's folios: writing space, staves, colourings,
+ *                     clefs (`@monodi/core/page-layout`, design in docs/page-layout.md); null = nothing recorded
  *   collectionId      the custom collection holding the screenshots
  *   published         shown in the public views (see utils/projectPublishing)
  *   columnsChosen     the person has chosen columns in the standard table (or the project came from an existing table)
@@ -47,6 +50,13 @@ export const useProjectsStore = defineStore('projects', () => {
 
     const notation = (list) => [...new Set((Array.isArray(list) ? list : []).filter(n => typeof n === 'string' && /^\*[*udeA-Z-]*$/.test(n)))]
 
+    /** A recorded layout, complete; null when nothing is recorded, so empty layouts take no room in a backup. */
+    const layoutOf = (v) => {
+        if (!v) return null
+        const layout = normalisePageLayout(v)
+        return isEmptyLayout(layout) && layout.sections.length === 1 ? null : layout
+    }
+
     function normalise(p) {
         const now = new Date().toISOString()
         const columns = codes(p.columns)
@@ -64,6 +74,7 @@ export const useProjectsStore = defineStore('projects', () => {
             columns,
             extended: codes(p.extended).filter(c => !columns.includes(c)),
             tree: { grown: notation(p.tree && p.tree.grown), hidden: notation(p.tree && p.tree.hidden) },
+            layout: layoutOf(p.layout),
             collectionId: text(p.collectionId),
             published: !!p.published,
             columnsChosen: !!p.columnsChosen,
@@ -143,6 +154,11 @@ export const useProjectsStore = defineStore('projects', () => {
         return project ? update(id, { tree: { ...project.tree, ...patch } }) : null
     }
 
+    /** Record the page layout (any input is normalised; an empty layout is stored as null). */
+    function setLayout(id, layout) {
+        return get(id) ? update(id, { layout }) : null
+    }
+
     function markOpened(id) {
         if (get(id)) lastOpenedId.value = id
     }
@@ -201,7 +217,7 @@ export const useProjectsStore = defineStore('projects', () => {
 
     return {
         projects, dismissed, lastOpenedId,
-        get, create, update, remove, restore, setColumns, setExtended, setTree, markOpened,
+        get, create, update, remove, restore, setColumns, setExtended, setTree, setLayout, markOpened,
         adoptLegacy, clear, serialize, hydrate, mergeIn
     }
 })

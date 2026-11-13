@@ -18,6 +18,7 @@ A function is reachable from one place, the place where it is *used*. Other page
 | OMMR4all import | Corpus (leads to `/ommr`) | |
 | Making a project, choosing its columns, filling its table, comparing all manuscripts | Projects (the tabs of a project) | the Corpus page, the Metadata table |
 | The neume tree of a project: going on from a box, hiding boxes, saving it as a PDF | Projects → *Neume tree* | |
+| The page layout of a project's manuscript (writing space, staves, colourings, clefs), its file and text (design: `docs/page-layout.md`) | Projects → *Page layout* | |
 | Lines, the signs on them, snippets | the cell of a table (and the line editor it opens) | |
 | What a snippet says about itself: its attributes and how they are checked | Settings | the cell, the line editor |
 | Display mode, order of the neume table | Settings | |

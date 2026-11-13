@@ -28,6 +28,7 @@ State 2026-11-05. The app is the Vue 3 single-page application in `ui/`; everyth
 | `documentation/` | `GUIDE.md` (features, data and publishing) and `UI-CONVENTIONS.md` (rules every page of the interface follows). |
 | `user-manual/` | The VitePress user manual; `npm run build:manual` copies it to `ui/public/manual`. |
 | `glyphs/` | SVG files of the built-in neume glyphs; `npm run build:glyphs` turns them into `ui/src/data/glyphs.js`. |
+| `docs/` | Design documents: [`page-layout.md`](docs/page-layout.md) (the page layout of a manuscript: vocabulary, data model, export; added 2026-11-12). |
 | `examples/` | Output folder of `ui/scripts/split-corpus.mjs`; only its README is tracked. |
 
 How to run and check it, from the app folder:

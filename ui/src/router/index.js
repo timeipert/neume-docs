@@ -26,6 +26,7 @@ import ProjectAllView from '../views/ProjectAllView.vue'
 import ProjectLinesView from '../views/ProjectLinesView.vue'
 import ProjectReviewView from '../views/ProjectReviewView.vue'
 import ProjectTreeView from '../views/ProjectTreeView.vue'
+import ProjectLayoutView from '../views/ProjectLayoutView.vue'
 import ProjectPageView from '../views/ProjectPageView.vue'
 import StartView from '../views/StartView.vue'
 import DocsHomeView from '../views/docs/DocsHomeView.vue'
@@ -189,6 +190,7 @@ const router = createRouter({
         { path: 'lines', name: 'project_lines', component: ProjectLinesView, meta: { title: 'Lines' } },
         { path: 'review', name: 'project_review', component: ProjectReviewView, meta: { title: 'Review' } },
         { path: 'tree', name: 'project_tree', component: ProjectTreeView, meta: { title: 'Neume tree' } },
+        { path: 'layout', name: 'project_layout', component: ProjectLayoutView, meta: { title: 'Page layout' } },
         { path: 'all', name: 'project_all', component: ProjectAllView, meta: { title: 'All manuscripts' } },
         // The page editor, inside the frame of the project.
         { path: 'page', name: 'project_page', component: ProjectPageView, meta: { title: 'Page', fill: true } },

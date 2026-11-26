@@ -112,6 +112,10 @@ export function buildPageMap({ pages = [], dataFolios = [], alignment = null } =
         if (!existing || e.confidence > existing.confidence) inferredByFolio.set(key, e);
     }
 
+    const labelScheme = detectScheme(labels).scheme === 'foliated' ? 'foliated' : 'paginated';
+    const offsetTargetTypes = align.iiifType
+        ? [align.iiifType, align.iiifType === 'foliated' ? 'paginated' : 'foliated']
+        : [labelScheme, labelScheme === 'foliated' ? 'paginated' : 'foliated'];
     const hasOffsets = !!(align.offset || (Array.isArray(align.adjustments) && align.adjustments.length));
     const dataByMatch = new Map();
     for (const f of data) if (!dataByMatch.has(matchName(f))) dataByMatch.set(matchName(f), f);
@@ -127,9 +131,15 @@ export function buildPageMap({ pages = [], dataFolios = [], alignment = null } =
         if (pinnedFolio.has(key)) return hit(pinnedFolio.get(key), 'pinned', 1);
 
         if (hasOffsets) {
-            const expected = applyOffsetAlignment(String(folio), align);
-            const candidates = expected ? byAnyLabel.get(matchName(expected)) : null;
-            if (candidates && candidates.length) return hit(candidates[0], 'offset', 0.9);
+            // The offset is counted in pages/leaves of the data's numbering and written in
+            // the manifest's numbering. A stored rule without `iiifType` (older saves) is
+            // read in the numbering the labels show; if the stated numbering finds no
+            // canvas, the other one is tried (a rule saved with the wrong radio button).
+            for (const iiifType of offsetTargetTypes) {
+                const expected = applyOffsetAlignment(String(folio), { ...align, dataType, iiifType });
+                const candidates = expected ? byAnyLabel.get(matchName(expected)) : null;
+                if (candidates && candidates.length) return hit(candidates[0], 'offset', 0.9);
+            }
         }
 
         // Several canvases may carry the same number ("V10" on a flyleaf, "10" in the
